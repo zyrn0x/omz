@@ -4389,9 +4389,9 @@ if isMobile then
                 -- Simple container with Omz UI style
                 local mainFrame = Instance.new("Frame")
                 mainFrame.Name = "SpamPanel"
-                mainFrame.Position = UDim2.new(0.5, -50, 0.5, -25)  -- Centered
-                mainFrame.Size = UDim2.new(0, 100, 0, 50)  -- Small size
-                mainFrame.BackgroundColor3 = Color3.fromRGB(12, 13, 15)  -- Same as Omz UI
+                mainFrame.Position = UDim2.new(0.5, -50, 0.7, -25)
+                mainFrame.Size = UDim2.new(0, 100, 0, 50)
+                mainFrame.BackgroundColor3 = Color3.fromRGB(12, 13, 15)
                 mainFrame.BackgroundTransparency = 0.05
                 mainFrame.BorderSizePixel = 0
                 mainFrame.Active = true
@@ -4399,11 +4399,11 @@ if isMobile then
                 mainFrame.Parent = gui
 
                 local uiCorner = Instance.new("UICorner")
-                uiCorner.CornerRadius = UDim.new(0, 10)  -- Same corner radius
+                uiCorner.CornerRadius = UDim.new(0, 10)
                 uiCorner.Parent = mainFrame
 
                 local uiStroke = Instance.new("UIStroke")
-                uiStroke.Color = Color3.fromRGB(52, 66, 89)  -- Same stroke color
+                uiStroke.Color = Color3.fromRGB(52, 66, 89)
                 uiStroke.Transparency = 0.5
                 uiStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 uiStroke.Parent = mainFrame
@@ -4415,11 +4415,11 @@ if isMobile then
                 button.Position = UDim2.new(0.5, 0, 0.5, 0)
                 button.AnchorPoint = Vector2.new(0.5, 0.5)
                 button.Text = "SPAM"
-                button.TextColor3 = Color3.fromRGB(152, 181, 255)  -- Omz blue color
+                button.TextColor3 = Color3.fromRGB(152, 181, 255)
                 button.TextSize = 14
                 button.Font = Enum.Font.GothamSSm
                 button.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-                button.BackgroundColor3 = Color3.fromRGB(22, 28, 38)  -- Module background color
+                button.BackgroundColor3 = Color3.fromRGB(22, 28, 38)
                 button.BorderSizePixel = 0
                 button.AutoButtonColor = false
                 button.Parent = mainFrame
@@ -4434,7 +4434,19 @@ if isMobile then
                 buttonStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 buttonStroke.Parent = button
                 
-                -- State variable
+                -- Close button (small X in corner)
+                local closeBtn = Instance.new("TextButton")
+                closeBtn.Size = UDim2.new(0, 20, 0, 20)
+                closeBtn.Position = UDim2.new(1, -22, 0, 2)
+                closeBtn.Text = "×"
+                closeBtn.TextColor3 = Color3.fromRGB(152, 181, 255)
+                closeBtn.TextSize = 16
+                closeBtn.Font = Enum.Font.GothamSSm
+                closeBtn.BackgroundTransparency = 1
+                closeBtn.AutoButtonColor = false
+                closeBtn.Parent = mainFrame
+                
+                -- State variables
                 local activated = false
                 
                 -- Toggle spam function
@@ -4443,8 +4455,8 @@ if isMobile then
                     
                     if activated then
                         button.Text = "STOP"
-                        button.BackgroundColor3 = Color3.fromRGB(38, 28, 28)  -- Dark red
-                        button.TextColor3 = Color3.fromRGB(255, 100, 100)  -- Red text
+                        button.BackgroundColor3 = Color3.fromRGB(38, 28, 28)
+                        button.TextColor3 = Color3.fromRGB(255, 100, 100)
                         
                         -- Start spamming
                         Connections_Manager['Manual Spam UI'] = game:GetService("RunService").Heartbeat:Connect(function()
@@ -4452,8 +4464,8 @@ if isMobile then
                         end)
                     else
                         button.Text = "SPAM"
-                        button.BackgroundColor3 = Color3.fromRGB(22, 28, 38)  -- Original color
-                        button.TextColor3 = Color3.fromRGB(152, 181, 255)  -- Omz blue
+                        button.BackgroundColor3 = Color3.fromRGB(22, 28, 38)
+                        button.TextColor3 = Color3.fromRGB(152, 181, 255)
                         
                         -- Stop spamming
                         if Connections_Manager['Manual Spam UI'] then
@@ -4476,21 +4488,6 @@ if isMobile then
                     end
                 end)
                 
-                -- Button click event
-                button.MouseButton1Click:Connect(toggleSpam)
-                
-                -- Close button (small X in corner)
-                local closeBtn = Instance.new("TextButton")
-                closeBtn.Size = UDim2.new(0, 20, 0, 20)
-                closeBtn.Position = UDim2.new(1, -22, 0, 2)
-                closeBtn.Text = "×"
-                closeBtn.TextColor3 = Color3.fromRGB(152, 181, 255)
-                closeBtn.TextSize = 16
-                closeBtn.Font = Enum.Font.GothamSSm
-                closeBtn.BackgroundTransparency = 1
-                closeBtn.AutoButtonColor = false
-                closeBtn.Parent = mainFrame
-                
                 closeBtn.MouseEnter:Connect(function()
                     closeBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
                 end)
@@ -4498,6 +4495,9 @@ if isMobile then
                 closeBtn.MouseLeave:Connect(function()
                     closeBtn.TextColor3 = Color3.fromRGB(152, 181, 255)
                 end)
+                
+                -- Button click events
+                button.MouseButton1Click:Connect(toggleSpam)
                 
                 closeBtn.MouseButton1Click:Connect(function()
                     gui:Destroy()
@@ -4508,9 +4508,9 @@ if isMobile then
                     end
                 end)
                 
-                -- Simple drag functionality
+                -- Drag functionality (simplifiée)
                 local dragging = false
-                local dragInput, dragStart, startPos
+                local dragStart, startPos
                 
                 mainFrame.InputBegan:Connect(function(input)
                     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -4518,22 +4518,18 @@ if isMobile then
                         dragStart = input.Position
                         startPos = mainFrame.Position
                         
-                        input.Changed:Connect(function()
+                        local connection
+                        connection = input.Changed:Connect(function()
                             if input.UserInputState == Enum.UserInputState.End then
                                 dragging = false
+                                connection:Disconnect()
                             end
                         end)
                     end
                 end)
                 
-                mainFrame.InputChanged:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-                        dragInput = input
-                    end
-                end)
-                
                 game:GetService("UserInputService").InputChanged:Connect(function(input)
-                    if input == dragInput and dragging then
+                    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                         local delta = input.Position - dragStart
                         mainFrame.Position = UDim2.new(
                             startPos.X.Scale, 
@@ -6064,12 +6060,12 @@ local AbilityESP = world:create_module({
 local ballStatsUI
 local heartbeatConn
 local ballPeaks = {}
-local progressBar, progressFill, peakText, currentText
+local velocityText, peakText, progressBar, progressFill, percentageText
 
 local BallStats = misc:create_module({
     title = 'Ball Stats', 
     flag = 'ballStats', 
-    description = 'Monitore la vitesse de la balle', 
+    description = 'Monitore la vitesse et les pics de la balle', 
     section = 'left',
     callback = function(value)
         if value then
@@ -6078,111 +6074,180 @@ local BallStats = misc:create_module({
                 ballStatsUI = Instance.new("ScreenGui")
                 ballStatsUI.Name = "VelocityMonitor"
                 ballStatsUI.ResetOnSpawn = false
-                ballStatsUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-                ballStatsUI.Parent = game.CoreGui:FindFirstChild("Nury") or game.CoreGui
+                ballStatsUI.Parent = player:WaitForChild("PlayerGui")
                 
-                -- Simple container with Omz UI style
+                -- Main container with glass effect
                 local mainFrame = Instance.new("Frame")
-                mainFrame.Name = "VelocityBar"
-                mainFrame.Size = UDim2.new(0, 150, 0, 30)
-                mainFrame.Position = UDim2.new(0.5, -75, 0.2, 0)
-                mainFrame.BackgroundColor3 = Color3.fromRGB(12, 13, 15)
-                mainFrame.BackgroundTransparency = 0.05
+                mainFrame.Name = "MainContainer"
+                mainFrame.Size = UDim2.new(0, 220, 0, 150)
+                mainFrame.Position = UDim2.new(0.02, 0, 0.1, 0)
+                mainFrame.BackgroundColor3 = Color3.fromRGB(15, 20, 30)
+                mainFrame.BackgroundTransparency = 0.1
                 mainFrame.BorderSizePixel = 0
-                mainFrame.Active = true
-                mainFrame.Draggable = true
                 mainFrame.Parent = ballStatsUI
-
+                
                 local uiCorner = Instance.new("UICorner")
-                uiCorner.CornerRadius = UDim.new(0, 10)
+                uiCorner.CornerRadius = UDim.new(0, 12)
                 uiCorner.Parent = mainFrame
 
                 local uiStroke = Instance.new("UIStroke")
-                uiStroke.Color = Color3.fromRGB(52, 66, 89)
-                uiStroke.Transparency = 0.5
-                uiStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                uiStroke.Color = Color3.fromRGB(60, 75, 100)
+                uiStroke.Thickness = 2
+                uiStroke.Transparency = 0.3
                 uiStroke.Parent = mainFrame
                 
-                -- Current speed text (left side)
-                currentText = Instance.new("TextLabel")
-                currentText.Size = UDim2.new(0, 40, 1, 0)
-                currentText.Position = UDim2.new(0, 5, 0, 0)
-                currentText.Text = "0"
-                currentText.TextColor3 = Color3.fromRGB(152, 181, 255)
-                currentText.TextSize = 12
-                currentText.Font = Enum.Font.GothamSSm
-                currentText.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-                currentText.BackgroundTransparency = 1
-                currentText.TextXAlignment = Enum.TextXAlignment.Left
-                currentText.Parent = mainFrame
+                -- Title with gradient
+                local titleContainer = Instance.new("Frame")
+                titleContainer.Size = UDim2.new(1, 0, 0, 35)
+                titleContainer.Position = UDim2.new(0, 0, 0, 0)
+                titleContainer.BackgroundTransparency = 1
+                titleContainer.Parent = mainFrame
+                
+                local titleShadow = Instance.new("TextLabel")
+                titleShadow.Size = UDim2.new(1, 0, 1, 0)
+                titleShadow.Text = "VELOCITY MONITOR"
+                titleShadow.TextColor3 = Color3.fromRGB(0, 0, 0)
+                titleShadow.TextTransparency = 0.5
+                titleShadow.TextSize = 16
+                titleShadow.Font = Enum.Font.GothamBlack
+                titleShadow.BackgroundTransparency = 1
+                titleShadow.Parent = titleContainer
+                
+                local title = Instance.new("TextLabel")
+                title.Size = UDim2.new(1, 0, 1, 0)
+                title.Position = UDim2.new(0, -1, 0, -1)
+                title.Text = "VELOCITY MONITOR"
+                title.TextColor3 = Color3.fromRGB(152, 181, 255)
+                title.TextSize = 16
+                title.Font = Enum.Font.GothamBlack
+                title.BackgroundTransparency = 1
+                title.Parent = titleContainer
+                
+                -- Velocity display (large blue number)
+                local velocityFrame = Instance.new("Frame")
+                velocityFrame.Size = UDim2.new(0.45, -5, 0, 65)
+                velocityFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
+                velocityFrame.BackgroundTransparency = 1
+                velocityFrame.Parent = mainFrame
+                
+                local velocityLabel = Instance.new("TextLabel")
+                velocityLabel.Size = UDim2.new(1, 0, 0, 20)
+                velocityLabel.Text = "VELOCITY"
+                velocityLabel.TextColor3 = Color3.fromRGB(100, 150, 255)
+                velocityLabel.TextSize = 12
+                velocityLabel.Font = Enum.Font.GothamBold
+                velocityLabel.BackgroundTransparency = 1
+                velocityLabel.Parent = velocityFrame
+                
+                velocityText = Instance.new("TextLabel")
+                velocityText.Size = UDim2.new(1, 0, 1, -20)
+                velocityText.Position = UDim2.new(0, 0, 0, 20)
+                velocityText.Text = "0"
+                velocityText.TextColor3 = Color3.fromRGB(65, 105, 225)
+                velocityText.TextSize = 28
+                velocityText.Font = Enum.Font.GothamBlack
+                velocityText.BackgroundTransparency = 1
+                velocityText.Parent = velocityFrame
+                
+                -- Peak display (large red number)
+                local peakFrame = Instance.new("Frame")
+                peakFrame.Size = UDim2.new(0.45, -5, 0, 65)
+                peakFrame.Position = UDim2.new(0.5, 5, 0.3, 0)
+                peakFrame.BackgroundTransparency = 1
+                peakFrame.Parent = mainFrame
+                
+                local peakLabel = Instance.new("TextLabel")
+                peakLabel.Size = UDim2.new(1, 0, 0, 20)
+                peakLabel.Text = "PEAK"
+                peakLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+                peakLabel.TextSize = 12
+                peakLabel.Font = Enum.Font.GothamBold
+                peakLabel.BackgroundTransparency = 1
+                peakLabel.Parent = peakFrame
+                
+                peakText = Instance.new("TextLabel")
+                peakText.Size = UDim2.new(1, 0, 1, -20)
+                peakText.Position = UDim2.new(0, 0, 0, 20)
+                peakText.Text = "0"
+                peakText.TextColor3 = Color3.fromRGB(220, 20, 60)
+                peakText.TextSize = 28
+                peakText.Font = Enum.Font.GothamBlack
+                peakText.BackgroundTransparency = 1
+                peakText.Parent = peakFrame
                 
                 -- Progress bar container
                 local barContainer = Instance.new("Frame")
-                barContainer.Size = UDim2.new(0, 60, 0, 10)
-                barContainer.Position = UDim2.new(0.5, -30, 0.5, -5)
-                barContainer.BackgroundColor3 = Color3.fromRGB(22, 28, 38)
+                barContainer.Size = UDim2.new(0.9, 0, 0, 25)
+                barContainer.Position = UDim2.new(0.05, 0, 0.8, 0)
+                barContainer.BackgroundColor3 = Color3.fromRGB(30, 35, 45)
                 barContainer.BorderSizePixel = 0
                 barContainer.Parent = mainFrame
                 
                 local barCorner = Instance.new("UICorner")
-                barCorner.CornerRadius = UDim.new(1, 0)
+                barCorner.CornerRadius = UDim.new(0, 6)
                 barCorner.Parent = barContainer
                 
-                -- Progress bar fill
+                -- Progress bar fill with gradient
                 progressBar = Instance.new("Frame")
                 progressBar.Size = UDim2.new(0, 0, 1, 0)
                 progressBar.Position = UDim2.new(0, 0, 0, 0)
-                progressBar.BackgroundColor3 = Color3.fromRGB(152, 181, 255)  -- Blue
+                progressBar.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
                 progressBar.BorderSizePixel = 0
                 progressBar.Parent = barContainer
                 
                 local progressCorner = Instance.new("UICorner")
-                progressCorner.CornerRadius = UDim.new(1, 0)
+                progressCorner.CornerRadius = UDim.new(0, 6)
                 progressCorner.Parent = progressBar
                 
-                -- Peak text (right side)
-                peakText = Instance.new("TextLabel")
-                peakText.Size = UDim2.new(0, 40, 1, 0)
-                peakText.Position = UDim2.new(1, -45, 0, 0)
-                peakText.Text = "0"
-                peakText.TextColor3 = Color3.fromRGB(152, 181, 255)
-                peakText.TextSize = 12
-                peakText.Font = Enum.Font.GothamSSm
-                peakText.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-                peakText.BackgroundTransparency = 1
-                peakText.TextXAlignment = Enum.TextXAlignment.Right
-                peakText.Parent = mainFrame
+                -- Gradient effect
+                local gradient = Instance.new("UIGradient")
+                gradient.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 20, 60)),  -- Red
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(65, 105, 225))   -- Blue
+                })
+                gradient.Parent = progressBar
                 
-                -- Close button (small X in corner)
+                -- Percentage text inside bar
+                percentageText = Instance.new("TextLabel")
+                percentageText.Size = UDim2.new(1, 0, 1, 0)
+                percentageText.Text = "0%"
+                percentageText.TextColor3 = Color3.fromRGB(255, 255, 255)
+                percentageText.TextSize = 12
+                percentageText.Font = Enum.Font.GothamBold
+                percentageText.BackgroundTransparency = 1
+                percentageText.ZIndex = 2
+                percentageText.Parent = barContainer
+                
+                -- Close button (minimal)
                 local closeButton = Instance.new("TextButton")
                 closeButton.Size = UDim2.new(0, 20, 0, 20)
-                closeButton.Position = UDim2.new(1, -22, 0, 2)
+                closeButton.Position = UDim2.new(1, -25, 0, 8)
                 closeButton.Text = "×"
-                closeButton.TextColor3 = Color3.fromRGB(152, 181, 255)
-                closeButton.TextSize = 16
-                closeButton.Font = Enum.Font.GothamSSm
+                closeButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+                closeButton.TextSize = 18
+                closeButton.Font = Enum.Font.GothamBold
                 closeButton.BackgroundTransparency = 1
                 closeButton.AutoButtonColor = false
                 closeButton.Parent = mainFrame
                 
                 closeButton.MouseEnter:Connect(function()
-                    closeButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+                    closeButton.TextColor3 = Color3.fromRGB(220, 20, 60)
                 end)
                 
                 closeButton.MouseLeave:Connect(function()
-                    closeButton.TextColor3 = Color3.fromRGB(152, 181, 255)
+                    closeButton.TextColor3 = Color3.fromRGB(200, 200, 200)
                 end)
                 
                 closeButton.MouseButton1Click:Connect(function()
                     BallStats:change_state(false)
                 end)
                 
-                -- Simple drag functionality
+                -- Drag functionality
                 local dragging = false
                 local dragInput, dragStart, startPos
                 
                 mainFrame.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
                         dragging = true
                         dragStart = input.Position
                         startPos = mainFrame.Position
@@ -6196,7 +6261,7 @@ local BallStats = misc:create_module({
                 end)
                 
                 mainFrame.InputChanged:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                    if input.UserInputType == Enum.UserInputType.MouseMovement then
                         dragInput = input
                     end
                 end)
@@ -6246,30 +6311,31 @@ local BallStats = misc:create_module({
                     local currentPeak = ballPeaks[currentBall]
                     
                     -- Update displays
-                    if currentText then
-                        currentText.Text = tostring(currentVelocity)
+                    if velocityText then
+                        velocityText.Text = tostring(currentVelocity)
                     end
                     
                     if peakText then
                         peakText.Text = tostring(currentPeak)
                     end
                     
-                    -- Update progress bar with color transition
-                    if progressBar and currentPeak > 0 then
+                    -- Update progress bar
+                    if progressBar and percentageText and currentPeak > 0 then
                         local percentage = math.min(currentVelocity / currentPeak, 1)
                         local barWidth = math.floor(percentage * (progressBar.Parent.AbsoluteSize.X))
                         progressBar.Size = UDim2.new(0, barWidth, 1, 0)
+                        percentageText.Text = string.format("%.0f%%", percentage * 100)
                         
-                        -- Color transition from blue to red based on percentage
-                        local hue = 0.66 - (percentage * 0.66)  -- 0.66 = blue, 0 = red
-                        local saturation = 0.8
-                        local value = 0.9
-                        progressBar.BackgroundColor3 = Color3.fromHSV(hue, saturation, value)
+                        -- Update gradient based on percentage
+                        if gradient then
+                            local colorOffset = percentage
+                            gradient.Offset = Vector2.new(-colorOffset, 0)
+                        end
                     end
                 else
                     -- No ball, reset display
-                    if currentText then
-                        currentText.Text = "0"
+                    if velocityText then
+                        velocityText.Text = "0"
                     end
                     
                     if peakText then
@@ -6278,7 +6344,10 @@ local BallStats = misc:create_module({
                     
                     if progressBar then
                         progressBar.Size = UDim2.new(0, 0, 1, 0)
-                        progressBar.BackgroundColor3 = Color3.fromRGB(152, 181, 255)  -- Reset to blue
+                    end
+                    
+                    if percentageText then
+                        percentageText.Text = "0%"
                     end
                 end
                 
@@ -6298,8 +6367,6 @@ local BallStats = misc:create_module({
             end
             if ballStatsUI then
                 ballStatsUI.Enabled = false
-                ballStatsUI:Destroy()
-                ballStatsUI = nil
             end
             ballPeaks = {}
         end
