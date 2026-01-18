@@ -4377,237 +4377,322 @@ if isMobile then
             getgenv().spamui = value
 
             if value then
-                if game.CoreGui:FindFirstChild("SpamPulseUI") then
-                    game.CoreGui:FindFirstChild("SpamPulseUI"):Destroy()
+                if game.CoreGui:FindFirstChild("UltraSpamUI") then
+                    game.CoreGui:FindFirstChild("UltraSpamUI"):Destroy()
                 end
                 
                 local gui = Instance.new("ScreenGui")
-                gui.Name = "SpamPulseUI"
+                gui.Name = "UltraSpamUI"
                 gui.ResetOnSpawn = false
+                gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
                 gui.Parent = game.CoreGui
 
-                -- Container principal avec effet néon
+                -- 🎯 Container Principal Ultra-Stylé
                 local mainFrame = Instance.new("Frame")
-                mainFrame.Name = "SpamPulseCore"
-                mainFrame.Position = UDim2.new(0.6, 0, 0.2, 0)
-                mainFrame.Size = UDim2.new(0, 160, 0, 120)
-                mainFrame.BackgroundColor3 = Color3.fromRGB(10, 12, 18)
-                mainFrame.BackgroundTransparency = 0.05
+                mainFrame.Name = "SpamCore"
+                mainFrame.Position = UDim2.new(0.65, 0, 0.2, 0)
+                mainFrame.Size = UDim2.new(0, 220, 0, 160)
+                mainFrame.BackgroundColor3 = Color3.fromRGB(8, 10, 15)
+                mainFrame.BackgroundTransparency = 0.02
                 mainFrame.BorderSizePixel = 0
                 mainFrame.Active = true
                 mainFrame.Parent = gui
 
-                local uiCorner = Instance.new("UICorner")
-                uiCorner.CornerRadius = UDim.new(0, 16)
-                uiCorner.Parent = mainFrame
+                local mainCorner = Instance.new("UICorner")
+                mainCorner.CornerRadius = UDim.new(0, 20)
+                mainCorner.Parent = mainFrame
 
-                -- Bordure néon turquoise-magenta
-                local neonBorder = Instance.new("UIStroke")
-                neonBorder.Color = Color3.fromRGB(120, 80, 200)
-                neonBorder.Thickness = 2
-                neonBorder.Transparency = 0.3
-                neonBorder.Parent = mainFrame
+                -- 🌈 Triple Border Glow System
+                local outerGlow = Instance.new("UIStroke")
+                outerGlow.Color = Color3.fromRGB(100, 200, 255)
+                outerGlow.Thickness = 3
+                outerGlow.Transparency = 0.2
+                outerGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                outerGlow.Parent = mainFrame
                 
-                -- Glow interne
-                local innerGlow = Instance.new("Frame")
-                innerGlow.Size = UDim2.new(1, -4, 1, -4)
-                innerGlow.Position = UDim2.new(0, 2, 0, 2)
-                innerGlow.BackgroundColor3 = Color3.fromRGB(15, 18, 25)
-                innerGlow.BackgroundTransparency = 0.8
-                innerGlow.BorderSizePixel = 0
-                innerGlow.Parent = mainFrame
+                -- Glow Effect Background
+                local glowBg = Instance.new("ImageLabel")
+                glowBg.Name = "GlowBg"
+                glowBg.Size = UDim2.new(1, 60, 1, 60)
+                glowBg.Position = UDim2.new(0.5, 0, 0.5, 0)
+                glowBg.AnchorPoint = Vector2.new(0.5, 0.5)
+                glowBg.BackgroundTransparency = 1
+                glowBg.Image = "rbxassetid://5028857084"
+                glowBg.ImageColor3 = Color3.fromRGB(100, 200, 255)
+                glowBg.ImageTransparency = 0.75
+                glowBg.ScaleType = Enum.ScaleType.Slice
+                glowBg.SliceCenter = Rect.new(24, 24, 276, 276)
+                glowBg.ZIndex = 0
+                glowBg.Parent = mainFrame
                 
-                local innerCorner = Instance.new("UICorner")
-                innerCorner.CornerRadius = UDim.new(0, 14)
-                innerCorner.Parent = innerGlow
+                -- Inner Glass Effect
+                local innerGlass = Instance.new("Frame")
+                innerGlass.Size = UDim2.new(1, -6, 1, -6)
+                innerGlass.Position = UDim2.new(0, 3, 0, 3)
+                innerGlass.BackgroundColor3 = Color3.fromRGB(12, 15, 22)
+                innerGlass.BackgroundTransparency = 0.85
+                innerGlass.BorderSizePixel = 0
+                innerGlass.Parent = mainFrame
                 
-                -- Titre avec effet dégradé
-                local titleContainer = Instance.new("Frame")
-                titleContainer.Size = UDim2.new(1, -20, 0, 24)
-                titleContainer.Position = UDim2.new(0, 10, 0, 8)
-                titleContainer.BackgroundTransparency = 1
-                titleContainer.Parent = mainFrame
+                local glassCorner = Instance.new("UICorner")
+                glassCorner.CornerRadius = UDim.new(0, 18)
+                glassCorner.Parent = innerGlass
                 
-                local title = Instance.new("TextLabel")
-                title.Size = UDim2.new(1, 0, 1, 0)
-                title.Text = "PULSE SPAM"
-                title.TextColor3 = Color3.fromRGB(180, 160, 255)
-                title.TextSize = 12
-                title.Font = Enum.Font.GothamBlack
-                title.TextTransparency = 0.1
-                title.BackgroundTransparency = 1
-                title.Parent = titleContainer
+                -- ✨ Header Section avec Animation
+                local headerFrame = Instance.new("Frame")
+                headerFrame.Size = UDim2.new(1, -24, 0, 40)
+                headerFrame.Position = UDim2.new(0, 12, 0, 12)
+                headerFrame.BackgroundTransparency = 1
+                headerFrame.Parent = mainFrame
                 
-                -- Séparateur élégant
-                local separator = Instance.new("Frame")
-                separator.Size = UDim2.new(1, -20, 0, 1)
-                separator.Position = UDim2.new(0, 10, 0, 36)
-                separator.BackgroundColor3 = Color3.fromRGB(80, 60, 140)
-                separator.BackgroundTransparency = 0.5
-                separator.BorderSizePixel = 0
-                separator.Parent = mainFrame
+                -- Animated Icon
+                local iconFrame = Instance.new("Frame")
+                iconFrame.Size = UDim2.new(0, 32, 0, 32)
+                iconFrame.Position = UDim2.new(0, 0, 0.5, -16)
+                iconFrame.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+                iconFrame.BorderSizePixel = 0
+                iconFrame.Parent = headerFrame
                 
-                -- Bouton principal avec effet de pulse
+                local iconCorner = Instance.new("UICorner")
+                iconCorner.CornerRadius = UDim.new(0.3, 0)
+                iconCorner.Parent = iconFrame
+                
+                -- Icon Gradient
+                local iconGradient = Instance.new("UIGradient")
+                iconGradient.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 200, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(147, 112, 219))
+                })
+                iconGradient.Rotation = 45
+                iconGradient.Parent = iconFrame
+                
+                -- Pulse Icon Text
+                local iconText = Instance.new("TextLabel")
+                iconText.Size = UDim2.new(1, 0, 1, 0)
+                iconText.Text = "⚡"
+                iconText.TextColor3 = Color3.fromRGB(255, 255, 255)
+                iconText.TextSize = 18
+                iconText.Font = Enum.Font.GothamBlack
+                iconText.BackgroundTransparency = 1
+                iconText.Parent = iconFrame
+                
+                -- Title with Gradient
+                local titleLabel = Instance.new("TextLabel")
+                titleLabel.Size = UDim2.new(1, -45, 0, 18)
+                titleLabel.Position = UDim2.new(0, 42, 0, 0)
+                titleLabel.Text = "MANUAL SPAM"
+                titleLabel.Font = Enum.Font.GothamBlack
+                titleLabel.TextSize = 14
+                titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                titleLabel.TextTransparency = 0.1
+                titleLabel.BackgroundTransparency = 1
+                titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+                titleLabel.Parent = headerFrame
+                
+                -- Subtitle
+                local subtitleLabel = Instance.new("TextLabel")
+                subtitleLabel.Size = UDim2.new(1, -45, 0, 14)
+                subtitleLabel.Position = UDim2.new(0, 42, 0, 20)
+                subtitleLabel.Text = "SPAM CONTROL"
+                subtitleLabel.Font = Enum.Font.GothamBold
+                subtitleLabel.TextSize = 10
+                subtitleLabel.TextColor3 = Color3.fromRGB(150, 180, 255)
+                subtitleLabel.TextTransparency = 0.4
+                subtitleLabel.BackgroundTransparency = 1
+                subtitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+                subtitleLabel.Parent = headerFrame
+                
+                -- 🌟 Divider Animé
+                local divider = Instance.new("Frame")
+                divider.Size = UDim2.new(1, -24, 0, 2)
+                divider.Position = UDim2.new(0, 12, 0, 60)
+                divider.BackgroundColor3 = Color3.fromRGB(100, 200, 255)
+                divider.BackgroundTransparency = 0.3
+                divider.BorderSizePixel = 0
+                divider.Parent = mainFrame
+                
+                local divCorner = Instance.new("UICorner")
+                divCorner.CornerRadius = UDim.new(1, 0)
+                divCorner.Parent = divider
+                
+                local divGradient = Instance.new("UIGradient")
+                divGradient.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 200, 255)),
+                    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(147, 112, 219)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 105, 180))
+                })
+                divGradient.Parent = divider
+                
+                -- 🎮 Button Container
                 local buttonContainer = Instance.new("Frame")
-                buttonContainer.Size = UDim2.new(1, -20, 0, 50)
-                buttonContainer.Position = UDim2.new(0, 10, 0, 45)
+                buttonContainer.Size = UDim2.new(1, -24, 0, 60)
+                buttonContainer.Position = UDim2.new(0, 12, 0, 75)
                 buttonContainer.BackgroundTransparency = 1
                 buttonContainer.Parent = mainFrame
                 
-                local pulseButton = Instance.new("TextButton")
-                pulseButton.Name = "PulseButton"
-                pulseButton.Size = UDim2.new(1, 0, 1, 0)
-                pulseButton.Text = "▶ PULSE"
-                pulseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-                pulseButton.TextSize = 16
-                pulseButton.Font = Enum.Font.GothamBlack
-                pulseButton.BackgroundColor3 = Color3.fromRGB(64, 224, 208) -- Turquoise
-                pulseButton.BorderSizePixel = 0
-                pulseButton.AutoButtonColor = false
-                pulseButton.Parent = buttonContainer
+                -- Ultra Button
+                local spamButton = Instance.new("TextButton")
+                spamButton.Name = "SpamButton"
+                spamButton.Size = UDim2.new(1, 0, 1, 0)
+                spamButton.Text = ""
+                spamButton.BackgroundColor3 = Color3.fromRGB(64, 224, 208)
+                spamButton.BorderSizePixel = 0
+                spamButton.AutoButtonColor = false
+                spamButton.Parent = buttonContainer
 
-                local buttonCorner = Instance.new("UICorner")
-                buttonCorner.CornerRadius = UDim.new(0, 10)
-                buttonCorner.Parent = pulseButton
+                local btnCorner = Instance.new("UICorner")
+                btnCorner.CornerRadius = UDim.new(0, 12)
+                btnCorner.Parent = spamButton
                 
-                -- Effet de gradient sur le bouton
-                local buttonGradient = Instance.new("UIGradient")
-                buttonGradient.Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(64, 224, 208)),   -- Turquoise
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(147, 112, 219))    -- Violet
+                -- Button Gradient
+                local btnGradient = Instance.new("UIGradient")
+                btnGradient.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(64, 224, 208)),
+                    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(100, 200, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(147, 112, 219))
                 })
-                buttonGradient.Rotation = 90
-                buttonGradient.Parent = pulseButton
+                btnGradient.Rotation = 45
+                btnGradient.Parent = spamButton
                 
-                -- Effet de glow autour du bouton
-                local buttonGlow = Instance.new("Frame")
-                buttonGlow.Size = UDim2.new(1, 6, 1, 6)
-                buttonGlow.Position = UDim2.new(0, -3, 0, -3)
-                buttonGlow.BackgroundColor3 = Color3.fromRGB(64, 224, 208)
-                buttonGlow.BackgroundTransparency = 0.9
-                buttonGlow.BorderSizePixel = 0
-                buttonGlow.ZIndex = -1
-                buttonGlow.Parent = pulseButton
+                -- Button Glow
+                local btnGlow = Instance.new("ImageLabel")
+                btnGlow.Size = UDim2.new(1, 40, 1, 40)
+                btnGlow.Position = UDim2.new(0.5, 0, 0.5, 0)
+                btnGlow.AnchorPoint = Vector2.new(0.5, 0.5)
+                btnGlow.BackgroundTransparency = 1
+                btnGlow.Image = "rbxassetid://5028857084"
+                btnGlow.ImageColor3 = Color3.fromRGB(64, 224, 208)
+                btnGlow.ImageTransparency = 0.8
+                btnGlow.ScaleType = Enum.ScaleType.Slice
+                btnGlow.SliceCenter = Rect.new(24, 24, 276, 276)
+                btnGlow.ZIndex = -1
+                btnGlow.Parent = spamButton
                 
-                local glowCorner = Instance.new("UICorner")
-                glowCorner.CornerRadius = UDim.new(0, 12)
-                glowCorner.Parent = buttonGlow
+                -- Button Content
+                local btnContent = Instance.new("Frame")
+                btnContent.Size = UDim2.new(1, 0, 1, 0)
+                btnContent.BackgroundTransparency = 1
+                btnContent.Parent = spamButton
                 
-                -- Indicateur d'état
-                local statusIndicator = Instance.new("Frame")
-                statusIndicator.Size = UDim2.new(0, 6, 0, 6)
-                statusIndicator.Position = UDim2.new(1, -12, 0, 12)
-                statusIndicator.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-                statusIndicator.BorderSizePixel = 0
-                statusIndicator.Parent = mainFrame
+                local btnIcon = Instance.new("TextLabel")
+                btnIcon.Size = UDim2.new(0, 30, 1, 0)
+                btnIcon.Position = UDim2.new(0, 15, 0, 0)
+                btnIcon.Text = "▶"
+                btnIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+                btnIcon.TextSize = 22
+                btnIcon.Font = Enum.Font.GothamBlack
+                btnIcon.BackgroundTransparency = 1
+                btnIcon.Parent = btnContent
+                
+                local btnText = Instance.new("TextLabel")
+                btnText.Size = UDim2.new(1, -55, 1, 0)
+                btnText.Position = UDim2.new(0, 50, 0, 0)
+                btnText.Text = "PULSE"
+                btnText.TextColor3 = Color3.fromRGB(255, 255, 255)
+                btnText.TextSize = 18
+                btnText.Font = Enum.Font.GothamBlack
+                btnText.BackgroundTransparency = 1
+                btnText.TextXAlignment = Enum.TextXAlignment.Left
+                btnText.Parent = btnContent
+                
+                -- 📊 Status Indicator
+                local statusFrame = Instance.new("Frame")
+                statusFrame.Size = UDim2.new(0, 10, 0, 10)
+                statusFrame.Position = UDim2.new(1, -18, 0, 18)
+                statusFrame.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+                statusFrame.BorderSizePixel = 0
+                statusFrame.Parent = mainFrame
                 
                 local statusCorner = Instance.new("UICorner")
                 statusCorner.CornerRadius = UDim.new(1, 0)
-                statusCorner.Parent = statusIndicator
+                statusCorner.Parent = statusFrame
                 
-                -- Animation de pulse pour l'indicateur
-                local pulseTween
+                -- Status Glow
+                local statusGlow = Instance.new("ImageLabel")
+                statusGlow.Size = UDim2.new(1, 20, 1, 20)
+                statusGlow.Position = UDim2.new(0.5, 0, 0.5, 0)
+                statusGlow.AnchorPoint = Vector2.new(0.5, 0.5)
+                statusGlow.BackgroundTransparency = 1
+                statusGlow.Image = "rbxassetid://5028857084"
+                statusGlow.ImageColor3 = Color3.fromRGB(255, 50, 50)
+                statusGlow.ImageTransparency = 0.6
+                statusGlow.ScaleType = Enum.ScaleType.Slice
+                statusGlow.SliceCenter = Rect.new(24, 24, 276, 276)
+                statusGlow.ZIndex = -1
+                statusGlow.Parent = statusFrame
+                
+                -- ✨ ANIMATIONS
+                local RunService = game:GetService("RunService")
+                local TweenService = game:GetService("TweenService")
+                
+                -- Rotating Icon
+                RunService.Heartbeat:Connect(function()
+                    iconGradient.Rotation = (iconGradient.Rotation + 1) % 360
+                    divGradient.Offset = Vector2.new(math.sin(tick() * 2) * 0.5, 0)
+                end)
+                
+                -- Pulsing Status
                 local function pulseStatus(color)
-                    if pulseTween then
-                        pulseTween:Cancel()
-                    end
+                    statusFrame.BackgroundColor3 = color
+                    statusGlow.ImageColor3 = color
                     
-                    statusIndicator.BackgroundColor3 = color
-                    pulseTween = game:GetService("TweenService"):Create(statusIndicator,
-                        TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, -1, true),
-                        {BackgroundTransparency = 0.5}
+                    local pulse = TweenService:Create(statusGlow,
+                        TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, -1, true),
+                        {ImageTransparency = 0.3}
                     )
-                    pulseTween:Play()
+                    pulse:Play()
                 end
                 
-                -- Variables d'état
+                pulseStatus(Color3.fromRGB(255, 50, 50))
+                
+                -- 🎯 FUNCTIONALITY
                 local activated = false
                 local spamConnection
                 
-                -- Fonction de toggle
                 local function toggleSpam()
                     activated = not activated
                     
                     if activated then
-                        -- Mode activé
-                        pulseButton.Text = "⏸ HALT"
+                        btnIcon.Text = "⏸"
+                        btnText.Text = "HALT"
                         
-                        -- Animation du bouton
-                        local activeTween = game:GetService("TweenService"):Create(pulseButton,
-                            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                            {
-                                BackgroundColor3 = Color3.fromRGB(255, 105, 180), -- Magenta
-                                Size = UDim2.new(1, -4, 1, -4),
-                                Position = UDim2.new(0, 2, 0, 2)
-                            }
-                        )
-                        activeTween:Play()
+                        TweenService:Create(spamButton, TweenInfo.new(0.3), {
+                            BackgroundColor3 = Color3.fromRGB(255, 105, 180)
+                        }):Play()
                         
-                        -- Mettre à jour le gradient
-                        buttonGradient.Color = ColorSequence.new({
-                            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 105, 180)), -- Magenta
-                            ColorSequenceKeypoint.new(1, Color3.fromRGB(147, 112, 219))    -- Violet
+                        btnGradient.Color = ColorSequence.new({
+                            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 105, 180)),
+                            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(147, 112, 219)),
+                            ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 50, 100))
                         })
                         
-                        -- Animation du glow
-                        buttonGlow.BackgroundColor3 = Color3.fromRGB(255, 105, 180)
-                        
-                        -- Indicateur vert pulsant
+                        btnGlow.ImageColor3 = Color3.fromRGB(255, 105, 180)
                         pulseStatus(Color3.fromRGB(50, 255, 100))
                         
-                        -- Démarrer le spam
-                        spamConnection = game:GetService("RunService").Heartbeat:Connect(function()
+                        spamConnection = RunService.Heartbeat:Connect(function()
                             Auto_Parry.Parry(Selected_Parry_Type)
                         end)
                         
-                        -- Animation de pulse pour le bouton
-                        local buttonPulse = game:GetService("RunService").Heartbeat:Connect(function()
-                            local pulse = math.sin(tick() * 8) * 0.1 + 0.9
-                            buttonGlow.BackgroundTransparency = 0.8 + (0.1 * pulse)
-                            pulseButton.BackgroundTransparency = 0.1 + (0.1 * pulse)
-                        end)
-                        
-                        -- Stocker la connexion
-                        Connections_Manager['Spam Pulse Animation'] = buttonPulse
                         Connections_Manager['Manual Spam UI'] = spamConnection
-                        
                     else
-                        -- Mode désactivé
-                        pulseButton.Text = "▶ PULSE"
+                        btnIcon.Text = "▶"
+                        btnText.Text = "PULSE"
                         
-                        -- Animation du bouton
-                        local inactiveTween = game:GetService("TweenService"):Create(pulseButton,
-                            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                            {
-                                BackgroundColor3 = Color3.fromRGB(64, 224, 208), -- Turquoise
-                                Size = UDim2.new(1, 0, 1, 0),
-                                Position = UDim2.new(0, 0, 0, 0)
-                            }
-                        )
-                        inactiveTween:Play()
+                        TweenService:Create(spamButton, TweenInfo.new(0.3), {
+                            BackgroundColor3 = Color3.fromRGB(64, 224, 208)
+                        }):Play()
                         
-                        -- Mettre à jour le gradient
-                        buttonGradient.Color = ColorSequence.new({
-                            ColorSequenceKeypoint.new(0, Color3.fromRGB(64, 224, 208)),   -- Turquoise
-                            ColorSequenceKeypoint.new(1, Color3.fromRGB(147, 112, 219))    -- Violet
+                        btnGradient.Color = ColorSequence.new({
+                            ColorSequenceKeypoint.new(0, Color3.fromRGB(64, 224, 208)),
+                            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(100, 200, 255)),
+                            ColorSequenceKeypoint.new(1, Color3.fromRGB(147, 112, 219))
                         })
                         
-                        -- Animation du glow
-                        buttonGlow.BackgroundColor3 = Color3.fromRGB(64, 224, 208)
-                        
-                        -- Indicateur rouge pulsant
+                        btnGlow.ImageColor3 = Color3.fromRGB(64, 224, 208)
                         pulseStatus(Color3.fromRGB(255, 50, 50))
                         
-                        -- Arrêter le spam
                         if spamConnection then
                             spamConnection:Disconnect()
-                            spamConnection = nil
-                        end
-                        
-                        -- Arrêter l'animation de pulse
-                        if Connections_Manager['Spam Pulse Animation'] then
-                            Connections_Manager['Spam Pulse Animation']:Disconnect()
-                            Connections_Manager['Spam Pulse Animation'] = nil
                         end
                         
                         if Connections_Manager['Manual Spam UI'] then
@@ -4617,149 +4702,79 @@ if isMobile then
                     end
                 end
                 
-                -- Effets de survol
-                pulseButton.MouseEnter:Connect(function()
-                    if not activated then
-                        local hoverTween = game:GetService("TweenService"):Create(pulseButton,
-                            TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                            {BackgroundTransparency = 0}
-                        )
-                        hoverTween:Play()
-                        
-                        local glowTween = game:GetService("TweenService"):Create(buttonGlow,
-                            TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                            {BackgroundTransparency = 0.7}
-                        )
-                        glowTween:Play()
-                    end
-                end)
+                spamButton.MouseButton1Click:Connect(toggleSpam)
                 
-                pulseButton.MouseLeave:Connect(function()
-                    if not activated then
-                        local leaveTween = game:GetService("TweenService"):Create(pulseButton,
-                            TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                            {BackgroundTransparency = 0.1}
-                        )
-                        leaveTween:Play()
-                        
-                        local glowTween = game:GetService("TweenService"):Create(buttonGlow,
-                            TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                            {BackgroundTransparency = 0.9}
-                        )
-                        glowTween:Play()
-                    end
-                end)
-                
-                -- Clic sur le bouton
-                pulseButton.MouseButton1Click:Connect(toggleSpam)
-                
-                -- Système de drag pour mobile et PC
+                -- 🎨 DRAG SYSTEM (Mobile + PC)
                 local UserInputService = game:GetService("UserInputService")
-                local dragging = false
-                local dragStart
-                local startPosition
+                local dragging, dragStart, startPosition = false, nil, nil
                 
                 local function updateDrag(input)
                     if dragging then
                         local delta = input.Position - dragStart
                         mainFrame.Position = UDim2.new(
-                            startPosition.X.Scale,
-                            startPosition.X.Offset + delta.X,
-                            startPosition.Y.Scale,
-                            startPosition.Y.Offset + delta.Y
+                            startPosition.X.Scale, startPosition.X.Offset + delta.X,
+                            startPosition.Y.Scale, startPosition.Y.Offset + delta.Y
                         )
                     end
                 end
                 
-                -- Drag sur toute la frame (sauf bouton)
-                local function startDrag(input)
+                headerFrame.InputBegan:Connect(function(input)
                     if input.UserInputType == Enum.UserInputType.MouseButton1 or 
                        input.UserInputType == Enum.UserInputType.Touch then
                         dragging = true
                         dragStart = input.Position
                         startPosition = mainFrame.Position
                         
-                        -- Effet visuel pendant le drag
-                        neonBorder.Color = Color3.fromRGB(180, 140, 255)
-                        neonBorder.Transparency = 0.1
+                        outerGlow.Color = Color3.fromRGB(255, 180, 255)
                         
                         input.Changed:Connect(function()
                             if input.UserInputState == Enum.UserInputState.End then
                                 dragging = false
-                                neonBorder.Color = Color3.fromRGB(120, 80, 200)
-                                neonBorder.Transparency = 0.3
+                                outerGlow.Color = Color3.fromRGB(100, 200, 255)
                             end
                         end)
                     end
-                end
-                
-                -- Drag zones (titre et zones vides)
-                titleContainer.InputBegan:Connect(startDrag)
-                separator.InputBegan:Connect(startDrag)
-                
-                -- Input handling
-                mainFrame.InputChanged:Connect(function(input)
-                    if (input.UserInputType == Enum.UserInputType.MouseMovement or 
-                        input.UserInputType == Enum.UserInputType.Touch) and dragging then
-                        updateDrag(input)
-                    end
                 end)
                 
-                UserInputService.InputChanged:Connect(function(input)
+                mainFrame.InputChanged:Connect(function(input)
                     if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or 
                                      input.UserInputType == Enum.UserInputType.Touch) then
                         updateDrag(input)
                     end
                 end)
                 
-                -- Effet d'apparition
+                UserInputService.InputChanged:Connect(function(input)
+                    if dragging then updateDrag(input) end
+                end)
+                
+                -- 🌟 Entrance Animation
                 mainFrame.BackgroundTransparency = 1
-                neonBorder.Transparency = 1
+                outerGlow.Transparency = 1
                 
-                local appearTween = game:GetService("TweenService"):Create(mainFrame,
-                    TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-                    {BackgroundTransparency = 0.05}
-                )
-                appearTween:Play()
+                TweenService:Create(mainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back), {
+                    BackgroundTransparency = 0.02
+                }):Play()
                 
-                local borderTween = game:GetService("TweenService"):Create(neonBorder,
-                    TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-                    {Transparency = 0.3}
-                )
-                borderTween:Play()
-                
-                -- Démarrer l'indicateur
-                pulseStatus(Color3.fromRGB(255, 50, 50))
+                TweenService:Create(outerGlow, TweenInfo.new(0.5), {
+                    Transparency = 0.2
+                }):Play()
 
             else
-                if game.CoreGui:FindFirstChild("SpamPulseUI") then
-                    local mainFrame = game.CoreGui.SpamPulseUI.SpamPulseCore
+                if game.CoreGui:FindFirstChild("UltraSpamUI") then
+                    local frame = game.CoreGui.UltraSpamUI.SpamCore
                     
-                    -- Effet de disparition
-                    local disappearTween = game:GetService("TweenService"):Create(mainFrame,
-                        TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-                        {BackgroundTransparency = 1}
-                    )
-                    disappearTween:Play()
+                    local disappear = TweenService:Create(frame, TweenInfo.new(0.3), {
+                        BackgroundTransparency = 1
+                    })
+                    disappear:Play()
+                    disappear.Completed:Wait()
                     
-                    local borderTween = game:GetService("TweenService"):Create(mainFrame.UIStroke,
-                        TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-                        {Transparency = 1}
-                    )
-                    borderTween:Play()
-                    
-                    disappearTween.Completed:Wait()
-                    game.CoreGui:FindFirstChild("SpamPulseUI"):Destroy()
+                    game.CoreGui.UltraSpamUI:Destroy()
                 end
 
                 if Connections_Manager['Manual Spam UI'] then
                     Connections_Manager['Manual Spam UI']:Disconnect()
                     Connections_Manager['Manual Spam UI'] = nil
-                end
-                
-                if Connections_Manager['Spam Pulse Animation'] then
-                    Connections_Manager['Spam Pulse Animation']:Disconnect()
-                    Connections_Manager['Spam Pulse Animation'] = nil
                 end
             end
         end
