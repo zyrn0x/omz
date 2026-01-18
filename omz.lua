@@ -4386,167 +4386,74 @@ if isMobile then
                 gui.ResetOnSpawn = false
                 gui.Parent = game.CoreGui
 
-                -- Main container with modern design
+                -- Simple container with Omz UI style
                 local mainFrame = Instance.new("Frame")
                 mainFrame.Name = "SpamPanel"
-                mainFrame.Position = UDim2.new(0.5, -140, 0.7, -80)
-                mainFrame.Size = UDim2.new(0, 280, 0, 160)
-                mainFrame.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
-                mainFrame.BackgroundTransparency = 0.1
+                mainFrame.Position = UDim2.new(0.5, -50, 0.5, -25)  -- Centered
+                mainFrame.Size = UDim2.new(0, 100, 0, 50)  -- Small size
+                mainFrame.BackgroundColor3 = Color3.fromRGB(12, 13, 15)  -- Same as Omz UI
+                mainFrame.BackgroundTransparency = 0.05
                 mainFrame.BorderSizePixel = 0
                 mainFrame.Active = true
                 mainFrame.Draggable = true
                 mainFrame.Parent = gui
 
                 local uiCorner = Instance.new("UICorner")
-                uiCorner.CornerRadius = UDim.new(0, 16)
+                uiCorner.CornerRadius = UDim.new(0, 10)  -- Same corner radius
                 uiCorner.Parent = mainFrame
 
                 local uiStroke = Instance.new("UIStroke")
-                uiStroke.Color = Color3.fromRGB(80, 90, 110)
-                uiStroke.Thickness = 2
-                uiStroke.Transparency = 0.3
+                uiStroke.Color = Color3.fromRGB(52, 66, 89)  -- Same stroke color
+                uiStroke.Transparency = 0.5
+                uiStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 uiStroke.Parent = mainFrame
                 
-                -- Title with icon
-                local titleBar = Instance.new("Frame")
-                titleBar.Size = UDim2.new(1, 0, 0, 40)
-                titleBar.BackgroundColor3 = Color3.fromRGB(25, 30, 45)
-                titleBar.BorderSizePixel = 0
-                titleBar.Parent = mainFrame
-                
-                local titleCorner = Instance.new("UICorner")
-                titleCorner.CornerRadius = UDim.new(0, 16, 0, 0)
-                titleCorner.Parent = titleBar
-                
-                local title = Instance.new("TextLabel")
-                title.Size = UDim2.new(1, -50, 1, 0)
-                title.Position = UDim2.new(0, 15, 0, 0)
-                title.Text = "SPAM CONTROL"
-                title.TextColor3 = Color3.fromRGB(180, 200, 255)
-                title.TextSize = 18
-                title.Font = Enum.Font.GothamSemibold
-                title.BackgroundTransparency = 1
-                title.Parent = titleBar
-                
-                -- Status indicator
-                local statusLight = Instance.new("Frame")
-                statusLight.Size = UDim2.new(0, 8, 0, 8)
-                statusLight.Position = UDim2.new(1, -30, 0.5, -4)
-                statusLight.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-                statusLight.BorderSizePixel = 0
-                statusLight.Parent = titleBar
-                
-                local lightCorner = Instance.new("UICorner")
-                lightCorner.CornerRadius = UDim.new(1, 0)
-                lightCorner.Parent = statusLight
-                
-                -- Main button with modern design
-                local buttonContainer = Instance.new("Frame")
-                buttonContainer.Size = UDim2.new(0.8, 0, 0, 70)
-                buttonContainer.Position = UDim2.new(0.1, 0, 0.35, 0)
-                buttonContainer.BackgroundTransparency = 1
-                buttonContainer.Parent = mainFrame
-                
+                -- Single button (toggles between SPAM and STOP)
                 local button = Instance.new("TextButton")
                 button.Name = "SpamButton"
-                button.Size = UDim2.new(1, 0, 1, 0)
-                button.Text = "▶ START SPAM"
-                button.TextColor3 = Color3.fromRGB(255, 255, 255)
-                button.TextSize = 20
-                button.Font = Enum.Font.GothamBold
-                button.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+                button.Size = UDim2.new(1, -10, 1, -10)
+                button.Position = UDim2.new(0.5, 0, 0.5, 0)
+                button.AnchorPoint = Vector2.new(0.5, 0.5)
+                button.Text = "SPAM"
+                button.TextColor3 = Color3.fromRGB(152, 181, 255)  -- Omz blue color
+                button.TextSize = 14
+                button.Font = Enum.Font.GothamSSm
+                button.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
+                button.BackgroundColor3 = Color3.fromRGB(22, 28, 38)  -- Module background color
                 button.BorderSizePixel = 0
                 button.AutoButtonColor = false
-                button.Parent = buttonContainer
+                button.Parent = mainFrame
 
                 local buttonCorner = Instance.new("UICorner")
-                buttonCorner.CornerRadius = UDim.new(0, 12)
+                buttonCorner.CornerRadius = UDim.new(0, 5)
                 buttonCorner.Parent = button
                 
                 local buttonStroke = Instance.new("UIStroke")
-                buttonStroke.Color = Color3.fromRGB(100, 150, 200)
-                buttonStroke.Thickness = 2
+                buttonStroke.Color = Color3.fromRGB(52, 66, 89)
+                buttonStroke.Transparency = 0.5
+                buttonStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 buttonStroke.Parent = button
                 
-                -- Button glow effect
-                local buttonGlow = Instance.new("ImageLabel")
-                buttonGlow.Size = UDim2.new(1, 10, 1, 10)
-                buttonGlow.Position = UDim2.new(0, -5, 0, -5)
-                buttonGlow.Image = "rbxassetid://8992230676"
-                buttonGlow.ImageColor3 = Color3.fromRGB(70, 130, 180)
-                buttonGlow.ImageTransparency = 0.8
-                buttonGlow.ScaleType = Enum.ScaleType.Slice
-                buttonGlow.SliceCenter = Rect.new(20, 20, 280, 280)
-                buttonGlow.BackgroundTransparency = 1
-                buttonGlow.Parent = button
-                
-                -- Control buttons
-                local controlFrame = Instance.new("Frame")
-                controlFrame.Size = UDim2.new(0.8, 0, 0, 30)
-                controlFrame.Position = UDim2.new(0.1, 0, 0.8, 0)
-                controlFrame.BackgroundTransparency = 1
-                controlFrame.Parent = mainFrame
-                
-                local closeBtn = Instance.new("TextButton")
-                closeBtn.Size = UDim2.new(0.45, -5, 1, 0)
-                closeBtn.Position = UDim2.new(0, 0, 0, 0)
-                closeBtn.Text = "CLOSE"
-                closeBtn.TextColor3 = Color3.fromRGB(255, 150, 150)
-                closeBtn.TextSize = 14
-                closeBtn.Font = Enum.Font.Gotham
-                closeBtn.BackgroundColor3 = Color3.fromRGB(40, 45, 55)
-                closeBtn.BorderSizePixel = 0
-                closeBtn.AutoButtonColor = false
-                closeBtn.Parent = controlFrame
-                
-                local closeCorner = Instance.new("UICorner")
-                closeCorner.CornerRadius = UDim.new(0, 6)
-                closeCorner.Parent = closeBtn
-                
-                local hideBtn = Instance.new("TextButton")
-                hideBtn.Size = UDim2.new(0.45, -5, 1, 0)
-                hideBtn.Position = UDim2.new(0.55, 0, 0, 0)
-                hideBtn.Text = "MINIMIZE"
-                hideBtn.TextColor3 = Color3.fromRGB(150, 200, 255)
-                hideBtn.TextSize = 14
-                hideBtn.Font = Enum.Font.Gotham
-                hideBtn.BackgroundColor3 = Color3.fromRGB(40, 45, 55)
-                hideBtn.BorderSizePixel = 0
-                hideBtn.AutoButtonColor = false
-                hideBtn.Parent = controlFrame
-                
-                local hideCorner = Instance.new("UICorner")
-                hideCorner.CornerRadius = UDim.new(0, 6)
-                hideCorner.Parent = hideBtn
-                
-                -- State variables
+                -- State variable
                 local activated = false
-                local minimized = false
-                local originalSize = mainFrame.Size
-                local originalPosition = mainFrame.Position
                 
                 -- Toggle spam function
                 local function toggleSpam()
                     activated = not activated
                     
                     if activated then
-                        button.Text = "⏸ STOP SPAM"
-                        button.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
-                        buttonStroke.Color = Color3.fromRGB(240, 90, 90)
-                        buttonGlow.ImageColor3 = Color3.fromRGB(220, 60, 60)
-                        statusLight.BackgroundColor3 = Color3.fromRGB(50, 255, 50)
+                        button.Text = "STOP"
+                        button.BackgroundColor3 = Color3.fromRGB(38, 28, 28)  -- Dark red
+                        button.TextColor3 = Color3.fromRGB(255, 100, 100)  -- Red text
                         
                         -- Start spamming
                         Connections_Manager['Manual Spam UI'] = game:GetService("RunService").Heartbeat:Connect(function()
                             Auto_Parry.Parry(Selected_Parry_Type)
                         end)
                     else
-                        button.Text = "▶ START SPAM"
-                        button.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
-                        buttonStroke.Color = Color3.fromRGB(100, 150, 200)
-                        buttonGlow.ImageColor3 = Color3.fromRGB(70, 130, 180)
-                        statusLight.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+                        button.Text = "SPAM"
+                        button.BackgroundColor3 = Color3.fromRGB(22, 28, 38)  -- Original color
+                        button.TextColor3 = Color3.fromRGB(152, 181, 255)  -- Omz blue
                         
                         -- Stop spamming
                         if Connections_Manager['Manual Spam UI'] then
@@ -4559,36 +4466,38 @@ if isMobile then
                 -- Button hover effects
                 button.MouseEnter:Connect(function()
                     if not activated then
-                        button.BackgroundColor3 = Color3.fromRGB(80, 140, 190)
-                        buttonGlow.ImageTransparency = 0.7
+                        button.BackgroundColor3 = Color3.fromRGB(28, 34, 44)
                     end
                 end)
                 
                 button.MouseLeave:Connect(function()
                     if not activated then
-                        button.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
-                        buttonGlow.ImageTransparency = 0.8
+                        button.BackgroundColor3 = Color3.fromRGB(22, 28, 38)
                     end
                 end)
                 
+                -- Button click event
+                button.MouseButton1Click:Connect(toggleSpam)
+                
+                -- Close button (small X in corner)
+                local closeBtn = Instance.new("TextButton")
+                closeBtn.Size = UDim2.new(0, 20, 0, 20)
+                closeBtn.Position = UDim2.new(1, -22, 0, 2)
+                closeBtn.Text = "×"
+                closeBtn.TextColor3 = Color3.fromRGB(152, 181, 255)
+                closeBtn.TextSize = 16
+                closeBtn.Font = Enum.Font.GothamSSm
+                closeBtn.BackgroundTransparency = 1
+                closeBtn.AutoButtonColor = false
+                closeBtn.Parent = mainFrame
+                
                 closeBtn.MouseEnter:Connect(function()
-                    closeBtn.BackgroundColor3 = Color3.fromRGB(50, 55, 65)
+                    closeBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
                 end)
                 
                 closeBtn.MouseLeave:Connect(function()
-                    closeBtn.BackgroundColor3 = Color3.fromRGB(40, 45, 55)
+                    closeBtn.TextColor3 = Color3.fromRGB(152, 181, 255)
                 end)
-                
-                hideBtn.MouseEnter:Connect(function()
-                    hideBtn.BackgroundColor3 = Color3.fromRGB(50, 55, 65)
-                end)
-                
-                hideBtn.MouseLeave:Connect(function()
-                    hideBtn.BackgroundColor3 = Color3.fromRGB(40, 45, 55)
-                end)
-                
-                -- Button click events
-                button.MouseButton1Click:Connect(toggleSpam)
                 
                 closeBtn.MouseButton1Click:Connect(function()
                     gui:Destroy()
@@ -4599,30 +4508,12 @@ if isMobile then
                     end
                 end)
                 
-                hideBtn.MouseButton1Click:Connect(function()
-                    minimized = not minimized
-                    
-                    if minimized then
-                        hideBtn.Text = "MAXIMIZE"
-                        mainFrame.Size = UDim2.new(0, 280, 0, 40)
-                        titleBar.Visible = true
-                        buttonContainer.Visible = false
-                        controlFrame.Visible = false
-                    else
-                        hideBtn.Text = "MINIMIZE"
-                        mainFrame.Size = originalSize
-                        titleBar.Visible = true
-                        buttonContainer.Visible = true
-                        controlFrame.Visible = true
-                    end
-                end)
-                
-                -- Drag functionality
+                -- Simple drag functionality
                 local dragging = false
                 local dragInput, dragStart, startPos
                 
-                titleBar.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                mainFrame.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                         dragging = true
                         dragStart = input.Position
                         startPos = mainFrame.Position
@@ -4635,8 +4526,8 @@ if isMobile then
                     end
                 end)
                 
-                titleBar.InputChanged:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseMovement then
+                mainFrame.InputChanged:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
                         dragInput = input
                     end
                 end)
@@ -5351,96 +5242,260 @@ end
     end)
 
 
-    local billboardLabels = {}
+local billboardLabels = {}
+local abilityColors = {
+    -- Liste des couleurs pour différentes abilities
+    ["Raging Deflection"] = Color3.fromRGB(255, 50, 50),      -- Rouge vif
+    ["Rapture"] = Color3.fromRGB(255, 150, 50),               -- Orange
+    ["Calming Deflection"] = Color3.fromRGB(50, 150, 255),    -- Bleu clair
+    ["Aerodynamic Slash"] = Color3.fromRGB(100, 255, 100),    -- Vert vif
+    ["Fracture"] = Color3.fromRGB(255, 50, 150),              -- Rose
+    ["Death Slash"] = Color3.fromRGB(150, 50, 255),           -- Violet
+    ["Time Hole"] = Color3.fromRGB(255, 255, 50),             -- Jaune
+    ["Infinity"] = Color3.fromRGB(50, 255, 255),              -- Cyan
+    ["Phantom"] = Color3.fromRGB(200, 200, 200),              -- Gris
+    ["Singularity"] = Color3.fromRGB(255, 100, 100),          -- Rouge clair
+    ["Gravity"] = Color3.fromRGB(100, 100, 255),              -- Bleu
+    ["Default"] = Color3.fromRGB(152, 181, 255)               -- Bleu Omz (par défaut)
+}
 
-    function qolPlayerNameVisibility()
-        local function createBillboardGui(p)
-            local character = p.Character
-    
-            while (not character) or (not character.Parent) do
-                task.wait()
-                character = p.Character
-            end
-    
-            local head = character:WaitForChild("Head")
-    
-            local billboardGui = Instance.new("BillboardGui")
-            billboardGui.Adornee = head
-            billboardGui.Size = UDim2.new(0, 200, 0, 50)
-            billboardGui.StudsOffset = Vector3.new(0, 3, 0)
-            billboardGui.AlwaysOnTop = true
-            billboardGui.Parent = head
-    
-            local textLabel = Instance.new("TextLabel")
-            textLabel.Size = UDim2.new(1, 0, 1, 0)
-            textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-            textLabel.TextSize = 8
-            textLabel.TextWrapped = false
-            textLabel.BackgroundTransparency = 1
-            textLabel.TextXAlignment = Enum.TextXAlignment.Center
-            textLabel.TextYAlignment = Enum.TextYAlignment.Center
-            textLabel.Parent = billboardGui
-    
-            billboardLabels[p] = textLabel
-    
-            local humanoid = character:FindFirstChild("Humanoid")
-            if humanoid then
-                humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-            end
-    
-            local heartbeatConnection
-            heartbeatConnection = RunService.Heartbeat:Connect(function()
-                if not (character and character.Parent) then
-                    heartbeatConnection:Disconnect()
-                    billboardGui:Destroy()
-                    billboardLabels[p] = nil
-                    return
-                end
-    
-                if getgenv().AbilityESP then
-                    textLabel.Visible = true
-                    local abilityName = p:GetAttribute("EquippedAbility")
-                    if abilityName then
-                        textLabel.Text = p.DisplayName .. " [" .. abilityName .. "]"
-                    else
-                        textLabel.Text = p.DisplayName
-                    end
-                else
-                    textLabel.Visible = false
-                end
-            end)
+function qolPlayerNameVisibility()
+    local function createBillboardGui(p)
+        local character = p.Character
+
+        while (not character) or (not character.Parent) do
+            task.wait()
+            character = p.Character
         end
-    
-        for _, p in Players:GetPlayers() do
-            if p ~= plr then
-                p.CharacterAdded:Connect(function()
-                    createBillboardGui(p)
-                end)
+
+        local head = character:WaitForChild("Head")
+
+        -- BillboardGui amélioré
+        local billboardGui = Instance.new("BillboardGui")
+        billboardGui.Adornee = head
+        billboardGui.Size = UDim2.new(0, 200, 0, 40)
+        billboardGui.StudsOffset = Vector3.new(0, 3.5, 0)
+        billboardGui.AlwaysOnTop = true
+        billboardGui.MaxDistance = 150
+        billboardGui.Parent = head
+
+        -- Conteneur principal
+        local mainFrame = Instance.new("Frame")
+        mainFrame.Size = UDim2.new(1, 0, 1, 0)
+        mainFrame.BackgroundColor3 = Color3.fromRGB(12, 13, 15)
+        mainFrame.BackgroundTransparency = 0.3
+        mainFrame.BorderSizePixel = 0
+        mainFrame.Parent = billboardGui
+
+        local uiCorner = Instance.new("UICorner")
+        uiCorner.CornerRadius = UDim.new(0, 5)
+        uiCorner.Parent = mainFrame
+
+        local uiStroke = Instance.new("UIStroke")
+        uiStroke.Color = Color3.fromRGB(52, 66, 89)
+        uiStroke.Transparency = 0.5
+        uiStroke.Thickness = 1
+        uiStroke.Parent = mainFrame
+
+        -- Container pour le texte
+        local textContainer = Instance.new("Frame")
+        textContainer.Size = UDim2.new(1, -10, 1, -10)
+        textContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
+        textContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+        textContainer.BackgroundTransparency = 1
+        textContainer.Parent = mainFrame
+
+        -- Nom du joueur (haut)
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Name = "NameLabel"
+        nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+        nameLabel.Position = UDim2.new(0, 0, 0, 0)
+        nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        nameLabel.TextSize = 12
+        nameLabel.Font = Enum.Font.GothamSSm
+        nameLabel.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.TextXAlignment = Enum.TextXAlignment.Center
+        nameLabel.TextYAlignment = Enum.TextYAlignment.Bottom
+        nameLabel.Text = p.DisplayName
+        nameLabel.Parent = textContainer
+
+        -- Ability (bas)
+        local abilityLabel = Instance.new("TextLabel")
+        abilityLabel.Name = "AbilityLabel"
+        abilityLabel.Size = UDim2.new(1, 0, 0.5, 0)
+        abilityLabel.Position = UDim2.new(0, 0, 0.5, 0)
+        abilityLabel.TextColor3 = abilityColors["Default"]
+        abilityLabel.TextSize = 10
+        abilityLabel.Font = Enum.Font.GothamSSm
+        abilityLabel.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.Medium, Enum.FontStyle.Normal)
+        abilityLabel.BackgroundTransparency = 1
+        abilityLabel.TextXAlignment = Enum.TextXAlignment.Center
+        abilityLabel.TextYAlignment = Enum.TextYAlignment.Top
+        abilityLabel.Text = ""
+        abilityLabel.Parent = textContainer
+
+        -- Icone pour ability (optionnel)
+        local abilityIcon = Instance.new("ImageLabel")
+        abilityIcon.Name = "AbilityIcon"
+        abilityIcon.Size = UDim2.new(0, 12, 0, 12)
+        abilityIcon.Position = UDim2.new(0.5, -6, 0.5, -6)
+        abilityIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+        abilityIcon.BackgroundTransparency = 1
+        abilityIcon.Image = "rbxassetid://107819132007001"  -- Icône par défaut
+        abilityIcon.ImageColor3 = abilityColors["Default"]
+        abilityIcon.Visible = false
+        abilityIcon.Parent = textContainer
+
+        billboardLabels[p] = {
+            gui = billboardGui,
+            nameLabel = nameLabel,
+            abilityLabel = abilityLabel,
+            abilityIcon = abilityIcon
+        }
+
+        local humanoid = character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+        end
+
+        -- Connection pour mettre à jour l'ESP
+        local heartbeatConnection
+        heartbeatConnection = RunService.Heartbeat:Connect(function()
+            if not (character and character.Parent) then
+                heartbeatConnection:Disconnect()
+                billboardGui:Destroy()
+                billboardLabels[p] = nil
+                return
+            end
+
+            if getgenv().AbilityESP then
+                mainFrame.Visible = true
+                
+                -- Mettre à jour l'ability
+                local abilityName = p:GetAttribute("EquippedAbility")
+                if abilityName then
+                    -- Trouver la couleur pour cette ability
+                    local abilityColor = abilityColors[abilityName] or abilityColors["Default"]
+                    
+                    -- Mettre à jour le texte et la couleur
+                    abilityLabel.Text = abilityName
+                    abilityLabel.TextColor3 = abilityColor
+                    
+                    -- Option: changer l'icône selon l'ability
+                    abilityIcon.ImageColor3 = abilityColor
+                    
+                    -- Ajouter un effet de glow subtil
+                    uiStroke.Color = abilityColor
+                    uiStroke.Transparency = 0.3
+                    
+                    -- Changer légèrement la couleur de fond selon l'ability
+                    local bgColor = Color3.new(
+                        abilityColor.R * 0.1 + 0.05,
+                        abilityColor.G * 0.1 + 0.05,
+                        abilityColor.B * 0.1 + 0.05
+                    )
+                    mainFrame.BackgroundColor3 = bgColor
+                else
+                    abilityLabel.Text = "No Ability"
+                    abilityLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+                    abilityIcon.Visible = false
+                    uiStroke.Color = Color3.fromRGB(52, 66, 89)
+                    mainFrame.BackgroundColor3 = Color3.fromRGB(12, 13, 15)
+                end
+                
+                -- Ajuster la visibilité selon la distance
+                local distance = (plr.Character and plr.Character.PrimaryPart and character.PrimaryPart) 
+                    and (plr.Character.PrimaryPart.Position - character.PrimaryPart.Position).Magnitude 
+                    or 999
+                
+                if distance > 100 then
+                    nameLabel.TextSize = 10
+                    abilityLabel.TextSize = 8
+                else
+                    nameLabel.TextSize = 12
+                    abilityLabel.TextSize = 10
+                end
+                
+                -- Effet de pulsation subtile
+                local pulse = math.sin(tick() * 2) * 0.05 + 0.95
+                mainFrame.BackgroundTransparency = 0.3 + (1 - pulse) * 0.1
+                
+            else
+                mainFrame.Visible = false
+            end
+        end)
+    end
+
+    for _, p in Players:GetPlayers() do
+        if p ~= plr then
+            p.CharacterAdded:Connect(function()
+                createBillboardGui(p)
+            end)
+            if p.Character then
                 createBillboardGui(p)
             end
         end
-    
-        Players.PlayerAdded:Connect(function(newPlayer)
-            newPlayer.CharacterAdded:Connect(function()
-                createBillboardGui(newPlayer)
-            end)
-        end)
     end
+
+    Players.PlayerAdded:Connect(function(newPlayer)
+        newPlayer.CharacterAdded:Connect(function()
+            createBillboardGui(newPlayer)
+        end)
+    end)
+end
+
+qolPlayerNameVisibility()
+
+local AbilityESP = world:create_module({
+    title = 'Ability ESP',
+    flag = 'AbilityESP',
+    description = 'Displays Player Abilities',
+    section = 'left',
+    callback = function(value: boolean)
+        getgenv().AbilityESP = value
+        for _, data in pairs(billboardLabels) do
+            if data and data.gui then
+                data.gui.Enabled = value
+            end
+        end
+    end
+})
+
+-- Option pour personnaliser l'ESP
+if AbilityESP then
+    AbilityESP:create_divider({
+        title = "ESP Settings"
+    })
     
-    qolPlayerNameVisibility()
-    
-    local AbilityESP = world:create_module({
-        title = 'Ability ESP',
-        flag = 'AbilityESP',
-        description = 'Displays Player Abilities',
-        section = 'left',
-        callback = function(value: boolean)
-            getgenv().AbilityESP = value
-            for _, label in pairs(billboardLabels) do
-                label.Visible = value
+    AbilityESP:create_checkbox({
+        title = "Show Icons",
+        flag = "ESP_ShowIcons",
+        callback = function(value)
+            getgenv().ESPShowIcons = value
+            for _, data in pairs(billboardLabels) do
+                if data and data.abilityIcon then
+                    data.abilityIcon.Visible = value
+                end
             end
         end
     })
+    
+    AbilityESP:create_slider({
+        title = "Max Distance",
+        flag = "ESP_MaxDistance",
+        minimum_value = 50,
+        maximum_value = 300,
+        value = 150,
+        callback = function(value)
+            for _, data in pairs(billboardLabels) do
+                if data and data.gui then
+                    data.gui.MaxDistance = value
+                end
+            end
+        end
+    })
+end
 
     local SkinChanger = misc:create_module({
         title = 'Skin Changer',
@@ -6154,12 +6209,12 @@ end
 local ballStatsUI
 local heartbeatConn
 local ballPeaks = {}
-local velocityText, peakText, progressBar, progressFill, percentageText
+local progressBar, progressFill, peakText, currentText
 
 local BallStats = misc:create_module({
     title = 'Ball Stats', 
     flag = 'ballStats', 
-    description = 'Monitore la vitesse et les pics de la balle', 
+    description = 'Monitore la vitesse de la balle', 
     section = 'left',
     callback = function(value)
         if value then
@@ -6168,180 +6223,111 @@ local BallStats = misc:create_module({
                 ballStatsUI = Instance.new("ScreenGui")
                 ballStatsUI.Name = "VelocityMonitor"
                 ballStatsUI.ResetOnSpawn = false
-                ballStatsUI.Parent = player:WaitForChild("PlayerGui")
+                ballStatsUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+                ballStatsUI.Parent = game.CoreGui:FindFirstChild("Nury") or game.CoreGui
                 
-                -- Main container with glass effect
+                -- Simple container with Omz UI style
                 local mainFrame = Instance.new("Frame")
-                mainFrame.Name = "MainContainer"
-                mainFrame.Size = UDim2.new(0, 220, 0, 150)
-                mainFrame.Position = UDim2.new(0.02, 0, 0.1, 0)
-                mainFrame.BackgroundColor3 = Color3.fromRGB(15, 20, 30)
-                mainFrame.BackgroundTransparency = 0.1
+                mainFrame.Name = "VelocityBar"
+                mainFrame.Size = UDim2.new(0, 150, 0, 30)
+                mainFrame.Position = UDim2.new(0.5, -75, 0.2, 0)
+                mainFrame.BackgroundColor3 = Color3.fromRGB(12, 13, 15)
+                mainFrame.BackgroundTransparency = 0.05
                 mainFrame.BorderSizePixel = 0
+                mainFrame.Active = true
+                mainFrame.Draggable = true
                 mainFrame.Parent = ballStatsUI
-                
+
                 local uiCorner = Instance.new("UICorner")
-                uiCorner.CornerRadius = UDim.new(0, 12)
+                uiCorner.CornerRadius = UDim.new(0, 10)
                 uiCorner.Parent = mainFrame
 
                 local uiStroke = Instance.new("UIStroke")
-                uiStroke.Color = Color3.fromRGB(60, 75, 100)
-                uiStroke.Thickness = 2
-                uiStroke.Transparency = 0.3
+                uiStroke.Color = Color3.fromRGB(52, 66, 89)
+                uiStroke.Transparency = 0.5
+                uiStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 uiStroke.Parent = mainFrame
                 
-                -- Title with gradient
-                local titleContainer = Instance.new("Frame")
-                titleContainer.Size = UDim2.new(1, 0, 0, 35)
-                titleContainer.Position = UDim2.new(0, 0, 0, 0)
-                titleContainer.BackgroundTransparency = 1
-                titleContainer.Parent = mainFrame
-                
-                local titleShadow = Instance.new("TextLabel")
-                titleShadow.Size = UDim2.new(1, 0, 1, 0)
-                titleShadow.Text = "VELOCITY MONITOR"
-                titleShadow.TextColor3 = Color3.fromRGB(0, 0, 0)
-                titleShadow.TextTransparency = 0.5
-                titleShadow.TextSize = 16
-                titleShadow.Font = Enum.Font.GothamBlack
-                titleShadow.BackgroundTransparency = 1
-                titleShadow.Parent = titleContainer
-                
-                local title = Instance.new("TextLabel")
-                title.Size = UDim2.new(1, 0, 1, 0)
-                title.Position = UDim2.new(0, -1, 0, -1)
-                title.Text = "VELOCITY MONITOR"
-                title.TextColor3 = Color3.fromRGB(152, 181, 255)
-                title.TextSize = 16
-                title.Font = Enum.Font.GothamBlack
-                title.BackgroundTransparency = 1
-                title.Parent = titleContainer
-                
-                -- Velocity display (large blue number)
-                local velocityFrame = Instance.new("Frame")
-                velocityFrame.Size = UDim2.new(0.45, -5, 0, 65)
-                velocityFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
-                velocityFrame.BackgroundTransparency = 1
-                velocityFrame.Parent = mainFrame
-                
-                local velocityLabel = Instance.new("TextLabel")
-                velocityLabel.Size = UDim2.new(1, 0, 0, 20)
-                velocityLabel.Text = "VELOCITY"
-                velocityLabel.TextColor3 = Color3.fromRGB(100, 150, 255)
-                velocityLabel.TextSize = 12
-                velocityLabel.Font = Enum.Font.GothamBold
-                velocityLabel.BackgroundTransparency = 1
-                velocityLabel.Parent = velocityFrame
-                
-                velocityText = Instance.new("TextLabel")
-                velocityText.Size = UDim2.new(1, 0, 1, -20)
-                velocityText.Position = UDim2.new(0, 0, 0, 20)
-                velocityText.Text = "0"
-                velocityText.TextColor3 = Color3.fromRGB(65, 105, 225)
-                velocityText.TextSize = 28
-                velocityText.Font = Enum.Font.GothamBlack
-                velocityText.BackgroundTransparency = 1
-                velocityText.Parent = velocityFrame
-                
-                -- Peak display (large red number)
-                local peakFrame = Instance.new("Frame")
-                peakFrame.Size = UDim2.new(0.45, -5, 0, 65)
-                peakFrame.Position = UDim2.new(0.5, 5, 0.3, 0)
-                peakFrame.BackgroundTransparency = 1
-                peakFrame.Parent = mainFrame
-                
-                local peakLabel = Instance.new("TextLabel")
-                peakLabel.Size = UDim2.new(1, 0, 0, 20)
-                peakLabel.Text = "PEAK"
-                peakLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-                peakLabel.TextSize = 12
-                peakLabel.Font = Enum.Font.GothamBold
-                peakLabel.BackgroundTransparency = 1
-                peakLabel.Parent = peakFrame
-                
-                peakText = Instance.new("TextLabel")
-                peakText.Size = UDim2.new(1, 0, 1, -20)
-                peakText.Position = UDim2.new(0, 0, 0, 20)
-                peakText.Text = "0"
-                peakText.TextColor3 = Color3.fromRGB(220, 20, 60)
-                peakText.TextSize = 28
-                peakText.Font = Enum.Font.GothamBlack
-                peakText.BackgroundTransparency = 1
-                peakText.Parent = peakFrame
+                -- Current speed text (left side)
+                currentText = Instance.new("TextLabel")
+                currentText.Size = UDim2.new(0, 40, 1, 0)
+                currentText.Position = UDim2.new(0, 5, 0, 0)
+                currentText.Text = "0"
+                currentText.TextColor3 = Color3.fromRGB(152, 181, 255)
+                currentText.TextSize = 12
+                currentText.Font = Enum.Font.GothamSSm
+                currentText.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
+                currentText.BackgroundTransparency = 1
+                currentText.TextXAlignment = Enum.TextXAlignment.Left
+                currentText.Parent = mainFrame
                 
                 -- Progress bar container
                 local barContainer = Instance.new("Frame")
-                barContainer.Size = UDim2.new(0.9, 0, 0, 25)
-                barContainer.Position = UDim2.new(0.05, 0, 0.8, 0)
-                barContainer.BackgroundColor3 = Color3.fromRGB(30, 35, 45)
+                barContainer.Size = UDim2.new(0, 60, 0, 10)
+                barContainer.Position = UDim2.new(0.5, -30, 0.5, -5)
+                barContainer.BackgroundColor3 = Color3.fromRGB(22, 28, 38)
                 barContainer.BorderSizePixel = 0
                 barContainer.Parent = mainFrame
                 
                 local barCorner = Instance.new("UICorner")
-                barCorner.CornerRadius = UDim.new(0, 6)
+                barCorner.CornerRadius = UDim.new(1, 0)
                 barCorner.Parent = barContainer
                 
-                -- Progress bar fill with gradient
+                -- Progress bar fill
                 progressBar = Instance.new("Frame")
                 progressBar.Size = UDim2.new(0, 0, 1, 0)
                 progressBar.Position = UDim2.new(0, 0, 0, 0)
-                progressBar.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+                progressBar.BackgroundColor3 = Color3.fromRGB(152, 181, 255)  -- Blue
                 progressBar.BorderSizePixel = 0
                 progressBar.Parent = barContainer
                 
                 local progressCorner = Instance.new("UICorner")
-                progressCorner.CornerRadius = UDim.new(0, 6)
+                progressCorner.CornerRadius = UDim.new(1, 0)
                 progressCorner.Parent = progressBar
                 
-                -- Gradient effect
-                local gradient = Instance.new("UIGradient")
-                gradient.Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 20, 60)),  -- Red
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(65, 105, 225))   -- Blue
-                })
-                gradient.Parent = progressBar
+                -- Peak text (right side)
+                peakText = Instance.new("TextLabel")
+                peakText.Size = UDim2.new(0, 40, 1, 0)
+                peakText.Position = UDim2.new(1, -45, 0, 0)
+                peakText.Text = "0"
+                peakText.TextColor3 = Color3.fromRGB(152, 181, 255)
+                peakText.TextSize = 12
+                peakText.Font = Enum.Font.GothamSSm
+                peakText.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
+                peakText.BackgroundTransparency = 1
+                peakText.TextXAlignment = Enum.TextXAlignment.Right
+                peakText.Parent = mainFrame
                 
-                -- Percentage text inside bar
-                percentageText = Instance.new("TextLabel")
-                percentageText.Size = UDim2.new(1, 0, 1, 0)
-                percentageText.Text = "0%"
-                percentageText.TextColor3 = Color3.fromRGB(255, 255, 255)
-                percentageText.TextSize = 12
-                percentageText.Font = Enum.Font.GothamBold
-                percentageText.BackgroundTransparency = 1
-                percentageText.ZIndex = 2
-                percentageText.Parent = barContainer
-                
-                -- Close button (minimal)
+                -- Close button (small X in corner)
                 local closeButton = Instance.new("TextButton")
                 closeButton.Size = UDim2.new(0, 20, 0, 20)
-                closeButton.Position = UDim2.new(1, -25, 0, 8)
+                closeButton.Position = UDim2.new(1, -22, 0, 2)
                 closeButton.Text = "×"
-                closeButton.TextColor3 = Color3.fromRGB(200, 200, 200)
-                closeButton.TextSize = 18
-                closeButton.Font = Enum.Font.GothamBold
+                closeButton.TextColor3 = Color3.fromRGB(152, 181, 255)
+                closeButton.TextSize = 16
+                closeButton.Font = Enum.Font.GothamSSm
                 closeButton.BackgroundTransparency = 1
                 closeButton.AutoButtonColor = false
                 closeButton.Parent = mainFrame
                 
                 closeButton.MouseEnter:Connect(function()
-                    closeButton.TextColor3 = Color3.fromRGB(220, 20, 60)
+                    closeButton.TextColor3 = Color3.fromRGB(255, 100, 100)
                 end)
                 
                 closeButton.MouseLeave:Connect(function()
-                    closeButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+                    closeButton.TextColor3 = Color3.fromRGB(152, 181, 255)
                 end)
                 
                 closeButton.MouseButton1Click:Connect(function()
                     BallStats:change_state(false)
                 end)
                 
-                -- Drag functionality
+                -- Simple drag functionality
                 local dragging = false
                 local dragInput, dragStart, startPos
                 
                 mainFrame.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                         dragging = true
                         dragStart = input.Position
                         startPos = mainFrame.Position
@@ -6355,7 +6341,7 @@ local BallStats = misc:create_module({
                 end)
                 
                 mainFrame.InputChanged:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseMovement then
+                    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
                         dragInput = input
                     end
                 end)
@@ -6405,31 +6391,30 @@ local BallStats = misc:create_module({
                     local currentPeak = ballPeaks[currentBall]
                     
                     -- Update displays
-                    if velocityText then
-                        velocityText.Text = tostring(currentVelocity)
+                    if currentText then
+                        currentText.Text = tostring(currentVelocity)
                     end
                     
                     if peakText then
                         peakText.Text = tostring(currentPeak)
                     end
                     
-                    -- Update progress bar
-                    if progressBar and percentageText and currentPeak > 0 then
+                    -- Update progress bar with color transition
+                    if progressBar and currentPeak > 0 then
                         local percentage = math.min(currentVelocity / currentPeak, 1)
                         local barWidth = math.floor(percentage * (progressBar.Parent.AbsoluteSize.X))
                         progressBar.Size = UDim2.new(0, barWidth, 1, 0)
-                        percentageText.Text = string.format("%.0f%%", percentage * 100)
                         
-                        -- Update gradient based on percentage
-                        if gradient then
-                            local colorOffset = percentage
-                            gradient.Offset = Vector2.new(-colorOffset, 0)
-                        end
+                        -- Color transition from blue to red based on percentage
+                        local hue = 0.66 - (percentage * 0.66)  -- 0.66 = blue, 0 = red
+                        local saturation = 0.8
+                        local value = 0.9
+                        progressBar.BackgroundColor3 = Color3.fromHSV(hue, saturation, value)
                     end
                 else
                     -- No ball, reset display
-                    if velocityText then
-                        velocityText.Text = "0"
+                    if currentText then
+                        currentText.Text = "0"
                     end
                     
                     if peakText then
@@ -6438,10 +6423,7 @@ local BallStats = misc:create_module({
                     
                     if progressBar then
                         progressBar.Size = UDim2.new(0, 0, 1, 0)
-                    end
-                    
-                    if percentageText then
-                        percentageText.Text = "0%"
+                        progressBar.BackgroundColor3 = Color3.fromRGB(152, 181, 255)  -- Reset to blue
                     end
                 end
                 
@@ -6461,6 +6443,8 @@ local BallStats = misc:create_module({
             end
             if ballStatsUI then
                 ballStatsUI.Enabled = false
+                ballStatsUI:Destroy()
+                ballStatsUI = nil
             end
             ballPeaks = {}
         end
