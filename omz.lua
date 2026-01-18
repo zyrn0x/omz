@@ -5243,21 +5243,6 @@ end
 
 
 local billboardLabels = {}
-local abilityColors = {
-    -- Liste des couleurs pour différentes abilities
-    ["Raging Deflection"] = Color3.fromRGB(255, 50, 50),      -- Rouge vif
-    ["Rapture"] = Color3.fromRGB(255, 150, 50),               -- Orange
-    ["Calming Deflection"] = Color3.fromRGB(50, 150, 255),    -- Bleu clair
-    ["Aerodynamic Slash"] = Color3.fromRGB(100, 255, 100),    -- Vert vif
-    ["Fracture"] = Color3.fromRGB(255, 50, 150),              -- Rose
-    ["Death Slash"] = Color3.fromRGB(150, 50, 255),           -- Violet
-    ["Time Hole"] = Color3.fromRGB(255, 255, 50),             -- Jaune
-    ["Infinity"] = Color3.fromRGB(50, 255, 255),              -- Cyan
-    ["Phantom"] = Color3.fromRGB(200, 200, 200),              -- Gris
-    ["Singularity"] = Color3.fromRGB(255, 100, 100),          -- Rouge clair
-    ["Gravity"] = Color3.fromRGB(100, 100, 255),              -- Bleu
-    ["Default"] = Color3.fromRGB(152, 181, 255)               -- Bleu Omz (par défaut)
-}
 
 function qolPlayerNameVisibility()
     local function createBillboardGui(p)
@@ -5270,96 +5255,34 @@ function qolPlayerNameVisibility()
 
         local head = character:WaitForChild("Head")
 
-        -- BillboardGui amélioré
         local billboardGui = Instance.new("BillboardGui")
         billboardGui.Adornee = head
-        billboardGui.Size = UDim2.new(0, 200, 0, 40)
-        billboardGui.StudsOffset = Vector3.new(0, 3.5, 0)
+        billboardGui.Size = UDim2.new(0, 200, 0, 50)
+        billboardGui.StudsOffset = Vector3.new(0, 3, 0)
         billboardGui.AlwaysOnTop = true
-        billboardGui.MaxDistance = 150
         billboardGui.Parent = head
 
-        -- Conteneur principal
-        local mainFrame = Instance.new("Frame")
-        mainFrame.Size = UDim2.new(1, 0, 1, 0)
-        mainFrame.BackgroundColor3 = Color3.fromRGB(12, 13, 15)
-        mainFrame.BackgroundTransparency = 0.3
-        mainFrame.BorderSizePixel = 0
-        mainFrame.Parent = billboardGui
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)  -- Blanc par défaut
+        textLabel.TextSize = 9  -- Légèrement plus grand
+        textLabel.TextWrapped = false
+        textLabel.BackgroundTransparency = 1
+        textLabel.TextXAlignment = Enum.TextXAlignment.Center
+        textLabel.TextYAlignment = Enum.TextYAlignment.Center
+        textLabel.Parent = billboardGui
+        
+        -- Police différente (SourceSansPro au lieu de GothamSSm)
+        textLabel.Font = Enum.Font.SourceSansBold
+        textLabel.FontFace = Font.new('rbxasset://fonts/families/SourceSansPro.json', Enum.FontWeight.Bold, Enum.FontStyle.Normal)
 
-        local uiCorner = Instance.new("UICorner")
-        uiCorner.CornerRadius = UDim.new(0, 5)
-        uiCorner.Parent = mainFrame
-
-        local uiStroke = Instance.new("UIStroke")
-        uiStroke.Color = Color3.fromRGB(52, 66, 89)
-        uiStroke.Transparency = 0.5
-        uiStroke.Thickness = 1
-        uiStroke.Parent = mainFrame
-
-        -- Container pour le texte
-        local textContainer = Instance.new("Frame")
-        textContainer.Size = UDim2.new(1, -10, 1, -10)
-        textContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
-        textContainer.AnchorPoint = Vector2.new(0.5, 0.5)
-        textContainer.BackgroundTransparency = 1
-        textContainer.Parent = mainFrame
-
-        -- Nom du joueur (haut)
-        local nameLabel = Instance.new("TextLabel")
-        nameLabel.Name = "NameLabel"
-        nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
-        nameLabel.Position = UDim2.new(0, 0, 0, 0)
-        nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        nameLabel.TextSize = 12
-        nameLabel.Font = Enum.Font.GothamSSm
-        nameLabel.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-        nameLabel.BackgroundTransparency = 1
-        nameLabel.TextXAlignment = Enum.TextXAlignment.Center
-        nameLabel.TextYAlignment = Enum.TextYAlignment.Bottom
-        nameLabel.Text = p.DisplayName
-        nameLabel.Parent = textContainer
-
-        -- Ability (bas)
-        local abilityLabel = Instance.new("TextLabel")
-        abilityLabel.Name = "AbilityLabel"
-        abilityLabel.Size = UDim2.new(1, 0, 0.5, 0)
-        abilityLabel.Position = UDim2.new(0, 0, 0.5, 0)
-        abilityLabel.TextColor3 = abilityColors["Default"]
-        abilityLabel.TextSize = 10
-        abilityLabel.Font = Enum.Font.GothamSSm
-        abilityLabel.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.Medium, Enum.FontStyle.Normal)
-        abilityLabel.BackgroundTransparency = 1
-        abilityLabel.TextXAlignment = Enum.TextXAlignment.Center
-        abilityLabel.TextYAlignment = Enum.TextYAlignment.Top
-        abilityLabel.Text = ""
-        abilityLabel.Parent = textContainer
-
-        -- Icone pour ability (optionnel)
-        local abilityIcon = Instance.new("ImageLabel")
-        abilityIcon.Name = "AbilityIcon"
-        abilityIcon.Size = UDim2.new(0, 12, 0, 12)
-        abilityIcon.Position = UDim2.new(0.5, -6, 0.5, -6)
-        abilityIcon.AnchorPoint = Vector2.new(0.5, 0.5)
-        abilityIcon.BackgroundTransparency = 1
-        abilityIcon.Image = "rbxassetid://107819132007001"  -- Icône par défaut
-        abilityIcon.ImageColor3 = abilityColors["Default"]
-        abilityIcon.Visible = false
-        abilityIcon.Parent = textContainer
-
-        billboardLabels[p] = {
-            gui = billboardGui,
-            nameLabel = nameLabel,
-            abilityLabel = abilityLabel,
-            abilityIcon = abilityIcon
-        }
+        billboardLabels[p] = textLabel
 
         local humanoid = character:FindFirstChild("Humanoid")
         if humanoid then
             humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
         end
 
-        -- Connection pour mettre à jour l'ESP
         local heartbeatConnection
         heartbeatConnection = RunService.Heartbeat:Connect(function()
             if not (character and character.Parent) then
@@ -5370,59 +5293,30 @@ function qolPlayerNameVisibility()
             end
 
             if getgenv().AbilityESP then
-                mainFrame.Visible = true
-                
-                -- Mettre à jour l'ability
+                textLabel.Visible = true
                 local abilityName = p:GetAttribute("EquippedAbility")
                 if abilityName then
-                    -- Trouver la couleur pour cette ability
-                    local abilityColor = abilityColors[abilityName] or abilityColors["Default"]
+                    -- Ajouter une couleur pour l'ability
+                    textLabel.Text = p.DisplayName .. " [" .. abilityName .. "]"
                     
-                    -- Mettre à jour le texte et la couleur
-                    abilityLabel.Text = abilityName
-                    abilityLabel.TextColor3 = abilityColor
-                    
-                    -- Option: changer l'icône selon l'ability
-                    abilityIcon.ImageColor3 = abilityColor
-                    
-                    -- Ajouter un effet de glow subtil
-                    uiStroke.Color = abilityColor
-                    uiStroke.Transparency = 0.3
-                    
-                    -- Changer légèrement la couleur de fond selon l'ability
-                    local bgColor = Color3.new(
-                        abilityColor.R * 0.1 + 0.05,
-                        abilityColor.G * 0.1 + 0.05,
-                        abilityColor.B * 0.1 + 0.05
-                    )
-                    mainFrame.BackgroundColor3 = bgColor
+                    -- Changer la couleur selon l'ability
+                    if abilityName == "Raging Deflection" or abilityName == "Rapture" or abilityName == "Death Slash" then
+                        textLabel.TextColor3 = Color3.fromRGB(255, 100, 100)  -- Rouge pour les abilities offensives
+                    elseif abilityName == "Calming Deflection" or abilityName == "Time Hole" or abilityName == "Infinity" then
+                        textLabel.TextColor3 = Color3.fromRGB(100, 200, 255)  -- Bleu pour les abilities défensives
+                    elseif abilityName == "Aerodynamic Slash" or abilityName == "Fracture" or abilityName == "Phantom" then
+                        textLabel.TextColor3 = Color3.fromRGB(100, 255, 100)  -- Vert pour les abilities mobilité
+                    elseif abilityName == "Singularity" or abilityName == "Gravity" then
+                        textLabel.TextColor3 = Color3.fromRGB(255, 150, 50)   -- Orange pour les abilities spéciales
+                    else
+                        textLabel.TextColor3 = Color3.fromRGB(152, 181, 255)  -- Bleu Omz par défaut
+                    end
                 else
-                    abilityLabel.Text = "No Ability"
-                    abilityLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-                    abilityIcon.Visible = false
-                    uiStroke.Color = Color3.fromRGB(52, 66, 89)
-                    mainFrame.BackgroundColor3 = Color3.fromRGB(12, 13, 15)
+                    textLabel.Text = p.DisplayName
+                    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)  -- Blanc quand pas d'ability
                 end
-                
-                -- Ajuster la visibilité selon la distance
-                local distance = (plr.Character and plr.Character.PrimaryPart and character.PrimaryPart) 
-                    and (plr.Character.PrimaryPart.Position - character.PrimaryPart.Position).Magnitude 
-                    or 999
-                
-                if distance > 100 then
-                    nameLabel.TextSize = 10
-                    abilityLabel.TextSize = 8
-                else
-                    nameLabel.TextSize = 12
-                    abilityLabel.TextSize = 10
-                end
-                
-                -- Effet de pulsation subtile
-                local pulse = math.sin(tick() * 2) * 0.05 + 0.95
-                mainFrame.BackgroundTransparency = 0.3 + (1 - pulse) * 0.1
-                
             else
-                mainFrame.Visible = false
+                textLabel.Visible = false
             end
         end)
     end
@@ -5432,9 +5326,7 @@ function qolPlayerNameVisibility()
             p.CharacterAdded:Connect(function()
                 createBillboardGui(p)
             end)
-            if p.Character then
-                createBillboardGui(p)
-            end
+            createBillboardGui(p)
         end
     end
 
@@ -5454,48 +5346,11 @@ local AbilityESP = world:create_module({
     section = 'left',
     callback = function(value: boolean)
         getgenv().AbilityESP = value
-        for _, data in pairs(billboardLabels) do
-            if data and data.gui then
-                data.gui.Enabled = value
-            end
+        for _, label in pairs(billboardLabels) do
+            label.Visible = value
         end
     end
 })
-
--- Option pour personnaliser l'ESP
-if AbilityESP then
-    AbilityESP:create_divider({
-        title = "ESP Settings"
-    })
-    
-    AbilityESP:create_checkbox({
-        title = "Show Icons",
-        flag = "ESP_ShowIcons",
-        callback = function(value)
-            getgenv().ESPShowIcons = value
-            for _, data in pairs(billboardLabels) do
-                if data and data.abilityIcon then
-                    data.abilityIcon.Visible = value
-                end
-            end
-        end
-    })
-    
-    AbilityESP:create_slider({
-        title = "Max Distance",
-        flag = "ESP_MaxDistance",
-        minimum_value = 50,
-        maximum_value = 300,
-        value = 150,
-        callback = function(value)
-            for _, data in pairs(billboardLabels) do
-                if data and data.gui then
-                    data.gui.MaxDistance = value
-                end
-            end
-        end
-    })
-end
 
     local SkinChanger = misc:create_module({
         title = 'Skin Changer',
