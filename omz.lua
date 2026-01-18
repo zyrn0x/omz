@@ -4386,86 +4386,167 @@ if isMobile then
                 gui.ResetOnSpawn = false
                 gui.Parent = game.CoreGui
 
-                -- Simple container with Omz UI style
+                -- Main container with modern design
                 local mainFrame = Instance.new("Frame")
                 mainFrame.Name = "SpamPanel"
-                mainFrame.Position = UDim2.new(0.5, -50, 0.7, -25)
-                mainFrame.Size = UDim2.new(0, 100, 0, 50)
-                mainFrame.BackgroundColor3 = Color3.fromRGB(12, 13, 15)
-                mainFrame.BackgroundTransparency = 0.05
+                mainFrame.Position = UDim2.new(0.5, -140, 0.7, -80)
+                mainFrame.Size = UDim2.new(0, 280, 0, 160)
+                mainFrame.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
+                mainFrame.BackgroundTransparency = 0.1
                 mainFrame.BorderSizePixel = 0
                 mainFrame.Active = true
                 mainFrame.Draggable = true
                 mainFrame.Parent = gui
 
                 local uiCorner = Instance.new("UICorner")
-                uiCorner.CornerRadius = UDim.new(0, 10)
+                uiCorner.CornerRadius = UDim.new(0, 16)
                 uiCorner.Parent = mainFrame
 
                 local uiStroke = Instance.new("UIStroke")
-                uiStroke.Color = Color3.fromRGB(52, 66, 89)
-                uiStroke.Transparency = 0.5
-                uiStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                uiStroke.Color = Color3.fromRGB(80, 90, 110)
+                uiStroke.Thickness = 2
+                uiStroke.Transparency = 0.3
                 uiStroke.Parent = mainFrame
                 
-                -- Single button (toggles between SPAM and STOP)
+                -- Title with icon
+                local titleBar = Instance.new("Frame")
+                titleBar.Size = UDim2.new(1, 0, 0, 40)
+                titleBar.BackgroundColor3 = Color3.fromRGB(25, 30, 45)
+                titleBar.BorderSizePixel = 0
+                titleBar.Parent = mainFrame
+                
+                local titleCorner = Instance.new("UICorner")
+                titleCorner.CornerRadius = UDim.new(0, 16, 0, 0)
+                titleCorner.Parent = titleBar
+                
+                local title = Instance.new("TextLabel")
+                title.Size = UDim2.new(1, -50, 1, 0)
+                title.Position = UDim2.new(0, 15, 0, 0)
+                title.Text = "SPAM CONTROL"
+                title.TextColor3 = Color3.fromRGB(180, 200, 255)
+                title.TextSize = 18
+                title.Font = Enum.Font.GothamSemibold
+                title.BackgroundTransparency = 1
+                title.Parent = titleBar
+                
+                -- Status indicator
+                local statusLight = Instance.new("Frame")
+                statusLight.Size = UDim2.new(0, 8, 0, 8)
+                statusLight.Position = UDim2.new(1, -30, 0.5, -4)
+                statusLight.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+                statusLight.BorderSizePixel = 0
+                statusLight.Parent = titleBar
+                
+                local lightCorner = Instance.new("UICorner")
+                lightCorner.CornerRadius = UDim.new(1, 0)
+                lightCorner.Parent = statusLight
+                
+                -- Main button with modern design
+                local buttonContainer = Instance.new("Frame")
+                buttonContainer.Size = UDim2.new(0.8, 0, 0, 70)
+                buttonContainer.Position = UDim2.new(0.1, 0, 0.35, 0)
+                buttonContainer.BackgroundTransparency = 1
+                buttonContainer.Parent = mainFrame
+                
                 local button = Instance.new("TextButton")
                 button.Name = "SpamButton"
-                button.Size = UDim2.new(1, -10, 1, -10)
-                button.Position = UDim2.new(0.5, 0, 0.5, 0)
-                button.AnchorPoint = Vector2.new(0.5, 0.5)
-                button.Text = "SPAM"
-                button.TextColor3 = Color3.fromRGB(152, 181, 255)
-                button.TextSize = 14
-                button.Font = Enum.Font.GothamSSm
-                button.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-                button.BackgroundColor3 = Color3.fromRGB(22, 28, 38)
+                button.Size = UDim2.new(1, 0, 1, 0)
+                button.Text = "▶ START SPAM"
+                button.TextColor3 = Color3.fromRGB(255, 255, 255)
+                button.TextSize = 20
+                button.Font = Enum.Font.GothamBold
+                button.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
                 button.BorderSizePixel = 0
                 button.AutoButtonColor = false
-                button.Parent = mainFrame
+                button.Parent = buttonContainer
 
                 local buttonCorner = Instance.new("UICorner")
-                buttonCorner.CornerRadius = UDim.new(0, 5)
+                buttonCorner.CornerRadius = UDim.new(0, 12)
                 buttonCorner.Parent = button
                 
                 local buttonStroke = Instance.new("UIStroke")
-                buttonStroke.Color = Color3.fromRGB(52, 66, 89)
-                buttonStroke.Transparency = 0.5
-                buttonStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                buttonStroke.Color = Color3.fromRGB(100, 150, 200)
+                buttonStroke.Thickness = 2
                 buttonStroke.Parent = button
                 
-                -- Close button (small X in corner)
+                -- Button glow effect
+                local buttonGlow = Instance.new("ImageLabel")
+                buttonGlow.Size = UDim2.new(1, 10, 1, 10)
+                buttonGlow.Position = UDim2.new(0, -5, 0, -5)
+                buttonGlow.Image = "rbxassetid://8992230676"
+                buttonGlow.ImageColor3 = Color3.fromRGB(70, 130, 180)
+                buttonGlow.ImageTransparency = 0.8
+                buttonGlow.ScaleType = Enum.ScaleType.Slice
+                buttonGlow.SliceCenter = Rect.new(20, 20, 280, 280)
+                buttonGlow.BackgroundTransparency = 1
+                buttonGlow.Parent = button
+                
+                -- Control buttons
+                local controlFrame = Instance.new("Frame")
+                controlFrame.Size = UDim2.new(0.8, 0, 0, 30)
+                controlFrame.Position = UDim2.new(0.1, 0, 0.8, 0)
+                controlFrame.BackgroundTransparency = 1
+                controlFrame.Parent = mainFrame
+                
                 local closeBtn = Instance.new("TextButton")
-                closeBtn.Size = UDim2.new(0, 20, 0, 20)
-                closeBtn.Position = UDim2.new(1, -22, 0, 2)
-                closeBtn.Text = "×"
-                closeBtn.TextColor3 = Color3.fromRGB(152, 181, 255)
-                closeBtn.TextSize = 16
-                closeBtn.Font = Enum.Font.GothamSSm
-                closeBtn.BackgroundTransparency = 1
+                closeBtn.Size = UDim2.new(0.45, -5, 1, 0)
+                closeBtn.Position = UDim2.new(0, 0, 0, 0)
+                closeBtn.Text = "CLOSE"
+                closeBtn.TextColor3 = Color3.fromRGB(255, 150, 150)
+                closeBtn.TextSize = 14
+                closeBtn.Font = Enum.Font.Gotham
+                closeBtn.BackgroundColor3 = Color3.fromRGB(40, 45, 55)
+                closeBtn.BorderSizePixel = 0
                 closeBtn.AutoButtonColor = false
-                closeBtn.Parent = mainFrame
+                closeBtn.Parent = controlFrame
+                
+                local closeCorner = Instance.new("UICorner")
+                closeCorner.CornerRadius = UDim.new(0, 6)
+                closeCorner.Parent = closeBtn
+                
+                local hideBtn = Instance.new("TextButton")
+                hideBtn.Size = UDim2.new(0.45, -5, 1, 0)
+                hideBtn.Position = UDim2.new(0.55, 0, 0, 0)
+                hideBtn.Text = "MINIMIZE"
+                hideBtn.TextColor3 = Color3.fromRGB(150, 200, 255)
+                hideBtn.TextSize = 14
+                hideBtn.Font = Enum.Font.Gotham
+                hideBtn.BackgroundColor3 = Color3.fromRGB(40, 45, 55)
+                hideBtn.BorderSizePixel = 0
+                hideBtn.AutoButtonColor = false
+                hideBtn.Parent = controlFrame
+                
+                local hideCorner = Instance.new("UICorner")
+                hideCorner.CornerRadius = UDim.new(0, 6)
+                hideCorner.Parent = hideBtn
                 
                 -- State variables
                 local activated = false
+                local minimized = false
+                local originalSize = mainFrame.Size
+                local originalPosition = mainFrame.Position
                 
                 -- Toggle spam function
                 local function toggleSpam()
                     activated = not activated
                     
                     if activated then
-                        button.Text = "STOP"
-                        button.BackgroundColor3 = Color3.fromRGB(38, 28, 28)
-                        button.TextColor3 = Color3.fromRGB(255, 100, 100)
+                        button.Text = "⏸ STOP SPAM"
+                        button.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
+                        buttonStroke.Color = Color3.fromRGB(240, 90, 90)
+                        buttonGlow.ImageColor3 = Color3.fromRGB(220, 60, 60)
+                        statusLight.BackgroundColor3 = Color3.fromRGB(50, 255, 50)
                         
                         -- Start spamming
                         Connections_Manager['Manual Spam UI'] = game:GetService("RunService").Heartbeat:Connect(function()
                             Auto_Parry.Parry(Selected_Parry_Type)
                         end)
                     else
-                        button.Text = "SPAM"
-                        button.BackgroundColor3 = Color3.fromRGB(22, 28, 38)
-                        button.TextColor3 = Color3.fromRGB(152, 181, 255)
+                        button.Text = "▶ START SPAM"
+                        button.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+                        buttonStroke.Color = Color3.fromRGB(100, 150, 200)
+                        buttonGlow.ImageColor3 = Color3.fromRGB(70, 130, 180)
+                        statusLight.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
                         
                         -- Stop spamming
                         if Connections_Manager['Manual Spam UI'] then
@@ -4478,22 +4559,32 @@ if isMobile then
                 -- Button hover effects
                 button.MouseEnter:Connect(function()
                     if not activated then
-                        button.BackgroundColor3 = Color3.fromRGB(28, 34, 44)
+                        button.BackgroundColor3 = Color3.fromRGB(80, 140, 190)
+                        buttonGlow.ImageTransparency = 0.7
                     end
                 end)
                 
                 button.MouseLeave:Connect(function()
                     if not activated then
-                        button.BackgroundColor3 = Color3.fromRGB(22, 28, 38)
+                        button.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+                        buttonGlow.ImageTransparency = 0.8
                     end
                 end)
                 
                 closeBtn.MouseEnter:Connect(function()
-                    closeBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+                    closeBtn.BackgroundColor3 = Color3.fromRGB(50, 55, 65)
                 end)
                 
                 closeBtn.MouseLeave:Connect(function()
-                    closeBtn.TextColor3 = Color3.fromRGB(152, 181, 255)
+                    closeBtn.BackgroundColor3 = Color3.fromRGB(40, 45, 55)
+                end)
+                
+                hideBtn.MouseEnter:Connect(function()
+                    hideBtn.BackgroundColor3 = Color3.fromRGB(50, 55, 65)
+                end)
+                
+                hideBtn.MouseLeave:Connect(function()
+                    hideBtn.BackgroundColor3 = Color3.fromRGB(40, 45, 55)
                 end)
                 
                 -- Button click events
@@ -4508,28 +4599,50 @@ if isMobile then
                     end
                 end)
                 
-                -- Drag functionality (simplifiée)
-                local dragging = false
-                local dragStart, startPos
+                hideBtn.MouseButton1Click:Connect(function()
+                    minimized = not minimized
+                    
+                    if minimized then
+                        hideBtn.Text = "MAXIMIZE"
+                        mainFrame.Size = UDim2.new(0, 280, 0, 40)
+                        titleBar.Visible = true
+                        buttonContainer.Visible = false
+                        controlFrame.Visible = false
+                    else
+                        hideBtn.Text = "MINIMIZE"
+                        mainFrame.Size = originalSize
+                        titleBar.Visible = true
+                        buttonContainer.Visible = true
+                        controlFrame.Visible = true
+                    end
+                end)
                 
-                mainFrame.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                -- Drag functionality
+                local dragging = false
+                local dragInput, dragStart, startPos
+                
+                titleBar.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
                         dragging = true
                         dragStart = input.Position
                         startPos = mainFrame.Position
                         
-                        local connection
-                        connection = input.Changed:Connect(function()
+                        input.Changed:Connect(function()
                             if input.UserInputState == Enum.UserInputState.End then
                                 dragging = false
-                                connection:Disconnect()
                             end
                         end)
                     end
                 end)
                 
+                titleBar.InputChanged:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseMovement then
+                        dragInput = input
+                    end
+                end)
+                
                 game:GetService("UserInputService").InputChanged:Connect(function(input)
-                    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                    if input == dragInput and dragging then
                         local delta = input.Position - dragStart
                         mainFrame.Position = UDim2.new(
                             startPos.X.Scale, 
