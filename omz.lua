@@ -46,6 +46,17 @@ local Players = cloneref(game:GetService('Players'))
 local CoreGui = cloneref(game:GetService('CoreGui'))
 local Debris = cloneref(game:GetService('Debris'))
 
+local ColorPalette = {
+    Primary = Color3.fromRGB(30, 20, 45),        -- Fond principal violet foncé
+    Secondary = Color3.fromRGB(45, 30, 65),      -- Fond secondaire
+    Accent = Color3.fromRGB(160, 100, 255),      -- Accent violet vif
+    AccentLight = Color3.fromRGB(180, 140, 255), -- Violet clair
+    Text = Color3.fromRGB(240, 230, 255),        -- Texte principal
+    TextSecondary = Color3.fromRGB(200, 190, 220), -- Texte secondaire
+    Success = Color3.fromRGB(120, 230, 150),     -- Vert pour succès
+    Error = Color3.fromRGB(255, 100, 150)        -- Rose pour erreurs
+}
+
 local mouse = Players.LocalPlayer:GetMouse()
 local old_Nury = CoreGui:FindFirstChild('Nury')
 
@@ -171,7 +182,7 @@ end
 function AcrylicBlur:create_root()
     local part = Instance.new('Part')
     part.Name = 'Root'
-    part.Color = Color3.new(0, 0, 0)
+    part.Color = Color3.fromRGB(60, 40, 90)
     part.Material = Enum.Material.Glass
     part.Size = Vector3.new(1, 1, 0)  -- Use a thin part
     part.Anchored = true
@@ -392,7 +403,8 @@ function Library.SendNotification(settings)
     local InnerFrame = Instance.new("Frame")
     InnerFrame.Size = UDim2.new(1, 0, 0, 60)  -- Start with an initial height, width will adapt
     InnerFrame.Position = UDim2.new(0, 0, 0, 0)  -- Positioned inside the outer notification frame
-    InnerFrame.BackgroundColor3 = Color3.fromRGB(32, 38, 51)
+    InnerFrame.BackgroundColor3 = ColorPalette.Secondary
+    InnerFrame.BackgroundTransparency = 0.05
     InnerFrame.BackgroundTransparency = 0.1
     InnerFrame.BorderSizePixel = 0
     InnerFrame.Name = "InnerFrame"
@@ -407,7 +419,7 @@ function Library.SendNotification(settings)
     -- Title Label (with automatic size support)
     local Title = Instance.new("TextLabel")
     Title.Text = settings.title or "Notification Title"
-    Title.TextColor3 = Color3.fromRGB(210, 210, 210)
+    Title.TextColor3 = ColorPalette.AccentLight
     Title.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
     Title.TextSize = 14
     Title.Size = UDim2.new(1, -10, 0, 20)  -- Width is 1 (100% of parent width), height is fixed initially
@@ -422,7 +434,7 @@ function Library.SendNotification(settings)
     -- Body Text (with automatic size support)
     local Body = Instance.new("TextLabel")
     Body.Text = settings.text or "This is the body of the notification."
-    Body.TextColor3 = Color3.fromRGB(180, 180, 180)
+    Body.TextColor3 = ColorPalette.TextSecondary
     Body.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
     Body.TextSize = 12
     Body.Size = UDim2.new(1, -10, 0, 30)  -- Width is 1 (100% of parent width), height is fixed initially
@@ -532,8 +544,8 @@ function Library:create_ui()
     Container.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Container.AnchorPoint = Vector2.new(0.5, 0.5)
     Container.Name = 'Container'
-    Container.BackgroundTransparency = 0.05000000074505806
-    Container.BackgroundColor3 = Color3.fromRGB(12, 13, 15)
+    Container.BackgroundTransparency = 0.05
+    Container.BackgroundColor3 = ColorPalette.Primary
     Container.Position = UDim2.new(0.5, 0, 0.5, 0)
     Container.Size = UDim2.new(0, 0, 0, 0)
     Container.Active = true
@@ -545,8 +557,9 @@ function Library:create_ui()
     UICorner.Parent = Container
     
     local UIStroke = Instance.new('UIStroke')
-    UIStroke.Color = Color3.fromRGB(52, 66, 89)
-    UIStroke.Transparency = 0.5
+    UIStroke.Color = ColorPalette.Accent
+    UIStroke.Transparency = 0.3
+    UIStroke.Thickness = 2
     UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     UIStroke.Parent = Container
     
@@ -581,8 +594,8 @@ function Library:create_ui()
     
     local ClientName = Instance.new('TextLabel')
     ClientName.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-    ClientName.TextColor3 = Color3.fromRGB(152, 181, 255)
-    ClientName.TextTransparency = 0.20000000298023224
+    ClientName.TextColor3 = ColorPalette.AccentLight
+    ClientName.TextTransparency = 0.1
     ClientName.Text = 'Omz'
     ClientName.Name = 'ClientName'
     ClientName.Size = UDim2.new(0, 31, 0, 13)
@@ -598,8 +611,8 @@ function Library:create_ui()
     
     local UIGradient = Instance.new('UIGradient')
     UIGradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(155, 155, 155)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))
+        ColorSequenceKeypoint.new(0, ColorPalette.AccentLight),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(140, 80, 220))
     }
     UIGradient.Parent = ClientName
     
@@ -609,7 +622,7 @@ function Library:create_ui()
     Pin.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Pin.Size = UDim2.new(0, 2, 0, 16)
     Pin.BorderSizePixel = 0
-    Pin.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
+    Pin.BackgroundColor3 = ColorPalette.Accent
     Pin.Parent = Handler
     
     local UICorner = Instance.new('UICorner')
@@ -617,7 +630,7 @@ function Library:create_ui()
     UICorner.Parent = Pin
     
     local Icon = Instance.new('ImageLabel')
-    Icon.ImageColor3 = Color3.fromRGB(152, 181, 255)
+    Icon.ImageColor3 = ColorPalette.AccentLight
     Icon.ScaleType = Enum.ScaleType.Fit
     Icon.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Icon.AnchorPoint = Vector2.new(0, 0.5)
@@ -637,7 +650,8 @@ function Library:create_ui()
     Divider.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Divider.Size = UDim2.new(0, 1, 0, 479)
     Divider.BorderSizePixel = 0
-    Divider.BackgroundColor3 = Color3.fromRGB(52, 66, 89)
+    Divider.BackgroundColor3 = ColorPalette.Accent
+    Divider.BackgroundTransparency = 0.5
     Divider.Parent = Handler
     
     local Sections = Instance.new('Folder')
@@ -862,7 +876,7 @@ function Library:create_ui()
         Tab.Size = UDim2.new(0, 129, 0, 38)
         Tab.BorderSizePixel = 0
         Tab.TextSize = 14
-        Tab.BackgroundColor3 = Color3.fromRGB(22, 28, 38)
+        Tab.BackgroundColor3 = ColorPalette.Secondary
         Tab.Parent = Tabs
         Tab.LayoutOrder = self._tab
         
@@ -872,8 +886,8 @@ function Library:create_ui()
         
         local TextLabel = Instance.new('TextLabel')
         TextLabel.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-        TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        TextLabel.TextTransparency = 0.7 -- 0.800000011920929
+        TextLabel.TextColor3 = ColorPalette.AccentLight
+        TextLabel.TextTransparency = 0.1
         TextLabel.Text = title
         TextLabel.Size = UDim2.new(0, font_size.X, 0, 16)
         TextLabel.AnchorPoint = Vector2.new(0, 0.5)
@@ -888,9 +902,9 @@ function Library:create_ui()
         
         local UIGradient = Instance.new('UIGradient')
         UIGradient.Color = ColorSequence.new{
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-            ColorSequenceKeypoint.new(0.7, Color3.fromRGB(155, 155, 155)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(58, 58, 58))
+            ColorSequenceKeypoint.new(0, ColorPalette.AccentLight),
+            ColorSequenceKeypoint.new(0.7, Color3.fromRGB(140, 100, 220)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 60, 180))
         }
         UIGradient.Parent = TextLabel
         
@@ -905,7 +919,7 @@ function Library:create_ui()
         Icon.Image = icon
         Icon.Size = UDim2.new(0, 12, 0, 12)
         Icon.BorderSizePixel = 0
-        Icon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        Icon.BackgroundColor3 = ColorPalette.AccentLight
         Icon.Parent = Tab
 
         local LeftSection = Instance.new('ScrollingFrame')
@@ -998,7 +1012,8 @@ function Library:create_ui()
             Module.Name = 'Module'
             Module.Size = UDim2.new(0, 241, 0, 93)
             Module.BorderSizePixel = 0
-            Module.BackgroundColor3 = Color3.fromRGB(22, 28, 38)
+            Module.BackgroundColor3 = ColorPalette.Secondary
+            Module.BackgroundTransparency = 0.2
             Module.Parent = settings.section
 
             local UIListLayout = Instance.new('UIListLayout')
@@ -1010,8 +1025,8 @@ function Library:create_ui()
             UICorner.Parent = Module
             
             local UIStroke = Instance.new('UIStroke')
-            UIStroke.Color = Color3.fromRGB(52, 66, 89)
-            UIStroke.Transparency = 0.5
+            UIStroke.Color = ColorPalette.Accent
+            UIStroke.Transparency = 0.4
             UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
             UIStroke.Parent = Module
             
@@ -1046,7 +1061,7 @@ function Library:create_ui()
             
             local ModuleName = Instance.new('TextLabel')
             ModuleName.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-            ModuleName.TextColor3 = Color3.fromRGB(152, 181, 255)
+            ModuleName.TextColor3 = ColorPalette.AccentLight
             ModuleName.TextTransparency = 0.20000000298023224
             if not settings.rich then
                 ModuleName.Text = settings.title or "Skibidi"
@@ -1068,7 +1083,7 @@ function Library:create_ui()
             
             local Description = Instance.new('TextLabel')
             Description.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-            Description.TextColor3 = Color3.fromRGB(152, 181, 255)
+            Description.TextColor3 = ColorPalette.TextSecondary
             Description.TextTransparency = 0.699999988079071
             Description.Text = settings.description
             Description.Name = 'Description'
@@ -1090,7 +1105,7 @@ function Library:create_ui()
             Toggle.BorderColor3 = Color3.fromRGB(0, 0, 0)
             Toggle.Size = UDim2.new(0, 25, 0, 12)
             Toggle.BorderSizePixel = 0
-            Toggle.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+            Toggle.BackgroundColor3 = ColorPalette.Accent
             Toggle.Parent = Header
             
             local UICorner = Instance.new('UICorner')
@@ -1105,7 +1120,7 @@ function Library:create_ui()
             Circle.Name = 'Circle'
             Circle.Size = UDim2.new(0, 12, 0, 12)
             Circle.BorderSizePixel = 0
-            Circle.BackgroundColor3 = Color3.fromRGB(66, 80, 115)
+            Circle.BackgroundColor3 = ColorPalette.AccentLight
             Circle.Parent = Toggle
             
             local UICorner = Instance.new('UICorner')
@@ -1119,7 +1134,7 @@ function Library:create_ui()
             Keybind.BorderColor3 = Color3.fromRGB(0, 0, 0)
             Keybind.Size = UDim2.new(0, 33, 0, 15)
             Keybind.BorderSizePixel = 0
-            Keybind.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
+            Keybind.BackgroundColor3 = ColorPalette.Accent
             Keybind.Parent = Header
             
             local UICorner = Instance.new('UICorner')
@@ -1149,7 +1164,8 @@ function Library:create_ui()
             Divider.Name = 'Divider'
             Divider.Size = UDim2.new(0, 241, 0, 1)
             Divider.BorderSizePixel = 0
-            Divider.BackgroundColor3 = Color3.fromRGB(52, 66, 89)
+            Divider.BackgroundColor3 = ColorPalette.Accent
+            Divider.BackgroundTransparency = 0.5
             Divider.Parent = Header
             
             local Divider = Instance.new('Frame')
@@ -1160,7 +1176,8 @@ function Library:create_ui()
             Divider.Name = 'Divider'
             Divider.Size = UDim2.new(0, 241, 0, 1)
             Divider.BorderSizePixel = 0
-            Divider.BackgroundColor3 = Color3.fromRGB(52, 66, 89)
+            Divider.BackgroundColor3 = ColorPalette.Accent
+            Divider.BackgroundTransparency = 0.5
             Divider.Parent = Header
             
             local Options = Instance.new('Frame')
@@ -1262,8 +1279,8 @@ function Library:create_ui()
                 ModuleManager._state = true
                 settings.callback(ModuleManager._state)
 
-                Toggle.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
-                Circle.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
+                Toggle.BackgroundColor3 = ColorPalette.Accent
+                Circle.BackgroundColor3 = ColorPalette.AccentLight
                 Circle.Position = UDim2.fromScale(0.53, 0.5)
             end
 
@@ -1380,7 +1397,7 @@ function Library:create_ui()
                 -- Title Label
                 local Title = Instance.new('TextLabel')
                 Title.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-                Title.TextColor3 = Color3.fromRGB(210, 210, 210)
+                Title.TextColor3 = ColorPalette.AccentLight
                 Title.Text = settings.title or "Title"
                 Title.Size = UDim2.new(1, -10, 0, 20)
                 Title.Position = UDim2.new(0, 5, 0, 5)
@@ -1394,7 +1411,7 @@ function Library:create_ui()
                 -- Body Text
                 local Body = Instance.new('TextLabel')
                 Body.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-                Body.TextColor3 = Color3.fromRGB(180, 180, 180)
+                Body.TextColor3 = ColorPalette.TextSecondary
                 
                 if not settings.rich then
                     Body.Text = settings.text or "Skibidi"
@@ -1464,7 +1481,7 @@ function Library:create_ui()
                 -- Body Text
                 local Body = Instance.new('TextLabel')
                 Body.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-                Body.TextColor3 = Color3.fromRGB(180, 180, 180)
+                Body.TextColor3 = ColorPalette.TextSecondary
             
                 if not settings.rich then
                     Body.Text = settings.text or "Skibidi" -- Default text
@@ -1632,7 +1649,7 @@ function Library:create_ui()
                 KeybindBox.Size = UDim2.fromOffset(14, 14)
                 KeybindBox.Position = UDim2.new(1, -35, 0.5, 0)
                 KeybindBox.AnchorPoint = Vector2.new(0, 0.5)
-                KeybindBox.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
+                KeybindBox.BackgroundColor3 = ColorPalette.Accent
                 KeybindBox.BorderSizePixel = 0
                 KeybindBox.Parent = Checkbox
             
@@ -1656,12 +1673,12 @@ function Library:create_ui()
                 local Box = Instance.new("Frame")
                 Box.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 Box.AnchorPoint = Vector2.new(1, 0.5)
-                Box.BackgroundTransparency = 0.9
+                Box.BackgroundTransparency = 0.8
                 Box.Position = UDim2.new(1, 0, 0.5, 0)
                 Box.Name = "Box"
                 Box.Size = UDim2.new(0, 15, 0, 15)
                 Box.BorderSizePixel = 0
-                Box.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
+                Box.BackgroundColor3 = ColorPalette.Accent
                 Box.Parent = Checkbox
             
                 local BoxCorner = Instance.new("UICorner")
@@ -1675,7 +1692,7 @@ function Library:create_ui()
                 Fill.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 Fill.Name = "Fill"
                 Fill.BorderSizePixel = 0
-                Fill.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
+                Fill.BackgroundColor3 = ColorPalette.AccentLight
                 Fill.Parent = Box
             
                 local FillCorner = Instance.new("UICorner")
@@ -1817,7 +1834,8 @@ function Library:create_ui()
                     -- Create the inner divider frame that will be placed in the middle of the OuterFrame
                     local Divider = Instance.new('Frame')
                     Divider.Size = UDim2.new(1, 0, 0, dividerHeight)
-                    Divider.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- White color
+                    Divider.BackgroundColor3 = ColorPalette.Accent
+                    Divider.BackgroundTransparency = 0.5 -- White color
                     Divider.BorderSizePixel = 0
                     Divider.Name = 'Divider'
                     Divider.Parent = OuterFrame
@@ -1910,7 +1928,7 @@ function Library:create_ui()
                 Drag.Name = 'Drag'
                 Drag.Size = UDim2.new(0, 207, 0, 4)
                 Drag.BorderSizePixel = 0
-                Drag.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
+                Drag.BackgroundColor3 = ColorPalette.Accent
                 Drag.Parent = Slider
                 
                 local UICorner = Instance.new('UICorner')
@@ -1925,7 +1943,7 @@ function Library:create_ui()
                 Fill.Name = 'Fill'
                 Fill.Size = UDim2.new(0, 103, 0, 4)
                 Fill.BorderSizePixel = 0
-                Fill.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
+                Fill.BackgroundColor3 = ColorPalette.AccentLight
                 Fill.Parent = Drag
                 
                 local UICorner = Instance.new('UICorner')
@@ -1934,8 +1952,8 @@ function Library:create_ui()
                 
                 local UIGradient = Instance.new('UIGradient')
                 UIGradient.Color = ColorSequence.new{
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(79, 79, 79))
+                    ColorSequenceKeypoint.new(0, ColorPalette.AccentLight),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 70, 200))
                 }
                 UIGradient.Parent = Fill
                 
@@ -1946,7 +1964,7 @@ function Library:create_ui()
                 Circle.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 Circle.Size = UDim2.new(0, 6, 0, 6)
                 Circle.BorderSizePixel = 0
-                Circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                Circle.BackgroundColor3 = ColorPalette.AccentLight
                 Circle.Parent = Fill
                 
                 local UICorner = Instance.new('UICorner')
@@ -2113,12 +2131,12 @@ function Library:create_ui()
                 Box.ClipsDescendants = true
                 Box.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 Box.AnchorPoint = Vector2.new(0.5, 0)
-                Box.BackgroundTransparency = 0.8999999761581421
+                Box.BackgroundTransparency = 0.8
                 Box.Position = UDim2.new(0.5, 0, 1.2000000476837158, 0)
                 Box.Name = 'Box'
                 Box.Size = UDim2.new(0, 207, 0, 22)
                 Box.BorderSizePixel = 0
-                Box.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
+                Box.BackgroundColor3 = ColorPalette.Accent
                 Box.Parent = TextLabel
                 
                 local UICorner = Instance.new('UICorner')
@@ -2497,7 +2515,7 @@ function Library:create_ui()
                 local KeybindBox = Instance.new("TextLabel")
                 KeybindBox.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal);
                 KeybindBox.Size = UDim2.new(0, 15, 0, 15)
-                KeybindBox.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
+                KeybindBox.BackgroundColor3 = ColorPalette.Accent
                 KeybindBox.TextColor3 = Color3.fromRGB(255, 255, 255)
                 KeybindBox.TextSize = 11
                 KeybindBox.BackgroundTransparency = 1
@@ -4411,7 +4429,7 @@ if isMobile then
                 mainFrame.Name = "SpamPanel"
                 mainFrame.Position = UDim2.new(0.5, -140, 0.7, -80)
                 mainFrame.Size = UDim2.new(0, 280, 0, 160)
-                mainFrame.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
+                mainFrame.BackgroundColor3 = ColorPalette.Primary
                 mainFrame.BackgroundTransparency = 0.1
                 mainFrame.BorderSizePixel = 0
                 mainFrame.Active = true
@@ -4423,7 +4441,7 @@ if isMobile then
                 uiCorner.Parent = mainFrame
 
                 local uiStroke = Instance.new("UIStroke")
-                uiStroke.Color = Color3.fromRGB(80, 90, 110)
+                uiStroke.Color = ColorPalette.Accent
                 uiStroke.Thickness = 2
                 uiStroke.Transparency = 0.3
                 uiStroke.Parent = mainFrame
@@ -6213,7 +6231,7 @@ local BallStats = misc:create_module({
                 mainFrame.Name = "MainContainer"
                 mainFrame.Size = UDim2.new(0, 220, 0, 150)
                 mainFrame.Position = UDim2.new(0.02, 0, 0.1, 0)
-                mainFrame.BackgroundColor3 = Color3.fromRGB(15, 20, 30)
+                mainFrame.BackgroundColor3 = ColorPalette.Primary
                 mainFrame.BackgroundTransparency = 0.1
                 mainFrame.BorderSizePixel = 0
                 mainFrame.Parent = ballStatsUI
@@ -6223,7 +6241,7 @@ local BallStats = misc:create_module({
                 uiCorner.Parent = mainFrame
 
                 local uiStroke = Instance.new("UIStroke")
-                uiStroke.Color = Color3.fromRGB(60, 75, 100)
+                uiStroke.Color = ColorPalette.Accent
                 uiStroke.Thickness = 2
                 uiStroke.Transparency = 0.3
                 uiStroke.Parent = mainFrame
