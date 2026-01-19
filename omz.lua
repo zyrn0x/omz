@@ -110,7 +110,7 @@ getgenv().GG = {
         }
     },
     
-    CurrentTheme = "Dark",
+    CurrentTheme = "Neon",
     
     ApplyTheme = function(self, themeName)
         if self.Themes[themeName] then
