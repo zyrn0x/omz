@@ -2901,17 +2901,23 @@ while task.wait() and (not swordsController) do
 end
 
 function getSlashName(swordName)
-    local slashName = swordInstances:GetSword(swordName)
-    return (slashName and slashName.SlashName) or "SlashEffect"
+    local swordData = swordInstances:GetSword(swordName)
+    if not swordData then
+        warn("Sword not found:", swordName)
+        return "SlashEffect" -- Valeur par défaut
+    end
+    return swordData.SlashName or "SlashEffect"
 end
 
 function setSword()
     if not getgenv().skinChanger then return end
     
-    setupvalue(rawget(swordInstances,"EquipSwordTo"),2,false)
-    
-    swordInstances:EquipSwordTo(plr.Character, getgenv().swordModel)
-    swordsController:SetSword(getgenv().swordAnimations)
+    if not pcall(function()
+        swordInstances:EquipSwordTo(plr.Character, getgenv().swordModel)
+        swordsController:SetSword(getgenv().swordAnimations)
+    end) then
+        warn("Failed to set sword - character might not be ready")
+    end
 end
 
 local playParryFunc
@@ -2957,8 +2963,22 @@ end)
 table.insert(clashConnections, getconnections(rs.Remotes.ParrySuccessAll.OnClientEvent)[1])
 
 getgenv().updateSword = function()
-    getgenv().slashName = getSlashName(getgenv().swordFX)
-    setSword()
+    local newSlashName = getSlashName(getgenv().swordFX)
+    if newSlashName then
+        getgenv().slashName = newSlashName
+        setSword()
+        Library.SendNotification({
+            title = "Skin Changer",
+            text = "Sword updated to: " .. getgenv().swordModel,
+            duration = 3
+        })
+    else
+        Library.SendNotification({
+            title = "Skin Changer Error",
+            text = "Sword not found: " .. getgenv().swordFX,
+            duration = 5
+        })
+    end
 end
 
 task.spawn(function()
