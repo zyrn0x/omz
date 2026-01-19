@@ -4461,7 +4461,7 @@ if isMobile then
                 title.Size = UDim2.new(1, -50, 1, 0)
                 title.Position = UDim2.new(0, 15, 0, 0)
                 title.Text = "SPAM CONTROL"
-                title.TextColor3 = Color3.fromRGB(180, 200, 255)
+                title.TextColor3 = ColorPalette.AccentLight
                 title.TextSize = 18
                 title.Font = Enum.Font.GothamSemibold
                 title.BackgroundTransparency = 1
@@ -6267,7 +6267,7 @@ local BallStats = misc:create_module({
                 title.Size = UDim2.new(1, 0, 1, 0)
                 title.Position = UDim2.new(0, -1, 0, -1)
                 title.Text = "VELOCITY MONITOR"
-                title.TextColor3 = Color3.fromRGB(152, 181, 255)
+                title.TextColor3 = ColorPalette.AccentLight
                 title.TextSize = 16
                 title.Font = Enum.Font.GothamBlack
                 title.BackgroundTransparency = 1
@@ -6293,7 +6293,7 @@ local BallStats = misc:create_module({
                 velocityText.Size = UDim2.new(1, 0, 1, -20)
                 velocityText.Position = UDim2.new(0, 0, 0, 20)
                 velocityText.Text = "0"
-                velocityText.TextColor3 = Color3.fromRGB(65, 105, 225)
+                velocityText.TextColor3 = ColorPalette.AccentLight
                 velocityText.TextSize = 28
                 velocityText.Font = Enum.Font.GothamBlack
                 velocityText.BackgroundTransparency = 1
@@ -6319,7 +6319,7 @@ local BallStats = misc:create_module({
                 peakText.Size = UDim2.new(1, 0, 1, -20)
                 peakText.Position = UDim2.new(0, 0, 0, 20)
                 peakText.Text = "0"
-                peakText.TextColor3 = Color3.fromRGB(220, 20, 60)
+                peakText.TextColor3 = Color3.fromRGB(255, 120, 200)
                 peakText.TextSize = 28
                 peakText.Font = Enum.Font.GothamBlack
                 peakText.BackgroundTransparency = 1
@@ -6341,7 +6341,7 @@ local BallStats = misc:create_module({
                 progressBar = Instance.new("Frame")
                 progressBar.Size = UDim2.new(0, 0, 1, 0)
                 progressBar.Position = UDim2.new(0, 0, 0, 0)
-                progressBar.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+                progressBar.BackgroundColor3 = ColorPalette.AccentLight
                 progressBar.BorderSizePixel = 0
                 progressBar.Parent = barContainer
                 
@@ -6349,12 +6349,11 @@ local BallStats = misc:create_module({
                 progressCorner.CornerRadius = UDim.new(0, 6)
                 progressCorner.Parent = progressBar
                 
-                -- Gradient effect
-                local gradient = Instance.new("UIGradient")
+                local gradient = Instance.new('UIGradient')
                 gradient.Color = ColorSequence.new({
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 20, 60)),  -- Red
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(65, 105, 225))   -- Blue
-                })
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 120, 200)),
+                    ColorSequenceKeypoint.new(1, ColorPalette.AccentLight)
+            })
                 gradient.Parent = progressBar
                 
                 -- Percentage text inside bar
