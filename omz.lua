@@ -6714,56 +6714,6 @@ local BallStats = misc:create_module({
     })
 end
 
-    local AbilityExploit = world:create_module({
-        title = 'Ability Exploit',
-        flag = 'AbilityExploit',
-        description = 'Ability Exploit',    
-        section = 'right',
-    
-        callback = function(value)
-            getgenv().AbilityExploit = value
-        end
-    })
-
-    AbilityExploit:create_checkbox({
-        title = 'Thunder Dash No Cooldown',
-        flag = 'ThunderDashNoCooldown',
-        callback = function(value)
-            getgenv().ThunderDashNoCooldown = value
-            if getgenv().AbilityExploit and getgenv().ThunderDashNoCooldown then
-                local thunderModule = game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Abilities"):WaitForChild("Thunder Dash")
-                local mod = require(thunderModule)
-                mod.cooldown = 0
-                mod.cooldownReductionPerUpgrade = 0
-            end
-        end
-    })
-
-    AbilityExploit:create_checkbox({
-        title = 'Continuity Zero Exploit',
-        flag  = 'ContinuityZeroExploit',
-        callback = function(value)
-            getgenv().ContinuityZeroExploit = value
-    
-            if getgenv().AbilityExploit and getgenv().ContinuityZeroExploit then
-                local ContinuityZeroRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("UseContinuityPortal")
-                local oldNamecall
-                oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-                    local method = getnamecallmethod()
-    
-                    if self == ContinuityZeroRemote and method == "FireServer" then
-                        return oldNamecall(self,
-                            CFrame.new(9e17, 9e16, 9e15, 9e14, 9e13, 9e12, 9e11, 9e10, 9e9, 9e8, 9e7, 9e6),
-                            player.Name
-                        )
-                    end
-    
-                    return oldNamecall(self, ...)
-                end)
-            end
-        end
-    })
-
 ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent:Connect(function(_, root)
     if root.Parent and root.Parent ~= Player.Character then
         if root.Parent.Parent ~= workspace.Alive then
