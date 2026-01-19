@@ -46,17 +46,6 @@ local Players = cloneref(game:GetService('Players'))
 local CoreGui = cloneref(game:GetService('CoreGui'))
 local Debris = cloneref(game:GetService('Debris'))
 
-local ColorPalette = {
-    Primary = Color3.fromRGB(30, 20, 45),        -- Fond principal violet foncé
-    Secondary = Color3.fromRGB(45, 30, 65),      -- Fond secondaire
-    Accent = Color3.fromRGB(160, 100, 255),      -- Accent violet vif
-    AccentLight = Color3.fromRGB(180, 140, 255), -- Violet clair
-    Text = Color3.fromRGB(240, 230, 255),        -- Texte principal
-    TextSecondary = Color3.fromRGB(200, 190, 220), -- Texte secondaire
-    Success = Color3.fromRGB(120, 230, 150),     -- Vert pour succès
-    Error = Color3.fromRGB(255, 100, 150)        -- Rose pour erreurs
-}
-
 local mouse = Players.LocalPlayer:GetMouse()
 local old_Nury = CoreGui:FindFirstChild('Nury')
 
@@ -182,7 +171,7 @@ end
 function AcrylicBlur:create_root()
     local part = Instance.new('Part')
     part.Name = 'Root'
-    part.Color = Color3.fromRGB(60, 40, 90)
+    part.Color = Color3.new(0, 0, 0)
     part.Material = Enum.Material.Glass
     part.Size = Vector3.new(1, 1, 0)  -- Use a thin part
     part.Anchored = true
@@ -403,8 +392,7 @@ function Library.SendNotification(settings)
     local InnerFrame = Instance.new("Frame")
     InnerFrame.Size = UDim2.new(1, 0, 0, 60)  -- Start with an initial height, width will adapt
     InnerFrame.Position = UDim2.new(0, 0, 0, 0)  -- Positioned inside the outer notification frame
-    InnerFrame.BackgroundColor3 = ColorPalette.Secondary
-    InnerFrame.BackgroundTransparency = 0.05
+    InnerFrame.BackgroundColor3 = Color3.fromRGB(32, 38, 51)
     InnerFrame.BackgroundTransparency = 0.1
     InnerFrame.BorderSizePixel = 0
     InnerFrame.Name = "InnerFrame"
@@ -419,7 +407,7 @@ function Library.SendNotification(settings)
     -- Title Label (with automatic size support)
     local Title = Instance.new("TextLabel")
     Title.Text = settings.title or "Notification Title"
-    Title.TextColor3 = ColorPalette.AccentLight
+    Title.TextColor3 = Color3.fromRGB(210, 210, 210)
     Title.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
     Title.TextSize = 14
     Title.Size = UDim2.new(1, -10, 0, 20)  -- Width is 1 (100% of parent width), height is fixed initially
@@ -434,7 +422,7 @@ function Library.SendNotification(settings)
     -- Body Text (with automatic size support)
     local Body = Instance.new("TextLabel")
     Body.Text = settings.text or "This is the body of the notification."
-    Body.TextColor3 = ColorPalette.TextSecondary
+    Body.TextColor3 = Color3.fromRGB(180, 180, 180)
     Body.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
     Body.TextSize = 12
     Body.Size = UDim2.new(1, -10, 0, 30)  -- Width is 1 (100% of parent width), height is fixed initially
@@ -544,8 +532,8 @@ function Library:create_ui()
     Container.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Container.AnchorPoint = Vector2.new(0.5, 0.5)
     Container.Name = 'Container'
-    Container.BackgroundTransparency = 0.05
-    Container.BackgroundColor3 = ColorPalette.Primary
+    Container.BackgroundTransparency = 0.05000000074505806
+    Container.BackgroundColor3 = Color3.fromRGB(12, 13, 15)
     Container.Position = UDim2.new(0.5, 0, 0.5, 0)
     Container.Size = UDim2.new(0, 0, 0, 0)
     Container.Active = true
@@ -557,9 +545,8 @@ function Library:create_ui()
     UICorner.Parent = Container
     
     local UIStroke = Instance.new('UIStroke')
-    UIStroke.Color = ColorPalette.Accent
-    UIStroke.Transparency = 0.3
-    UIStroke.Thickness = 2
+    UIStroke.Color = Color3.fromRGB(52, 66, 89)
+    UIStroke.Transparency = 0.5
     UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     UIStroke.Parent = Container
     
@@ -594,8 +581,8 @@ function Library:create_ui()
     
     local ClientName = Instance.new('TextLabel')
     ClientName.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-    ClientName.TextColor3 = ColorPalette.AccentLight
-    ClientName.TextTransparency = 0.1
+    ClientName.TextColor3 = Color3.fromRGB(152, 181, 255)
+    ClientName.TextTransparency = 0.20000000298023224
     ClientName.Text = 'Omz'
     ClientName.Name = 'ClientName'
     ClientName.Size = UDim2.new(0, 31, 0, 13)
@@ -611,8 +598,8 @@ function Library:create_ui()
     
     local UIGradient = Instance.new('UIGradient')
     UIGradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, ColorPalette.AccentLight),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(140, 80, 220))
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(155, 155, 155)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))
     }
     UIGradient.Parent = ClientName
     
@@ -622,7 +609,7 @@ function Library:create_ui()
     Pin.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Pin.Size = UDim2.new(0, 2, 0, 16)
     Pin.BorderSizePixel = 0
-    Pin.BackgroundColor3 = ColorPalette.Accent
+    Pin.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
     Pin.Parent = Handler
     
     local UICorner = Instance.new('UICorner')
@@ -630,7 +617,7 @@ function Library:create_ui()
     UICorner.Parent = Pin
     
     local Icon = Instance.new('ImageLabel')
-    Icon.ImageColor3 = ColorPalette.AccentLight
+    Icon.ImageColor3 = Color3.fromRGB(152, 181, 255)
     Icon.ScaleType = Enum.ScaleType.Fit
     Icon.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Icon.AnchorPoint = Vector2.new(0, 0.5)
@@ -650,8 +637,7 @@ function Library:create_ui()
     Divider.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Divider.Size = UDim2.new(0, 1, 0, 479)
     Divider.BorderSizePixel = 0
-    Divider.BackgroundColor3 = ColorPalette.Accent
-    Divider.BackgroundTransparency = 0.5
+    Divider.BackgroundColor3 = Color3.fromRGB(52, 66, 89)
     Divider.Parent = Handler
     
     local Sections = Instance.new('Folder')
@@ -876,7 +862,7 @@ function Library:create_ui()
         Tab.Size = UDim2.new(0, 129, 0, 38)
         Tab.BorderSizePixel = 0
         Tab.TextSize = 14
-        Tab.BackgroundColor3 = ColorPalette.Secondary
+        Tab.BackgroundColor3 = Color3.fromRGB(22, 28, 38)
         Tab.Parent = Tabs
         Tab.LayoutOrder = self._tab
         
@@ -886,8 +872,8 @@ function Library:create_ui()
         
         local TextLabel = Instance.new('TextLabel')
         TextLabel.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-        TextLabel.TextColor3 = ColorPalette.AccentLight
-        TextLabel.TextTransparency = 0.1
+        TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        TextLabel.TextTransparency = 0.7 -- 0.800000011920929
         TextLabel.Text = title
         TextLabel.Size = UDim2.new(0, font_size.X, 0, 16)
         TextLabel.AnchorPoint = Vector2.new(0, 0.5)
@@ -902,9 +888,9 @@ function Library:create_ui()
         
         local UIGradient = Instance.new('UIGradient')
         UIGradient.Color = ColorSequence.new{
-            ColorSequenceKeypoint.new(0, ColorPalette.AccentLight),
-            ColorSequenceKeypoint.new(0.7, Color3.fromRGB(140, 100, 220)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 60, 180))
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+            ColorSequenceKeypoint.new(0.7, Color3.fromRGB(155, 155, 155)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(58, 58, 58))
         }
         UIGradient.Parent = TextLabel
         
@@ -919,7 +905,7 @@ function Library:create_ui()
         Icon.Image = icon
         Icon.Size = UDim2.new(0, 12, 0, 12)
         Icon.BorderSizePixel = 0
-        Icon.BackgroundColor3 = ColorPalette.AccentLight
+        Icon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         Icon.Parent = Tab
 
         local LeftSection = Instance.new('ScrollingFrame')
@@ -1012,8 +998,7 @@ function Library:create_ui()
             Module.Name = 'Module'
             Module.Size = UDim2.new(0, 241, 0, 93)
             Module.BorderSizePixel = 0
-            Module.BackgroundColor3 = ColorPalette.Secondary
-            Module.BackgroundTransparency = 0.2
+            Module.BackgroundColor3 = Color3.fromRGB(22, 28, 38)
             Module.Parent = settings.section
 
             local UIListLayout = Instance.new('UIListLayout')
@@ -1025,8 +1010,8 @@ function Library:create_ui()
             UICorner.Parent = Module
             
             local UIStroke = Instance.new('UIStroke')
-            UIStroke.Color = ColorPalette.Accent
-            UIStroke.Transparency = 0.4
+            UIStroke.Color = Color3.fromRGB(52, 66, 89)
+            UIStroke.Transparency = 0.5
             UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
             UIStroke.Parent = Module
             
@@ -1061,7 +1046,7 @@ function Library:create_ui()
             
             local ModuleName = Instance.new('TextLabel')
             ModuleName.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-            ModuleName.TextColor3 = ColorPalette.AccentLight
+            ModuleName.TextColor3 = Color3.fromRGB(152, 181, 255)
             ModuleName.TextTransparency = 0.20000000298023224
             if not settings.rich then
                 ModuleName.Text = settings.title or "Skibidi"
@@ -1083,7 +1068,7 @@ function Library:create_ui()
             
             local Description = Instance.new('TextLabel')
             Description.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-            Description.TextColor3 = ColorPalette.TextSecondary
+            Description.TextColor3 = Color3.fromRGB(152, 181, 255)
             Description.TextTransparency = 0.699999988079071
             Description.Text = settings.description
             Description.Name = 'Description'
@@ -1105,7 +1090,7 @@ function Library:create_ui()
             Toggle.BorderColor3 = Color3.fromRGB(0, 0, 0)
             Toggle.Size = UDim2.new(0, 25, 0, 12)
             Toggle.BorderSizePixel = 0
-            Toggle.BackgroundColor3 = ColorPalette.Accent
+            Toggle.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
             Toggle.Parent = Header
             
             local UICorner = Instance.new('UICorner')
@@ -1120,7 +1105,7 @@ function Library:create_ui()
             Circle.Name = 'Circle'
             Circle.Size = UDim2.new(0, 12, 0, 12)
             Circle.BorderSizePixel = 0
-            Circle.BackgroundColor3 = ColorPalette.AccentLight
+            Circle.BackgroundColor3 = Color3.fromRGB(66, 80, 115)
             Circle.Parent = Toggle
             
             local UICorner = Instance.new('UICorner')
@@ -1134,7 +1119,7 @@ function Library:create_ui()
             Keybind.BorderColor3 = Color3.fromRGB(0, 0, 0)
             Keybind.Size = UDim2.new(0, 33, 0, 15)
             Keybind.BorderSizePixel = 0
-            Keybind.BackgroundColor3 = ColorPalette.Accent
+            Keybind.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
             Keybind.Parent = Header
             
             local UICorner = Instance.new('UICorner')
@@ -1164,8 +1149,7 @@ function Library:create_ui()
             Divider.Name = 'Divider'
             Divider.Size = UDim2.new(0, 241, 0, 1)
             Divider.BorderSizePixel = 0
-            Divider.BackgroundColor3 = ColorPalette.Accent
-            Divider.BackgroundTransparency = 0.5
+            Divider.BackgroundColor3 = Color3.fromRGB(52, 66, 89)
             Divider.Parent = Header
             
             local Divider = Instance.new('Frame')
@@ -1176,8 +1160,7 @@ function Library:create_ui()
             Divider.Name = 'Divider'
             Divider.Size = UDim2.new(0, 241, 0, 1)
             Divider.BorderSizePixel = 0
-            Divider.BackgroundColor3 = ColorPalette.Accent
-            Divider.BackgroundTransparency = 0.5
+            Divider.BackgroundColor3 = Color3.fromRGB(52, 66, 89)
             Divider.Parent = Header
             
             local Options = Instance.new('Frame')
@@ -1279,8 +1262,8 @@ function Library:create_ui()
                 ModuleManager._state = true
                 settings.callback(ModuleManager._state)
 
-                Toggle.BackgroundColor3 = ColorPalette.Accent
-                Circle.BackgroundColor3 = ColorPalette.AccentLight
+                Toggle.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
+                Circle.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
                 Circle.Position = UDim2.fromScale(0.53, 0.5)
             end
 
@@ -1397,7 +1380,7 @@ function Library:create_ui()
                 -- Title Label
                 local Title = Instance.new('TextLabel')
                 Title.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-                Title.TextColor3 = ColorPalette.AccentLight
+                Title.TextColor3 = Color3.fromRGB(210, 210, 210)
                 Title.Text = settings.title or "Title"
                 Title.Size = UDim2.new(1, -10, 0, 20)
                 Title.Position = UDim2.new(0, 5, 0, 5)
@@ -1411,7 +1394,7 @@ function Library:create_ui()
                 -- Body Text
                 local Body = Instance.new('TextLabel')
                 Body.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-                Body.TextColor3 = ColorPalette.TextSecondary
+                Body.TextColor3 = Color3.fromRGB(180, 180, 180)
                 
                 if not settings.rich then
                     Body.Text = settings.text or "Skibidi"
@@ -1481,7 +1464,7 @@ function Library:create_ui()
                 -- Body Text
                 local Body = Instance.new('TextLabel')
                 Body.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-                Body.TextColor3 = ColorPalette.TextSecondary
+                Body.TextColor3 = Color3.fromRGB(180, 180, 180)
             
                 if not settings.rich then
                     Body.Text = settings.text or "Skibidi" -- Default text
@@ -1649,7 +1632,7 @@ function Library:create_ui()
                 KeybindBox.Size = UDim2.fromOffset(14, 14)
                 KeybindBox.Position = UDim2.new(1, -35, 0.5, 0)
                 KeybindBox.AnchorPoint = Vector2.new(0, 0.5)
-                KeybindBox.BackgroundColor3 = ColorPalette.Accent
+                KeybindBox.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
                 KeybindBox.BorderSizePixel = 0
                 KeybindBox.Parent = Checkbox
             
@@ -1673,12 +1656,12 @@ function Library:create_ui()
                 local Box = Instance.new("Frame")
                 Box.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 Box.AnchorPoint = Vector2.new(1, 0.5)
-                Box.BackgroundTransparency = 0.8
+                Box.BackgroundTransparency = 0.9
                 Box.Position = UDim2.new(1, 0, 0.5, 0)
                 Box.Name = "Box"
                 Box.Size = UDim2.new(0, 15, 0, 15)
                 Box.BorderSizePixel = 0
-                Box.BackgroundColor3 = ColorPalette.Accent
+                Box.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
                 Box.Parent = Checkbox
             
                 local BoxCorner = Instance.new("UICorner")
@@ -1692,7 +1675,7 @@ function Library:create_ui()
                 Fill.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 Fill.Name = "Fill"
                 Fill.BorderSizePixel = 0
-                Fill.BackgroundColor3 = ColorPalette.AccentLight
+                Fill.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
                 Fill.Parent = Box
             
                 local FillCorner = Instance.new("UICorner")
@@ -1834,8 +1817,7 @@ function Library:create_ui()
                     -- Create the inner divider frame that will be placed in the middle of the OuterFrame
                     local Divider = Instance.new('Frame')
                     Divider.Size = UDim2.new(1, 0, 0, dividerHeight)
-                    Divider.BackgroundColor3 = ColorPalette.Accent
-                    Divider.BackgroundTransparency = 0.5 -- White color
+                    Divider.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- White color
                     Divider.BorderSizePixel = 0
                     Divider.Name = 'Divider'
                     Divider.Parent = OuterFrame
@@ -1928,7 +1910,7 @@ function Library:create_ui()
                 Drag.Name = 'Drag'
                 Drag.Size = UDim2.new(0, 207, 0, 4)
                 Drag.BorderSizePixel = 0
-                Drag.BackgroundColor3 = ColorPalette.Accent
+                Drag.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
                 Drag.Parent = Slider
                 
                 local UICorner = Instance.new('UICorner')
@@ -1943,7 +1925,7 @@ function Library:create_ui()
                 Fill.Name = 'Fill'
                 Fill.Size = UDim2.new(0, 103, 0, 4)
                 Fill.BorderSizePixel = 0
-                Fill.BackgroundColor3 = ColorPalette.AccentLight
+                Fill.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
                 Fill.Parent = Drag
                 
                 local UICorner = Instance.new('UICorner')
@@ -1952,8 +1934,8 @@ function Library:create_ui()
                 
                 local UIGradient = Instance.new('UIGradient')
                 UIGradient.Color = ColorSequence.new{
-                    ColorSequenceKeypoint.new(0, ColorPalette.AccentLight),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 70, 200))
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(79, 79, 79))
                 }
                 UIGradient.Parent = Fill
                 
@@ -1964,7 +1946,7 @@ function Library:create_ui()
                 Circle.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 Circle.Size = UDim2.new(0, 6, 0, 6)
                 Circle.BorderSizePixel = 0
-                Circle.BackgroundColor3 = ColorPalette.AccentLight
+                Circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
                 Circle.Parent = Fill
                 
                 local UICorner = Instance.new('UICorner')
@@ -2131,12 +2113,12 @@ function Library:create_ui()
                 Box.ClipsDescendants = true
                 Box.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 Box.AnchorPoint = Vector2.new(0.5, 0)
-                Box.BackgroundTransparency = 0.8
+                Box.BackgroundTransparency = 0.8999999761581421
                 Box.Position = UDim2.new(0.5, 0, 1.2000000476837158, 0)
                 Box.Name = 'Box'
                 Box.Size = UDim2.new(0, 207, 0, 22)
                 Box.BorderSizePixel = 0
-                Box.BackgroundColor3 = ColorPalette.Accent
+                Box.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
                 Box.Parent = TextLabel
                 
                 local UICorner = Instance.new('UICorner')
@@ -2515,7 +2497,7 @@ function Library:create_ui()
                 local KeybindBox = Instance.new("TextLabel")
                 KeybindBox.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal);
                 KeybindBox.Size = UDim2.new(0, 15, 0, 15)
-                KeybindBox.BackgroundColor3 = ColorPalette.Accent
+                KeybindBox.BackgroundColor3 = Color3.fromRGB(152, 181, 255)
                 KeybindBox.TextColor3 = Color3.fromRGB(255, 255, 255)
                 KeybindBox.TextSize = 11
                 KeybindBox.BackgroundTransparency = 1
@@ -4156,23 +4138,74 @@ do
             end
 
             if value then
-                
-Connections_Manager['Auto Spam'] = RunService.PreSimulation:Connect(function()
-    if not Auto_Spam._state then return end
+                Connections_Manager['Auto Spam'] = RunService.PreSimulation:Connect(function()
+                    local Ball = Auto_Parry.Get_Ball()
 
-    local now = tick()
-    Auto_Spam._last = Auto_Spam._last or 0
+                    if not Ball then
+                        return
+                    end
 
-    if now - Auto_Spam._last < math.random(20, 30) / 100 then
-        return
-    end
+                    local Zoomies = Ball:FindFirstChild('zoomies')
 
-    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-    task.wait(0.05)
-    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-    Auto_Spam._last = now
-end)
+                    if not Zoomies then
+                        return
+                    end
 
+                    Auto_Parry.Closest_Player()
+
+                    local Ping = game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue()
+
+                    local Ping_Threshold = math.clamp(Ping / 20, 0.5, 8)
+
+                    local Ball_Target = Ball:GetAttribute('target')
+
+                    local Ball_Properties = Auto_Parry:Get_Ball_Properties()
+                    local Entity_Properties = Auto_Parry:Get_Entity_Properties()
+
+                    local Spam_Accuracy = Auto_Parry.Spam_Service({
+                        Ball_Properties = Ball_Properties,
+                        Entity_Properties = Entity_Properties,
+                        Ping = Ping_Threshold
+                    })
+
+                    local Target_Position = Closest_Entity.PrimaryPart.Position
+                    local Target_Distance = Player:DistanceFromCharacter(Target_Position)
+
+                    local Direction = (Player.Character.PrimaryPart.Position - Ball.Position).Unit
+                    local Ball_Direction = Zoomies.VectorVelocity.Unit
+
+                    local Dot = Direction:Dot(Ball_Direction)
+
+                    local Distance = Player:DistanceFromCharacter(Ball.Position)
+
+                    if not Ball_Target then
+                        return
+                    end
+
+                    if Target_Distance > Spam_Accuracy * 1.5 or Distance > Spam_Accuracy * 1.5 then
+                        return
+                    end
+
+                    local Pulsed = Player.Character:GetAttribute('Pulsed')
+
+                    if Pulsed then
+                        return
+                    end
+
+                    if Ball_Target == tostring(Player) and Target_Distance > 30 and Distance > 30 then
+                        return
+                    end
+
+                    local threshold = ParryThreshold
+
+                    if Distance <= Spam_Accuracy and Parries > threshold then
+                        if getgenv().SpamParryKeypress then
+                            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game) 
+                        else
+                            Auto_Parry.Parry(Selected_Parry_Type)
+                        end
+                    end
+                end)
             else
                 if Connections_Manager['Auto Spam'] then
                     Connections_Manager['Auto Spam']:Disconnect()
@@ -4333,25 +4366,18 @@ end)
                 end
             end
             if value then
-                
-Connections_Manager['Manual Spam'] = RunService.PreSimulation:Connect(function()
-    if not Manual_Spam._state then return end
+                Connections_Manager['Manual Spam'] = RunService.PreSimulation:Connect(function()
+                    if getgenv().spamui then
+                        return
+                    end
 
-    local now = tick()
-    Manual_Spam._last = Manual_Spam._last or 0
+                    if getgenv().ManualSpamKeypress then
+                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game) 
+                    else
+                        Auto_Parry.Parry(Selected_Parry_Type)
+                    end
 
-    if now - Manual_Spam._last < math.random(25, 35) / 100 then
-        return
-    end
-
-    if UserInputService:IsKeyDown(Enum.KeyCode.Q) then
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-        task.wait(0.05)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-        Manual_Spam._last = now
-    end
-end)
-
+                end)
             else
                 if Connections_Manager['Manual Spam'] then
                     Connections_Manager['Manual Spam']:Disconnect()
@@ -4363,82 +4389,303 @@ end)
     
     ManualSpam:change_state(false)
 
-    if isMobile then
-        ManualSpam:create_checkbox({
-            title = "UI",
-            flag = "Manual_Spam_UI",
-            callback = function(value: boolean)
-                getgenv().spamui = value
-        
-                if value then
-                    local gui = Instance.new("ScreenGui")
-                    gui.Name = "ManualSpamUI"
-                    gui.ResetOnSpawn = false
-                    gui.Parent = game.CoreGui
-        
-                    local frame = Instance.new("Frame")
-                    frame.Name = "MainFrame"
-                    frame.Position = UDim2.new(0, 20, 0, 20)
-                    frame.Size = UDim2.new(0, 200, 0, 100)
-                    frame.BackgroundColor3 = Color3.fromRGB(10, 10, 50)
-                    frame.BackgroundTransparency = 0.3
-                    frame.BorderSizePixel = 0
-                    frame.Active = true
-                    frame.Draggable = true
-                    frame.Parent = gui
-        
-                    local uiCorner = Instance.new("UICorner")
-                    uiCorner.CornerRadius = UDim.new(0, 12)
-                    uiCorner.Parent = frame
-        
-                    local uiStroke = Instance.new("UIStroke")
-                    uiStroke.Thickness = 2
-                    uiStroke.Color = Color3.new(0, 0, 0)
-                    uiStroke.Parent = frame
-        
-                    local button = Instance.new("TextButton")
-                    button.Name = "ClashModeButton"
-                    button.Text = "Clash Mode"
-                    button.Size = UDim2.new(0, 160, 0, 40)
-                    button.Position = UDim2.new(0.5, -80, 0.5, -20)
-                    button.BackgroundTransparency = 1
-                    button.BorderSizePixel = 0
-                    button.Font = Enum.Font.GothamSemibold
-                    button.TextColor3 = Color3.new(1, 1, 1)
-                    button.TextSize = 22
-                    button.Parent = frame
-        
-                    local activated = false
-        
-                    local function toggle()
-                        activated = not activated
-                        button.Text = activated and "Stop" or "Clash Mode"
-                        if activated then
-                            Connections_Manager['Manual Spam UI'] = game:GetService("RunService").Heartbeat:Connect(function()
-                                Auto_Parry.Parry(Selected_Parry_Type)
-                            end)
-                        else
-                            if Connections_Manager['Manual Spam UI'] then
-                                Connections_Manager['Manual Spam UI']:Disconnect()
-                                Connections_Manager['Manual Spam UI'] = nil
-                            end
+if isMobile then
+    ManualSpam:create_checkbox({
+        title = "UI",
+        flag = "Manual_Spam_UI",
+        callback = function(value: boolean)
+            getgenv().spamui = value
+
+            if value then
+                if game.CoreGui:FindFirstChild("ManualSpamUI") then
+                    game.CoreGui:FindFirstChild("ManualSpamUI"):Destroy()
+                end
+                
+                local gui = Instance.new("ScreenGui")
+                gui.Name = "ManualSpamUI"
+                gui.ResetOnSpawn = false
+                gui.Parent = game.CoreGui
+
+                -- Main container with modern design
+                local mainFrame = Instance.new("Frame")
+                mainFrame.Name = "SpamPanel"
+                mainFrame.Position = UDim2.new(0.5, -140, 0.7, -80)
+                mainFrame.Size = UDim2.new(0, 280, 0, 160)
+                mainFrame.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
+                mainFrame.BackgroundTransparency = 0.1
+                mainFrame.BorderSizePixel = 0
+                mainFrame.Active = true
+                mainFrame.Draggable = true
+                mainFrame.Parent = gui
+
+                local uiCorner = Instance.new("UICorner")
+                uiCorner.CornerRadius = UDim.new(0, 16)
+                uiCorner.Parent = mainFrame
+
+                local uiStroke = Instance.new("UIStroke")
+                uiStroke.Color = Color3.fromRGB(80, 90, 110)
+                uiStroke.Thickness = 2
+                uiStroke.Transparency = 0.3
+                uiStroke.Parent = mainFrame
+                
+                -- Title with icon
+                local titleBar = Instance.new("Frame")
+                titleBar.Size = UDim2.new(1, 0, 0, 40)
+                titleBar.BackgroundColor3 = Color3.fromRGB(25, 30, 45)
+                titleBar.BorderSizePixel = 0
+                titleBar.Parent = mainFrame
+                
+                local titleCorner = Instance.new("UICorner")
+                titleCorner.CornerRadius = UDim.new(0, 16, 0, 0)
+                titleCorner.Parent = titleBar
+                
+                local title = Instance.new("TextLabel")
+                title.Size = UDim2.new(1, -50, 1, 0)
+                title.Position = UDim2.new(0, 15, 0, 0)
+                title.Text = "SPAM CONTROL"
+                title.TextColor3 = Color3.fromRGB(180, 200, 255)
+                title.TextSize = 18
+                title.Font = Enum.Font.GothamSemibold
+                title.BackgroundTransparency = 1
+                title.Parent = titleBar
+                
+                -- Status indicator
+                local statusLight = Instance.new("Frame")
+                statusLight.Size = UDim2.new(0, 8, 0, 8)
+                statusLight.Position = UDim2.new(1, -30, 0.5, -4)
+                statusLight.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+                statusLight.BorderSizePixel = 0
+                statusLight.Parent = titleBar
+                
+                local lightCorner = Instance.new("UICorner")
+                lightCorner.CornerRadius = UDim.new(1, 0)
+                lightCorner.Parent = statusLight
+                
+                -- Main button with modern design
+                local buttonContainer = Instance.new("Frame")
+                buttonContainer.Size = UDim2.new(0.8, 0, 0, 70)
+                buttonContainer.Position = UDim2.new(0.1, 0, 0.35, 0)
+                buttonContainer.BackgroundTransparency = 1
+                buttonContainer.Parent = mainFrame
+                
+                local button = Instance.new("TextButton")
+                button.Name = "SpamButton"
+                button.Size = UDim2.new(1, 0, 1, 0)
+                button.Text = "▶ START SPAM"
+                button.TextColor3 = Color3.fromRGB(255, 255, 255)
+                button.TextSize = 20
+                button.Font = Enum.Font.GothamBold
+                button.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+                button.BorderSizePixel = 0
+                button.AutoButtonColor = false
+                button.Parent = buttonContainer
+
+                local buttonCorner = Instance.new("UICorner")
+                buttonCorner.CornerRadius = UDim.new(0, 12)
+                buttonCorner.Parent = button
+                
+                local buttonStroke = Instance.new("UIStroke")
+                buttonStroke.Color = Color3.fromRGB(100, 150, 200)
+                buttonStroke.Thickness = 2
+                buttonStroke.Parent = button
+                
+                -- Button glow effect
+                local buttonGlow = Instance.new("ImageLabel")
+                buttonGlow.Size = UDim2.new(1, 10, 1, 10)
+                buttonGlow.Position = UDim2.new(0, -5, 0, -5)
+                buttonGlow.Image = "rbxassetid://8992230676"
+                buttonGlow.ImageColor3 = Color3.fromRGB(70, 130, 180)
+                buttonGlow.ImageTransparency = 0.8
+                buttonGlow.ScaleType = Enum.ScaleType.Slice
+                buttonGlow.SliceCenter = Rect.new(20, 20, 280, 280)
+                buttonGlow.BackgroundTransparency = 1
+                buttonGlow.Parent = button
+                
+                -- Control buttons
+                local controlFrame = Instance.new("Frame")
+                controlFrame.Size = UDim2.new(0.8, 0, 0, 30)
+                controlFrame.Position = UDim2.new(0.1, 0, 0.8, 0)
+                controlFrame.BackgroundTransparency = 1
+                controlFrame.Parent = mainFrame
+                
+                local closeBtn = Instance.new("TextButton")
+                closeBtn.Size = UDim2.new(0.45, -5, 1, 0)
+                closeBtn.Position = UDim2.new(0, 0, 0, 0)
+                closeBtn.Text = "CLOSE"
+                closeBtn.TextColor3 = Color3.fromRGB(255, 150, 150)
+                closeBtn.TextSize = 14
+                closeBtn.Font = Enum.Font.Gotham
+                closeBtn.BackgroundColor3 = Color3.fromRGB(40, 45, 55)
+                closeBtn.BorderSizePixel = 0
+                closeBtn.AutoButtonColor = false
+                closeBtn.Parent = controlFrame
+                
+                local closeCorner = Instance.new("UICorner")
+                closeCorner.CornerRadius = UDim.new(0, 6)
+                closeCorner.Parent = closeBtn
+                
+                local hideBtn = Instance.new("TextButton")
+                hideBtn.Size = UDim2.new(0.45, -5, 1, 0)
+                hideBtn.Position = UDim2.new(0.55, 0, 0, 0)
+                hideBtn.Text = "MINIMIZE"
+                hideBtn.TextColor3 = Color3.fromRGB(150, 200, 255)
+                hideBtn.TextSize = 14
+                hideBtn.Font = Enum.Font.Gotham
+                hideBtn.BackgroundColor3 = Color3.fromRGB(40, 45, 55)
+                hideBtn.BorderSizePixel = 0
+                hideBtn.AutoButtonColor = false
+                hideBtn.Parent = controlFrame
+                
+                local hideCorner = Instance.new("UICorner")
+                hideCorner.CornerRadius = UDim.new(0, 6)
+                hideCorner.Parent = hideBtn
+                
+                -- State variables
+                local activated = false
+                local minimized = false
+                local originalSize = mainFrame.Size
+                local originalPosition = mainFrame.Position
+                
+                -- Toggle spam function
+                local function toggleSpam()
+                    activated = not activated
+                    
+                    if activated then
+                        button.Text = "⏸ STOP SPAM"
+                        button.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
+                        buttonStroke.Color = Color3.fromRGB(240, 90, 90)
+                        buttonGlow.ImageColor3 = Color3.fromRGB(220, 60, 60)
+                        statusLight.BackgroundColor3 = Color3.fromRGB(50, 255, 50)
+                        
+                        -- Start spamming
+                        Connections_Manager['Manual Spam UI'] = game:GetService("RunService").Heartbeat:Connect(function()
+                            Auto_Parry.Parry(Selected_Parry_Type)
+                        end)
+                    else
+                        button.Text = "▶ START SPAM"
+                        button.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+                        buttonStroke.Color = Color3.fromRGB(100, 150, 200)
+                        buttonGlow.ImageColor3 = Color3.fromRGB(70, 130, 180)
+                        statusLight.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+                        
+                        -- Stop spamming
+                        if Connections_Manager['Manual Spam UI'] then
+                            Connections_Manager['Manual Spam UI']:Disconnect()
+                            Connections_Manager['Manual Spam UI'] = nil
                         end
                     end
-        
-                    button.MouseButton1Click:Connect(toggle)
-                else
-                    if game.CoreGui:FindFirstChild("ManualSpamUI") then
-                        game.CoreGui:FindFirstChild("ManualSpamUI"):Destroy()
+                end
+                
+                -- Button hover effects
+                button.MouseEnter:Connect(function()
+                    if not activated then
+                        button.BackgroundColor3 = Color3.fromRGB(80, 140, 190)
+                        buttonGlow.ImageTransparency = 0.7
                     end
-        
+                end)
+                
+                button.MouseLeave:Connect(function()
+                    if not activated then
+                        button.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+                        buttonGlow.ImageTransparency = 0.8
+                    end
+                end)
+                
+                closeBtn.MouseEnter:Connect(function()
+                    closeBtn.BackgroundColor3 = Color3.fromRGB(50, 55, 65)
+                end)
+                
+                closeBtn.MouseLeave:Connect(function()
+                    closeBtn.BackgroundColor3 = Color3.fromRGB(40, 45, 55)
+                end)
+                
+                hideBtn.MouseEnter:Connect(function()
+                    hideBtn.BackgroundColor3 = Color3.fromRGB(50, 55, 65)
+                end)
+                
+                hideBtn.MouseLeave:Connect(function()
+                    hideBtn.BackgroundColor3 = Color3.fromRGB(40, 45, 55)
+                end)
+                
+                -- Button click events
+                button.MouseButton1Click:Connect(toggleSpam)
+                
+                closeBtn.MouseButton1Click:Connect(function()
+                    gui:Destroy()
+                    getgenv().spamui = false
                     if Connections_Manager['Manual Spam UI'] then
                         Connections_Manager['Manual Spam UI']:Disconnect()
                         Connections_Manager['Manual Spam UI'] = nil
                     end
+                end)
+                
+                hideBtn.MouseButton1Click:Connect(function()
+                    minimized = not minimized
+                    
+                    if minimized then
+                        hideBtn.Text = "MAXIMIZE"
+                        mainFrame.Size = UDim2.new(0, 280, 0, 40)
+                        titleBar.Visible = true
+                        buttonContainer.Visible = false
+                        controlFrame.Visible = false
+                    else
+                        hideBtn.Text = "MINIMIZE"
+                        mainFrame.Size = originalSize
+                        titleBar.Visible = true
+                        buttonContainer.Visible = true
+                        controlFrame.Visible = true
+                    end
+                end)
+                
+                -- Drag functionality
+                local dragging = false
+                local dragInput, dragStart, startPos
+                
+                titleBar.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        dragging = true
+                        dragStart = input.Position
+                        startPos = mainFrame.Position
+                        
+                        input.Changed:Connect(function()
+                            if input.UserInputState == Enum.UserInputState.End then
+                                dragging = false
+                            end
+                        end)
+                    end
+                end)
+                
+                titleBar.InputChanged:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseMovement then
+                        dragInput = input
+                    end
+                end)
+                
+                game:GetService("UserInputService").InputChanged:Connect(function(input)
+                    if input == dragInput and dragging then
+                        local delta = input.Position - dragStart
+                        mainFrame.Position = UDim2.new(
+                            startPos.X.Scale, 
+                            startPos.X.Offset + delta.X, 
+                            startPos.Y.Scale, 
+                            startPos.Y.Offset + delta.Y
+                        )
+                    end
+                end)
+
+            else
+                if game.CoreGui:FindFirstChild("ManualSpamUI") then
+                    game.CoreGui:FindFirstChild("ManualSpamUI"):Destroy()
+                end
+
+                if Connections_Manager['Manual Spam UI'] then
+                    Connections_Manager['Manual Spam UI']:Disconnect()
+                    Connections_Manager['Manual Spam UI'] = nil
                 end
             end
-        })
-    end
+        end
+    })
+end
     
     ManualSpam:create_checkbox({
         title = "Keypress",
@@ -6923,7 +7170,7 @@ end)
         AutoPlayModule.signal.connect("synchronize", AutoPlayModule.customService.RunService.PostSimulation, AutoPlayModule.ballUtils.getBall)
     end
     
-    
+    --[[
         TeleportService = cloneref(game:GetService("TeleportService"))
         PlaceId, JobId = game.PlaceId, game.JobId
         if #Players:GetPlayers() < 5 then
@@ -6935,7 +7182,7 @@ end)
                 TeleportService:TeleportToPlaceInstance(PlaceId, JobId, Players.LocalPlayer)
             end
         end
-
+    ]]
 
     local AutoPlay = misc:create_module({
         title = 'Auto Play',
@@ -6994,7 +7241,7 @@ end)
         end
     })
 
-
+    --[[
         local AutoServerHop = AutoPlay:create_checkbox({
             title = "Auto Server Hop",
             flag = "AutoServerHop",
@@ -7004,7 +7251,7 @@ end)
         })
 
         AutoServerHop:change_state(false)
-
+    ]]
     AutoPlay:create_divider({
     })
     
@@ -7433,23 +7680,6 @@ end)
                         end
                     end
                 end)
-            end
-        end
-    })
-
-    CustomAnnouncer:create_textbox({
-        title = "Custom Announcement Text",
-        placeholder = "Enter custom announcer text... ",
-        flag = "announcer_text",
-        callback = function(text)
-            Library._config._flags["announcer_text"] = text
-            
-            if Library._config._flags["Custom_Announcer"] then
-                local Announcer = Player.PlayerGui:WaitForChild("announcer")
-                local Winner = Announcer:FindFirstChild("Winner")
-                if Winner then
-                    Winner.Text = text
-                end
             end
         end
     })
