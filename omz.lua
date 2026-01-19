@@ -2910,42 +2910,13 @@ function getSlashName(swordName)
 end
 
 function setSword()
-    if not getgenv().skinChanger then 
-        print("Skin changer disabled")
-        return 
-    end
+    if not getgenv().skinChanger then return end
     
-    if not plr.Character then
-        print("No character found")
-        return
-    end
-    
-    local humanoid = plr.Character:FindFirstChild("Humanoid")
-    if not humanoid or humanoid.Health <= 0 then
-        print("Character not alive")
-        return
-    end
-    
-    local success, err = pcall(function()
-        -- Vérifier d'abord si l'épée existe
-        local swordData = swordInstances:GetSword(getgenv().swordModel)
-        if not swordData then
-            warn("Sword '" .. getgenv().swordModel .. "' not found in sword instances")
-            return
-        end
-        
-        print("Applying sword:", getgenv().swordModel)
+    if not pcall(function()
         swordInstances:EquipSwordTo(plr.Character, getgenv().swordModel)
         swordsController:SetSword(getgenv().swordAnimations)
-        
-        -- Forcer la mise à jour de l'attribut
-        plr:SetAttribute("CurrentlyEquippedSword", getgenv().swordModel)
-        
-        print("Sword successfully applied")
-    end)
-    
-    if not success then
-        warn("Failed to set sword:", err)
+    end) then
+        warn("Failed to set sword - character might not be ready")
     end
 end
 
@@ -2992,71 +2963,39 @@ end)
 table.insert(clashConnections, getconnections(rs.Remotes.ParrySuccessAll.OnClientEvent)[1])
 
 getgenv().updateSword = function()
-    if not getgenv().skinChanger then 
-        Library.SendNotification({
-            title = "Skin Changer",
-            text = "Skin changer is disabled",
-            duration = 3
-        })
-        return 
-    end
-    
-    -- Mettre à jour le nom du slash
     local newSlashName = getSlashName(getgenv().swordFX)
     if newSlashName then
         getgenv().slashName = newSlashName
+        setSword()
+        Library.SendNotification({
+            title = "Skin Changer",
+            text = "Sword updated to: " .. getgenv().swordModel,
+            duration = 3
+        })
     else
-        getgenv().slashName = "SlashEffect"
+        Library.SendNotification({
+            title = "Skin Changer Error",
+            text = "Sword not found: " .. getgenv().swordFX,
+            duration = 5
+        })
     end
-    
-    -- Appliquer le skin de manière sécurisée
-    task.spawn(safeSetSword)
-    
-    Library.SendNotification({
-        title = "Skin Changer",
-        text = "Updating sword to: " .. getgenv().swordModel,
-        duration = 3
-    })
 end
 
 task.spawn(function()
-    while task.wait(2) do  -- Augmentez le délai à 2 secondes
-        if getgenv().skinChanger and plr.Character then
-            local character = plr.Character
-            local humanoid = character:FindFirstChild("Humanoid")
-            
-            -- Vérifier si le personnage est vivant et prêt
-            if humanoid and humanoid.Health > 0 then
-                local currentSword = plr:GetAttribute("CurrentlyEquippedSword")
-                
-                -- Vérifier si le skin actuel est différent
-                if currentSword ~= getgenv().swordModel then
-                    print("Current sword:", currentSword, "Desired sword:", getgenv().swordModel)
-                    
-                    -- Attendre que l'épée actuelle soit complètement chargée
-                    task.wait(0.5)
-                    setSword()
-                end
-                
-                -- Vérifier aussi dans le character
-                local foundSword = false
-                for _, child in pairs(character:GetChildren()) do
-                    if child.Name == getgenv().swordModel then
-                        foundSword = true
-                        break
-                    end
-                end
-                
-                if not foundSword then
-                    print("Sword not found in character, reapplying...")
-                    setSword()
-                end
-            else
-                print("Character not ready - waiting...")
+    while task.wait(1) do
+        if getgenv().skinChanger then
+            local char = plr.Character or plr.CharacterAdded:Wait()
+            if plr:GetAttribute("CurrentlyEquippedSword") ~= getgenv().swordModel then
+                setSword()
             end
-        else
-            if getgenv().skinChanger then
-                print("Waiting for character...")
+            if char and (not char:FindFirstChild(getgenv().swordModel)) then
+                setSword()
+            end
+            for _,v in (char and char:GetChildren()) or {} do
+                if v:IsA("Model") and v.Name ~= getgenv().swordModel then
+                    v:Destroy()
+                end
+                task.wait()
             end
         end
     end
