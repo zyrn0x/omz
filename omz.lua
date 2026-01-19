@@ -4985,7 +4985,7 @@ end
         end
     end
     
-    local BallTP = rage:create_module({
+    local BallTP = farm:create_module({
         title = "Ball TP",
         flag = "Ball_TP",
         description = "Teleports to the ball",
@@ -5042,7 +5042,7 @@ end
         end
     })
 
-    local InstantBallTP = rage:create_module({
+    local InstantBallTP = farm:create_module({
         title = "Instant Ball TP",
         flag = "Instant_Ball_TP",
         description = "Instantly teleports to the ball and back.",
@@ -5238,7 +5238,7 @@ end
         end
     })
     
-    local Animations = player:create_module({
+    local Animations = visual:create_module({
         title = 'Emotes',
         flag = 'Emotes',
     
@@ -5305,7 +5305,7 @@ end
     
     AnimationChoice:update(selected_animation)
 
-    local HitSounds = player:create_module({
+    local HitSounds = visual:create_module({
         title = 'Hit Sounds',
         flag = 'Hit_Sounds',
         description = 'Toggles hit sounds',
@@ -5387,6 +5387,40 @@ end
             hit_Sound:Play()
         end
     end)
+
+    local SkinChanger = visual:create_module({
+        title = 'Skin Changer',
+        flag = 'SkinChanger',
+        description = 'Skin Changer',
+        section = 'left',
+        callback = function(value: boolean)
+            getgenv().skinChanger = value
+            if value then
+                getgenv().updateSword()
+            end
+        end
+    })
+
+    SkinChanger:change_state(false)
+
+    SkinChanger:create_paragraph({
+        title = "⚠️EVERYONE CAN SEE ANIMATIONS",
+        text = "IF YOU USE SKIN CHANGER BACKSWORD YOU MUST EQUIP AN ACTUAL BACKSWORD"
+    })
+
+    local skinchangertextbox = SkinChanger:create_textbox({
+        title = "￬ Skin Name (Case Sensitive) ￬",
+        placeholder = "Enter Sword Skin Name... ",
+        flag = "SkinChangerTextbox",
+        callback = function(text)
+            getgenv().swordModel = text
+            getgenv().swordAnimations = text
+            getgenv().swordFX = text
+            if getgenv().skinChanger then
+                getgenv().updateSword()
+            end
+        end
+    })
 
 
 local billboardLabels = {}
@@ -5498,39 +5532,6 @@ local AbilityESP = world:create_module({
         end
     end
 })
-    local SkinChanger = misc:create_module({
-        title = 'Skin Changer',
-        flag = 'SkinChanger',
-        description = 'Skin Changer',
-        section = 'left',
-        callback = function(value: boolean)
-            getgenv().skinChanger = value
-            if value then
-                getgenv().updateSword()
-            end
-        end
-    })
-
-    SkinChanger:change_state(false)
-
-    SkinChanger:create_paragraph({
-        title = "⚠️EVERYONE CAN SEE ANIMATIONS",
-        text = "IF YOU USE SKIN CHANGER BACKSWORD YOU MUST EQUIP AN ACTUAL BACKSWORD"
-    })
-
-    local skinchangertextbox = SkinChanger:create_textbox({
-        title = "￬ Skin Name (Case Sensitive) ￬",
-        placeholder = "Enter Sword Skin Name... ",
-        flag = "SkinChangerTextbox",
-        callback = function(text)
-            getgenv().swordModel = text
-            getgenv().swordAnimations = text
-            getgenv().swordFX = text
-            if getgenv().skinChanger then
-                getgenv().updateSword()
-            end
-        end
-    })
     
     local AutoPlayModule = {}
     AutoPlayModule.CONFIG = {
@@ -6014,7 +6015,6 @@ local AbilityESP = world:create_module({
         AutoPlayModule.signal.connect("synchronize", AutoPlayModule.customService.RunService.PostSimulation, AutoPlayModule.ballUtils.getBall)
     end
     
-    --[[
         TeleportService = cloneref(game:GetService("TeleportService"))
         PlaceId, JobId = game.PlaceId, game.JobId
         if #Players:GetPlayers() < 5 then
@@ -6026,9 +6026,8 @@ local AbilityESP = world:create_module({
                 TeleportService:TeleportToPlaceInstance(PlaceId, JobId, Players.LocalPlayer)
             end
         end
-    ]]
 
-    local AutoPlay = misc:create_module({
+    local AutoPlay = farm:create_module({
         title = 'Auto Play',
         flag = 'AutoPlay',
         description = 'Automatically Plays Game',
@@ -6085,7 +6084,6 @@ local AbilityESP = world:create_module({
         end
     })
 
-    --[[
         local AutoServerHop = AutoPlay:create_checkbox({
             title = "Auto Server Hop",
             flag = "AutoServerHop",
@@ -6095,7 +6093,7 @@ local AbilityESP = world:create_module({
         })
 
         AutoServerHop:change_state(false)
-    ]]
+
     AutoPlay:create_divider({
     })
     
@@ -6524,7 +6522,7 @@ local BallStats = misc:create_module({
 
     local visualPart
 
-    local Visualiser = misc:create_module({
+    local Visualiser = visual:create_module({
         title = 'Visualiser',
         flag = 'Visualiser',
         description = 'Parry Range Visualiser',
@@ -6670,7 +6668,7 @@ local BallStats = misc:create_module({
         end
     })
 
-    local CustomAnnouncer = misc:create_module({
+    local CustomAnnouncer = visual:create_module({
         title = 'Custom Announcer',
         flag = 'Custom_Announcer',
         description = 'Customize the game announcements',
