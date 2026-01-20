@@ -6522,55 +6522,308 @@ end
         end
     })
 
-    local AbilityExploit = world:create_module({
-        title = 'Ability Exploit',
-        flag = 'AbilityExploit',
-        description = 'Ability Exploit',    
-        section = 'right',
-    
-        callback = function(value)
-            getgenv().AbilityExploit = value
-        end
-    })
+local AbilityExploit = world:create_module({
+    title = 'Ability Exploit',
+    flag = 'AbilityExploit',
+    description = 'Ability Exploit',    
+    section = 'right',
 
-    AbilityExploit:create_checkbox({
-        title = 'Thunder Dash No Cooldown',
-        flag = 'ThunderDashNoCooldown',
-        callback = function(value)
-            getgenv().ThunderDashNoCooldown = value
-            if getgenv().AbilityExploit and getgenv().ThunderDashNoCooldown then
-                local thunderModule = game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Abilities"):WaitForChild("Thunder Dash")
-                local mod = require(thunderModule)
+    callback = function(value)
+        getgenv().AbilityExploit = value
+    end
+})
+
+-- Fonction pour trouver les modules d'abilities
+local function getAbilityModule(abilityName)
+    local abilitiesFolder = game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Abilities")
+    if abilitiesFolder:FindFirstChild(abilityName) then
+        return require(abilitiesFolder:WaitForChild(abilityName))
+    end
+    return nil
+end
+
+-- 1. Thunder Dash No Cooldown
+AbilityExploit:create_checkbox({
+    title = 'Thunder Dash No Cooldown',
+    flag = 'ThunderDashNoCooldown',
+    callback = function(value)
+        getgenv().ThunderDashNoCooldown = value
+        if getgenv().AbilityExploit and getgenv().ThunderDashNoCooldown then
+            local mod = getAbilityModule("Thunder Dash")
+            if mod then
                 mod.cooldown = 0
                 mod.cooldownReductionPerUpgrade = 0
+                mod.duration = 999
             end
         end
-    })
+    end
+})
 
-    AbilityExploit:create_checkbox({
-        title = 'Continuity Zero Exploit',
-        flag  = 'ContinuityZeroExploit',
-        callback = function(value)
-            getgenv().ContinuityZeroExploit = value
-    
-            if getgenv().AbilityExploit and getgenv().ContinuityZeroExploit then
-                local ContinuityZeroRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("UseContinuityPortal")
-                local oldNamecall
-                oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-                    local method = getnamecallmethod()
-    
-                    if self == ContinuityZeroRemote and method == "FireServer" then
-                        return oldNamecall(self,
-                            CFrame.new(9e17, 9e16, 9e15, 9e14, 9e13, 9e12, 9e11, 9e10, 9e9, 9e8, 9e7, 9e6),
-                            player.Name
-                        )
-                    end
-    
-                    return oldNamecall(self, ...)
-                end)
+-- 2. Continuity Zero Exploit
+AbilityExploit:create_checkbox({
+    title = 'Continuity Zero Exploit',
+    flag = 'ContinuityZeroExploit',
+    callback = function(value)
+        getgenv().ContinuityZeroExploit = value
+
+        if getgenv().AbilityExploit and getgenv().ContinuityZeroExploit then
+            local ContinuityZeroRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("UseContinuityPortal")
+            local oldNamecall
+            oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+                local method = getnamecallmethod()
+
+                if self == ContinuityZeroRemote and method == "FireServer" then
+                    return oldNamecall(self,
+                        CFrame.new(9e17, 9e16, 9e15, 9e14, 9e13, 9e12, 9e11, 9e10, 9e9, 9e8, 9e7, 9e6),
+                        player.Name
+                    )
+                end
+
+                return oldNamecall(self, ...)
+            end)
+        end
+    end
+})
+
+-- 3. Infinite Teleport (inspired by Phase Shift/Blink abilities)
+AbilityExploit:create_checkbox({
+    title = 'Infinite Teleport Range',
+    flag = 'InfiniteTeleportRange',
+    callback = function(value)
+        getgenv().InfiniteTeleportRange = value
+        if getgenv().AbilityExploit and getgenv().InfiniteTeleportRange then
+            local teleportAbilities = {"Blink", "Phase Shift", "Teleport"}
+            for _, abilityName in pairs(teleportAbilities) do
+                local mod = getAbilityModule(abilityName)
+                if mod then
+                    mod.maxDistance = 9999
+                    mod.cooldown = 0.5
+                end
             end
         end
-    })
+    end
+})
+
+-- 4. Time Stop Exploit (inspired by Chrono Pause/Time Stop)
+AbilityExploit:create_checkbox({
+    title = 'Time Stop Duration Exploit',
+    flag = 'TimeStopExploit',
+    callback = function(value)
+        getgenv().TimeStopExploit = value
+        if getgenv().AbilityExploit and getgenv().TimeStopExploit then
+            local timeStopModule = getAbilityModule("Time Stop") or getAbilityModule("Chrono Pause")
+            if timeStopModule then
+                timeStopModule.duration = 60 -- 60 secondes au lieu de 3-5
+                timeStopModule.cooldown = 1
+                timeStopModule.range = 500
+            end
+        end
+    end
+})
+
+-- 5. Shield Exploit (inspired by various shield abilities)
+AbilityExploit:create_checkbox({
+    title = 'Infinite Shield Duration',
+    flag = 'ShieldExploit',
+    callback = function(value)
+        getgenv().ShieldExploit = value
+        if getgenv().AbilityExploit and getgenv().ShieldExploit then
+            local shieldAbilities = {"Barrier", "Shield", "Force Field", "Aegis"}
+            for _, abilityName in pairs(shieldAbilities) do
+                local mod = getAbilityModule(abilityName)
+                if mod then
+                    mod.duration = 999
+                    mod.health = 99999
+                    mod.cooldown = 1
+                end
+            end
+        end
+    end
+})
+
+-- 6. Damage Multiplier (affects all offensive abilities)
+AbilityExploit:create_checkbox({
+    title = 'Damage Multiplier x10',
+    flag = 'DamageMultiplier',
+    callback = function(value)
+        getgenv().DamageMultiplier = value
+        if getgenv().AbilityExploit and getgenv().DamageMultiplier then
+            local offensiveAbilities = {
+                "Fireball", "Ice Shard", "Lightning Strike", 
+                "Energy Blast", "Spike Trap", "Gravity Crush"
+            }
+            
+            for _, abilityName in pairs(offensiveAbilities) do
+                local mod = getAbilityModule(abilityName)
+                if mod then
+                    -- Multiplier les dégâts
+                    if mod.damage then
+                        mod.damage = mod.damage * 10
+                    end
+                    if mod.baseDamage then
+                        mod.baseDamage = mod.baseDamage * 10
+                    end
+                    
+                    -- Réduire les cooldowns
+                    if mod.cooldown then
+                        mod.cooldown = 0.5
+                    end
+                end
+            end
+        end
+    end
+})
+
+-- 7. Speed Boost Exploit (inspired by Speed Boost/Haste abilities)
+AbilityExploit:create_checkbox({
+    title = 'Permanent Speed Boost',
+    flag = 'SpeedBoostExploit',
+    callback = function(value)
+        getgenv().SpeedBoostExploit = value
+        if getgenv().AbilityExploit and getgenv().SpeedBoostExploit then
+            local speedAbilities = {"Speed Boost", "Haste", "Sprint", "Agility"}
+            for _, abilityName in pairs(speedAbilities) do
+                local mod = getAbilityModule(abilityName)
+                if mod then
+                    mod.duration = 999
+                    mod.speedMultiplier = 3.0 -- 3x plus vite
+                    mod.cooldown = 0
+                end
+            end
+        end
+    end
+})
+
+-- 8. AOE Range Exploit (for area abilities)
+AbilityExploit:create_checkbox({
+    title = 'Max AOE Range',
+    flag = 'AOEExploit',
+    callback = function(value)
+        getgenv().AOEExploit = value
+        if getgenv().AbilityExploit and getgenv().AOEExploit then
+            local aoeAbilities = {
+                "Shockwave", "Explosion", "Nova", "Earthquake",
+                "Black Hole", "Vortex", "Gravity Well"
+            }
+            
+            for _, abilityName in pairs(aoeAbilities) do
+                local mod = getAbilityModule(abilityName)
+                if mod then
+                    if mod.range then
+                        mod.range = 500
+                    end
+                    if mod.radius then
+                        mod.radius = 100
+                    end
+                    if mod.cooldown then
+                        mod.cooldown = 2
+                    end
+                end
+            end
+        end
+    end
+})
+
+-- 9. No Mana Cost
+AbilityExploit:create_checkbox({
+    title = 'No Mana/Energy Cost',
+    flag = 'NoManaCost',
+    callback = function(value)
+        getgenv().NoManaCost = value
+        if getgenv().AbilityExploit and getgenv().NoManaCost then
+            -- Hook pour contourner les vérifications de mana
+            local oldNamecall
+            oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+                local method = getnamecallmethod()
+                local args = {...}
+                
+                -- Chercher les appels qui consomment du mana
+                if method == "FireServer" and tostring(self):find("Mana") or 
+                   tostring(self):find("Energy") or tostring(self):find("Cost") then
+                    return nil -- Retourner nil pour simuler un succès sans coût
+                end
+                
+                return oldNamecall(self, ...)
+            end)
+        end
+    end
+})
+
+-- 10. Auto-Activate Abilities
+AbilityExploit:create_checkbox({
+    title = 'Auto-Activate Abilities',
+    flag = 'AutoActivate',
+    callback = function(value)
+        getgenv().AutoActivate = value
+        if getgenv().AbilityExploit and getgenv().AutoActivate then
+            spawn(function()
+                while getgenv().AbilityExploit and getgenv().AutoActivate do
+                    wait(0.5)
+                    
+                    -- Auto-activer les abilités défensives quand la vie est basse
+                    local character = player.Character
+                    if character and character:FindFirstChild("Humanoid") then
+                        local humanoid = character.Humanoid
+                        
+                        if humanoid.Health < humanoid.MaxHealth * 0.5 then
+                            -- Chercher une abilité de soin ou de bouclier
+                            -- (à adapter selon les abilités du jeu)
+                        end
+                    end
+                end
+            end)
+        end
+    end
+})
+
+-- 11. Ultimate Ability Exploit (pour les ultimates)
+AbilityExploit:create_checkbox({
+    title = 'Ultimate No Cooldown',
+    flag = 'UltimateExploit',
+    callback = function(value)
+        getgenv().UltimateExploit = value
+        if getgenv().AbilityExploit and getgenv().UltimateExploit then
+            local ultimateNames = {
+                "Ultimate", "Final", "Super", "Awakened",
+                "Rage", "Transformation", "Overdrive"
+            }
+            
+            for _, namePart in pairs(ultimateNames) do
+                for _, abilityName in pairs(game:GetService("ReplicatedStorage").Shared.Abilities:GetChildren()) do
+                    if abilityName.Name:find(namePart) then
+                        local mod = require(abilityName)
+                        if mod.cooldown then
+                            mod.cooldown = 1
+                        end
+                        if mod.chargeTime then
+                            mod.chargeTime = 0
+                        end
+                    end
+                end
+            end
+        end
+    end
+})
+
+-- 12. Clone/Illusion Exploit
+AbilityExploit:create_checkbox({
+    title = 'Infinite Clones',
+    flag = 'CloneExploit',
+    callback = function(value)
+        getgenv().CloneExploit = value
+        if getgenv().AbilityExploit and getgenv().CloneExploit then
+            local cloneAbilities = {"Clone", "Illusion", "Mirror Image", "Doppelganger"}
+            for _, abilityName in pairs(cloneAbilities) do
+                local mod = getAbilityModule(abilityName)
+                if mod then
+                    mod.maxClones = 99
+                    mod.cloneDuration = 999
+                    mod.cooldown = 0
+                end
+            end
+        end
+    end
+})
 
     local autoDuelsRequeueEnabled = false
 
