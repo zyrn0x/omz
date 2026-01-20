@@ -4483,7 +4483,7 @@ do
     })
 
 local Triggerbot = rage:create_module({
-    title = 'Triggerbot',
+    title = 'Instant Counter',
     flag = 'Triggerbot',
     description = 'Instantly hits ball when targeted',
     section = 'left',
@@ -4696,7 +4696,7 @@ Triggerbot:create_checkbox({
 })
 
     local HotkeyParryType = rage:create_module({
-        title = 'Hotkey Parry Type',
+        title = 'Quick Switch',
         flag = 'HotkeyParryType',
         description = 'Allows Hotkey Parry Type',
         section = 'left',
@@ -4919,7 +4919,7 @@ Triggerbot:create_checkbox({
     })
 
     local InstantBallTP = rage:create_module({
-        title = "Instant Ball TP",
+        title = "Flash Teleport",
         flag = "Instant_Ball_TP",
         description = "Instantly teleports to the ball and back.",
         section = "right",
@@ -5833,7 +5833,7 @@ local PlayerCosmetics = player:create_module({
     local selectedSound = "Eeyuh"
     
     local soundModule = world:create_module({
-        title = 'Sound Controller',
+        title = 'Music',
         flag = 'sound_controller',
         description = 'Control background music and sounds',
         section = 'left',
@@ -6305,7 +6305,7 @@ local PlayerCosmetics = player:create_module({
     })
 
     local CustomSky = world:create_module({
-        title = 'Custom Sky',
+        title = 'Skybox Changer',
         flag = 'Custom_Sky',
         description = 'Toggles a custom skybox',
         section = 'left',
@@ -6414,7 +6414,7 @@ local PlayerCosmetics = player:create_module({
     })
 
     local AbilityExploit = world:create_module({
-        title = 'Ability Exploit',
+        title = 'Ability Cheat',
         flag = 'AbilityExploit',
         description = 'Ability Exploit',    
         section = 'right',
@@ -6466,7 +6466,7 @@ local PlayerCosmetics = player:create_module({
     local autoDuelsRequeueEnabled = false
 
     local AutoDuelsRequeue = farm:create_module({
-        title = 'Auto Duels Requeue',
+        title = 'Duel Auto-Join',
         flag = 'AutoDuelsRequeue',
     
         description = 'Automatically requeues duels',
@@ -6495,7 +6495,7 @@ local PlayerCosmetics = player:create_module({
     local autoRequeueEnabled = false
 
     local AutoRankedRequeue = farm:create_module({
-        title = 'Auto Ranked Requeue',
+        title = 'Ranked Auto-Join',
         flag = 'AutoRankedRequeue',
     
         description = 'Automatically requeues Ranked',
@@ -6538,7 +6538,7 @@ local PlayerCosmetics = player:create_module({
     local validLTMPlaceId = 13772394625
 
     local AutoLTMRequeue = farm:create_module({
-        title = 'Auto LTM Requeue',
+        title = 'LTM Auto-Join',
         flag = 'AutoLTMRequeue',
     
         description = 'Automatically requeues LTM',
@@ -6564,7 +6564,7 @@ local PlayerCosmetics = player:create_module({
     })
 
     local SkinChanger = misc:create_module({
-        title = 'Skin Changer',
+        title = 'Sword Changer',
         flag = 'SkinChanger',
         description = 'Skin Changer',
         section = 'left',
@@ -7277,7 +7277,7 @@ local PlayerCosmetics = player:create_module({
     local peakVelocity = 0
     
     local BallStats = misc:create_module({
-        title = 'Ball Stats', 
+        title = 'Velocity Display', 
         flag = 'ballStats', 
         description = 'Toggle ball speed stats display', 
         section = 'left',
@@ -7487,7 +7487,7 @@ local PlayerCosmetics = player:create_module({
     
 
     local AutoClaimRewards = misc:create_module({
-        title = 'Auto Claim Rewards',
+        title = 'Reward Collector',
         flag = 'AutoClaimRewards',
         description = 'Automatically claims rewards.',
         section = 'left',
@@ -7544,7 +7544,7 @@ local PlayerCosmetics = player:create_module({
     })
 
     local No_Render = misc:create_module({
-        title = 'No Render',
+        title = 'Performance Mode',
         flag = 'No_Render',
         description = 'Disables rendering of effects',
         section = 'left',
@@ -7553,13 +7553,13 @@ local PlayerCosmetics = player:create_module({
             Player.PlayerScripts.EffectScripts.ClientFX.Disabled = state
     
             if state then
-                Connections_Manager['No Render'] = workspace.Runtime.ChildAdded:Connect(function(Value)
+                Connections_Manager['Performance Mode'] = workspace.Runtime.ChildAdded:Connect(function(Value)
                     Debris:AddItem(Value, 0)
                 end)
             else
-                if Connections_Manager['No Render'] then
-                    Connections_Manager['No Render']:Disconnect()
-                    Connections_Manager['No Render'] = nil
+                if Connections_Manager['Performance Mode'] then
+                    Connections_Manager['Performance Mode']:Disconnect()
+                    Connections_Manager['Performance Mode'] = nil
                 end
             end
         end
