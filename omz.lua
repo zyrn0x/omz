@@ -4389,303 +4389,82 @@ do
     
     ManualSpam:change_state(false)
 
-if isMobile then
-    ManualSpam:create_checkbox({
-        title = "UI",
-        flag = "Manual_Spam_UI",
-        callback = function(value: boolean)
-            getgenv().spamui = value
-
-            if value then
-                if game.CoreGui:FindFirstChild("ManualSpamUI") then
-                    game.CoreGui:FindFirstChild("ManualSpamUI"):Destroy()
-                end
-                
-                local gui = Instance.new("ScreenGui")
-                gui.Name = "ManualSpamUI"
-                gui.ResetOnSpawn = false
-                gui.Parent = game.CoreGui
-
-                -- Main container with modern design
-                local mainFrame = Instance.new("Frame")
-                mainFrame.Name = "SpamPanel"
-                mainFrame.Position = UDim2.new(0.5, -140, 0.7, -80)
-                mainFrame.Size = UDim2.new(0, 280, 0, 160)
-                mainFrame.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
-                mainFrame.BackgroundTransparency = 0.1
-                mainFrame.BorderSizePixel = 0
-                mainFrame.Active = true
-                mainFrame.Draggable = true
-                mainFrame.Parent = gui
-
-                local uiCorner = Instance.new("UICorner")
-                uiCorner.CornerRadius = UDim.new(0, 16)
-                uiCorner.Parent = mainFrame
-
-                local uiStroke = Instance.new("UIStroke")
-                uiStroke.Color = Color3.fromRGB(80, 90, 110)
-                uiStroke.Thickness = 2
-                uiStroke.Transparency = 0.3
-                uiStroke.Parent = mainFrame
-                
-                -- Title with icon
-                local titleBar = Instance.new("Frame")
-                titleBar.Size = UDim2.new(1, 0, 0, 40)
-                titleBar.BackgroundColor3 = Color3.fromRGB(25, 30, 45)
-                titleBar.BorderSizePixel = 0
-                titleBar.Parent = mainFrame
-                
-                local titleCorner = Instance.new("UICorner")
-                titleCorner.CornerRadius = UDim.new(0, 16, 0, 0)
-                titleCorner.Parent = titleBar
-                
-                local title = Instance.new("TextLabel")
-                title.Size = UDim2.new(1, -50, 1, 0)
-                title.Position = UDim2.new(0, 15, 0, 0)
-                title.Text = "SPAM CONTROL"
-                title.TextColor3 = Color3.fromRGB(180, 200, 255)
-                title.TextSize = 18
-                title.Font = Enum.Font.GothamSemibold
-                title.BackgroundTransparency = 1
-                title.Parent = titleBar
-                
-                -- Status indicator
-                local statusLight = Instance.new("Frame")
-                statusLight.Size = UDim2.new(0, 8, 0, 8)
-                statusLight.Position = UDim2.new(1, -30, 0.5, -4)
-                statusLight.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-                statusLight.BorderSizePixel = 0
-                statusLight.Parent = titleBar
-                
-                local lightCorner = Instance.new("UICorner")
-                lightCorner.CornerRadius = UDim.new(1, 0)
-                lightCorner.Parent = statusLight
-                
-                -- Main button with modern design
-                local buttonContainer = Instance.new("Frame")
-                buttonContainer.Size = UDim2.new(0.8, 0, 0, 70)
-                buttonContainer.Position = UDim2.new(0.1, 0, 0.35, 0)
-                buttonContainer.BackgroundTransparency = 1
-                buttonContainer.Parent = mainFrame
-                
-                local button = Instance.new("TextButton")
-                button.Name = "SpamButton"
-                button.Size = UDim2.new(1, 0, 1, 0)
-                button.Text = "▶ START SPAM"
-                button.TextColor3 = Color3.fromRGB(255, 255, 255)
-                button.TextSize = 20
-                button.Font = Enum.Font.GothamBold
-                button.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
-                button.BorderSizePixel = 0
-                button.AutoButtonColor = false
-                button.Parent = buttonContainer
-
-                local buttonCorner = Instance.new("UICorner")
-                buttonCorner.CornerRadius = UDim.new(0, 12)
-                buttonCorner.Parent = button
-                
-                local buttonStroke = Instance.new("UIStroke")
-                buttonStroke.Color = Color3.fromRGB(100, 150, 200)
-                buttonStroke.Thickness = 2
-                buttonStroke.Parent = button
-                
-                -- Button glow effect
-                local buttonGlow = Instance.new("ImageLabel")
-                buttonGlow.Size = UDim2.new(1, 10, 1, 10)
-                buttonGlow.Position = UDim2.new(0, -5, 0, -5)
-                buttonGlow.Image = "rbxassetid://8992230676"
-                buttonGlow.ImageColor3 = Color3.fromRGB(70, 130, 180)
-                buttonGlow.ImageTransparency = 0.8
-                buttonGlow.ScaleType = Enum.ScaleType.Slice
-                buttonGlow.SliceCenter = Rect.new(20, 20, 280, 280)
-                buttonGlow.BackgroundTransparency = 1
-                buttonGlow.Parent = button
-                
-                -- Control buttons
-                local controlFrame = Instance.new("Frame")
-                controlFrame.Size = UDim2.new(0.8, 0, 0, 30)
-                controlFrame.Position = UDim2.new(0.1, 0, 0.8, 0)
-                controlFrame.BackgroundTransparency = 1
-                controlFrame.Parent = mainFrame
-                
-                local closeBtn = Instance.new("TextButton")
-                closeBtn.Size = UDim2.new(0.45, -5, 1, 0)
-                closeBtn.Position = UDim2.new(0, 0, 0, 0)
-                closeBtn.Text = "CLOSE"
-                closeBtn.TextColor3 = Color3.fromRGB(255, 150, 150)
-                closeBtn.TextSize = 14
-                closeBtn.Font = Enum.Font.Gotham
-                closeBtn.BackgroundColor3 = Color3.fromRGB(40, 45, 55)
-                closeBtn.BorderSizePixel = 0
-                closeBtn.AutoButtonColor = false
-                closeBtn.Parent = controlFrame
-                
-                local closeCorner = Instance.new("UICorner")
-                closeCorner.CornerRadius = UDim.new(0, 6)
-                closeCorner.Parent = closeBtn
-                
-                local hideBtn = Instance.new("TextButton")
-                hideBtn.Size = UDim2.new(0.45, -5, 1, 0)
-                hideBtn.Position = UDim2.new(0.55, 0, 0, 0)
-                hideBtn.Text = "MINIMIZE"
-                hideBtn.TextColor3 = Color3.fromRGB(150, 200, 255)
-                hideBtn.TextSize = 14
-                hideBtn.Font = Enum.Font.Gotham
-                hideBtn.BackgroundColor3 = Color3.fromRGB(40, 45, 55)
-                hideBtn.BorderSizePixel = 0
-                hideBtn.AutoButtonColor = false
-                hideBtn.Parent = controlFrame
-                
-                local hideCorner = Instance.new("UICorner")
-                hideCorner.CornerRadius = UDim.new(0, 6)
-                hideCorner.Parent = hideBtn
-                
-                -- State variables
-                local activated = false
-                local minimized = false
-                local originalSize = mainFrame.Size
-                local originalPosition = mainFrame.Position
-                
-                -- Toggle spam function
-                local function toggleSpam()
-                    activated = not activated
-                    
-                    if activated then
-                        button.Text = "⏸ STOP SPAM"
-                        button.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
-                        buttonStroke.Color = Color3.fromRGB(240, 90, 90)
-                        buttonGlow.ImageColor3 = Color3.fromRGB(220, 60, 60)
-                        statusLight.BackgroundColor3 = Color3.fromRGB(50, 255, 50)
-                        
-                        -- Start spamming
-                        Connections_Manager['Manual Spam UI'] = game:GetService("RunService").Heartbeat:Connect(function()
-                            Auto_Parry.Parry(Selected_Parry_Type)
-                        end)
-                    else
-                        button.Text = "▶ START SPAM"
-                        button.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
-                        buttonStroke.Color = Color3.fromRGB(100, 150, 200)
-                        buttonGlow.ImageColor3 = Color3.fromRGB(70, 130, 180)
-                        statusLight.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-                        
-                        -- Stop spamming
-                        if Connections_Manager['Manual Spam UI'] then
-                            Connections_Manager['Manual Spam UI']:Disconnect()
-                            Connections_Manager['Manual Spam UI'] = nil
+    if isMobile then
+        ManualSpam:create_checkbox({
+            title = "UI",
+            flag = "Manual_Spam_UI",
+            callback = function(value: boolean)
+                getgenv().spamui = value
+        
+                if value then
+                    local gui = Instance.new("ScreenGui")
+                    gui.Name = "ManualSpamUI"
+                    gui.ResetOnSpawn = false
+                    gui.Parent = game.CoreGui
+        
+                    local frame = Instance.new("Frame")
+                    frame.Name = "MainFrame"
+                    frame.Position = UDim2.new(0, 20, 0, 20)
+                    frame.Size = UDim2.new(0, 200, 0, 100)
+                    frame.BackgroundColor3 = Color3.fromRGB(10, 10, 50)
+                    frame.BackgroundTransparency = 0.3
+                    frame.BorderSizePixel = 0
+                    frame.Active = true
+                    frame.Draggable = true
+                    frame.Parent = gui
+        
+                    local uiCorner = Instance.new("UICorner")
+                    uiCorner.CornerRadius = UDim.new(0, 12)
+                    uiCorner.Parent = frame
+        
+                    local uiStroke = Instance.new("UIStroke")
+                    uiStroke.Thickness = 2
+                    uiStroke.Color = Color3.new(0, 0, 0)
+                    uiStroke.Parent = frame
+        
+                    local button = Instance.new("TextButton")
+                    button.Name = "ClashModeButton"
+                    button.Text = "Clash Mode"
+                    button.Size = UDim2.new(0, 160, 0, 40)
+                    button.Position = UDim2.new(0.5, -80, 0.5, -20)
+                    button.BackgroundTransparency = 1
+                    button.BorderSizePixel = 0
+                    button.Font = Enum.Font.GothamSemibold
+                    button.TextColor3 = Color3.new(1, 1, 1)
+                    button.TextSize = 22
+                    button.Parent = frame
+        
+                    local activated = false
+        
+                    local function toggle()
+                        activated = not activated
+                        button.Text = activated and "Stop" or "Clash Mode"
+                        if activated then
+                            Connections_Manager['Manual Spam UI'] = game:GetService("RunService").Heartbeat:Connect(function()
+                                Auto_Parry.Parry(Selected_Parry_Type)
+                            end)
+                        else
+                            if Connections_Manager['Manual Spam UI'] then
+                                Connections_Manager['Manual Spam UI']:Disconnect()
+                                Connections_Manager['Manual Spam UI'] = nil
+                            end
                         end
                     end
-                end
-                
-                -- Button hover effects
-                button.MouseEnter:Connect(function()
-                    if not activated then
-                        button.BackgroundColor3 = Color3.fromRGB(80, 140, 190)
-                        buttonGlow.ImageTransparency = 0.7
+        
+                    button.MouseButton1Click:Connect(toggle)
+                else
+                    if game.CoreGui:FindFirstChild("ManualSpamUI") then
+                        game.CoreGui:FindFirstChild("ManualSpamUI"):Destroy()
                     end
-                end)
-                
-                button.MouseLeave:Connect(function()
-                    if not activated then
-                        button.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
-                        buttonGlow.ImageTransparency = 0.8
-                    end
-                end)
-                
-                closeBtn.MouseEnter:Connect(function()
-                    closeBtn.BackgroundColor3 = Color3.fromRGB(50, 55, 65)
-                end)
-                
-                closeBtn.MouseLeave:Connect(function()
-                    closeBtn.BackgroundColor3 = Color3.fromRGB(40, 45, 55)
-                end)
-                
-                hideBtn.MouseEnter:Connect(function()
-                    hideBtn.BackgroundColor3 = Color3.fromRGB(50, 55, 65)
-                end)
-                
-                hideBtn.MouseLeave:Connect(function()
-                    hideBtn.BackgroundColor3 = Color3.fromRGB(40, 45, 55)
-                end)
-                
-                -- Button click events
-                button.MouseButton1Click:Connect(toggleSpam)
-                
-                closeBtn.MouseButton1Click:Connect(function()
-                    gui:Destroy()
-                    getgenv().spamui = false
+        
                     if Connections_Manager['Manual Spam UI'] then
                         Connections_Manager['Manual Spam UI']:Disconnect()
                         Connections_Manager['Manual Spam UI'] = nil
                     end
-                end)
-                
-                hideBtn.MouseButton1Click:Connect(function()
-                    minimized = not minimized
-                    
-                    if minimized then
-                        hideBtn.Text = "MAXIMIZE"
-                        mainFrame.Size = UDim2.new(0, 280, 0, 40)
-                        titleBar.Visible = true
-                        buttonContainer.Visible = false
-                        controlFrame.Visible = false
-                    else
-                        hideBtn.Text = "MINIMIZE"
-                        mainFrame.Size = originalSize
-                        titleBar.Visible = true
-                        buttonContainer.Visible = true
-                        controlFrame.Visible = true
-                    end
-                end)
-                
-                -- Drag functionality
-                local dragging = false
-                local dragInput, dragStart, startPos
-                
-                titleBar.InputBegan:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                        dragging = true
-                        dragStart = input.Position
-                        startPos = mainFrame.Position
-                        
-                        input.Changed:Connect(function()
-                            if input.UserInputState == Enum.UserInputState.End then
-                                dragging = false
-                            end
-                        end)
-                    end
-                end)
-                
-                titleBar.InputChanged:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseMovement then
-                        dragInput = input
-                    end
-                end)
-                
-                game:GetService("UserInputService").InputChanged:Connect(function(input)
-                    if input == dragInput and dragging then
-                        local delta = input.Position - dragStart
-                        mainFrame.Position = UDim2.new(
-                            startPos.X.Scale, 
-                            startPos.X.Offset + delta.X, 
-                            startPos.Y.Scale, 
-                            startPos.Y.Offset + delta.Y
-                        )
-                    end
-                end)
-
-            else
-                if game.CoreGui:FindFirstChild("ManualSpamUI") then
-                    game.CoreGui:FindFirstChild("ManualSpamUI"):Destroy()
-                end
-
-                if Connections_Manager['Manual Spam UI'] then
-                    Connections_Manager['Manual Spam UI']:Disconnect()
-                    Connections_Manager['Manual Spam UI'] = nil
                 end
             end
-        end
-    })
-end
+        })
+    end
     
     ManualSpam:create_checkbox({
         title = "Keypress",
@@ -4703,103 +4482,218 @@ end
         end
     })
 
-    local Triggerbot = rage:create_module({
-        title = 'Triggerbot',
-        flag = 'Triggerbot',
-        description = 'Instantly hits ball when targeted',
-        section = 'left',
-        callback = function(value: boolean)
-            if getgenv().TriggerbotNotify then
-                if value then
-                    Library.SendNotification({
-                        title = "Module Notification",
-                        text = "Triggerbot turned ON",
-                        duration = 3
-                    })
-                else
-                    Library.SendNotification({
-                        title = "Module Notification",
-                        text = "Triggerbot turned OFF",
-                        duration = 3
-                    })
-                end
-            end
+local Triggerbot = rage:create_module({
+    title = 'Triggerbot',
+    flag = 'Triggerbot',
+    description = 'Instantly hits ball when targeted',
+    section = 'left',
+    callback = function(value: boolean)
+        if getgenv().TriggerbotNotify then
             if value then
-                Connections_Manager['Triggerbot'] = RunService.PreSimulation:Connect(function()
-                    local Balls = Auto_Parry.Get_Balls()
-        
-                    for _, Ball in pairs(Balls) do
-                        if not Ball then
-                            return
-                        end
-                        
-                        Ball:GetAttributeChangedSignal('target'):Once(function()
-                            TriggerbotParried = false
-                        end)
+                Library.SendNotification({
+                    title = "Module Notification",
+                    text = "Triggerbot turned ON",
+                    duration = 3
+                })
+            else
+                Library.SendNotification({
+                    title = "Module Notification",
+                    text = "Triggerbot turned OFF",
+                    duration = 3
+                })
+            end
+        end
+        if value then
+            Connections_Manager['Triggerbot'] = RunService.PreSimulation:Connect(function()
+                local Balls = Auto_Parry.Get_Balls()
     
-                        if TriggerbotParried then
-                            return
-                        end
-
-                        local Ball_Target = Ball:GetAttribute('target')
-                        local Singularity_Cape = Player.Character.PrimaryPart:FindFirstChild('SingularityCape')
-            
-                        if Singularity_Cape then 
-                            return
-                        end 
+                for _, Ball in pairs(Balls) do
+                    if not Ball then
+                        return
+                    end
                     
-                        if getgenv().TriggerbotInfinityDetection and Infinity then
-                            return
-                        end
+                    Ball:GetAttributeChangedSignal('target'):Once(function()
+                        TriggerbotParried = false
+                    end)
+
+                    if TriggerbotParried then
+                        return
+                    end
+
+                    local Ball_Target = Ball:GetAttribute('target')
+                    local Singularity_Cape = Player.Character.PrimaryPart:FindFirstChild('SingularityCape')
         
-                        if Ball_Target == tostring(Player) then
-                            if getgenv().TriggerbotKeypress then
-                                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game) 
-                            else
-                                Auto_Parry.Parry(Selected_Parry_Type)
-                            end
-                            TriggerbotParried = true
+                    if Singularity_Cape then 
+                        return
+                    end 
+                
+                    if getgenv().TriggerbotInfinityDetection and Infinity then
+                        return
+                    end
+
+                    if Ball_Target == tostring(Player) then
+                        if getgenv().TriggerbotKeypress then
+                            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game) 
+                        else
+                            Auto_Parry.Parry(Selected_Parry_Type)
                         end
-                        local Triggerbot_Last_Parrys = tick()
-                        repeat
-                            RunService.PreSimulation:Wait()
-                        until (tick() - Triggerbot_Last_Parrys) >= 1 or not TriggerbotParried
+                        TriggerbotParried = true
+                    end
+                    local Triggerbot_Last_Parrys = tick()
+                    repeat
+                        RunService.PreSimulation:Wait()
+                    until (tick() - Triggerbot_Last_Parrys) >= 1 or not TriggerbotParried
+                    TriggerbotParried = false
+                end
+
+            end)
+        else
+            if Connections_Manager['Triggerbot'] then
+                Connections_Manager['Triggerbot']:Disconnect()
+                Connections_Manager['Triggerbot'] = nil
+            end
+        end
+    end
+})
+
+Triggerbot:change_state(false)
+
+if isMobile then
+    Triggerbot:create_checkbox({
+        title = "UI",
+        flag = "Triggerbot_UI",
+        callback = function(value: boolean)
+            getgenv().triggerbotui = value
+    
+            if value then
+                local gui = Instance.new("ScreenGui")
+                gui.Name = "TriggerbotUI"
+                gui.ResetOnSpawn = false
+                gui.Parent = game.CoreGui
+    
+                local frame = Instance.new("Frame")
+                frame.Name = "MainFrame"
+                frame.Position = UDim2.new(0, 20, 0, 140) -- Position différente pour éviter la superposition
+                frame.Size = UDim2.new(0, 200, 0, 100)
+                frame.BackgroundColor3 = Color3.fromRGB(50, 10, 10) -- Couleur rouge pour le différencier
+                frame.BackgroundTransparency = 0.3
+                frame.BorderSizePixel = 0
+                frame.Active = true
+                frame.Draggable = true
+                frame.Parent = gui
+    
+                local uiCorner = Instance.new("UICorner")
+                uiCorner.CornerRadius = UDim.new(0, 12)
+                uiCorner.Parent = frame
+    
+                local uiStroke = Instance.new("UIStroke")
+                uiStroke.Thickness = 2
+                uiStroke.Color = Color3.new(0, 0, 0)
+                uiStroke.Parent = frame
+    
+                local button = Instance.new("TextButton")
+                button.Name = "TriggerModeButton"
+                button.Text = "Trigger Mode"
+                button.Size = UDim2.new(0, 160, 0, 40)
+                button.Position = UDim2.new(0.5, -80, 0.5, -20)
+                button.BackgroundTransparency = 1
+                button.BorderSizePixel = 0
+                button.Font = Enum.Font.GothamSemibold
+                button.TextColor3 = Color3.new(1, 1, 1)
+                button.TextSize = 22
+                button.Parent = frame
+    
+                local activated = false
+    
+                local function toggle()
+                    activated = not activated
+                    button.Text = activated and "Stop" or "Trigger Mode"
+                    if activated then
+                        Connections_Manager['Triggerbot UI'] = game:GetService("RunService").PreSimulation:Connect(function()
+                            if getgenv().triggerbotui then
+                                return
+                            end
+
+                            local Balls = Auto_Parry.Get_Balls()
+                            
+                            for _, Ball in pairs(Balls) do
+                                if not Ball then
+                                    return
+                                end
+                                
+                                if TriggerbotParried then
+                                    return
+                                end
+                                
+                                local Ball_Target = Ball:GetAttribute('target')
+                                local Singularity_Cape = Player.Character.PrimaryPart:FindFirstChild('SingularityCape')
+                                
+                                if Singularity_Cape then 
+                                    return
+                                end
+                                
+                                if getgenv().TriggerbotInfinityDetection and Infinity then
+                                    return
+                                end
+                                
+                                if Ball_Target == tostring(Player) then
+                                    if getgenv().TriggerbotKeypress then
+                                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game) 
+                                    else
+                                        Auto_Parry.Parry(Selected_Parry_Type)
+                                    end
+                                    TriggerbotParried = true
+                                end
+                            end
+                        end)
+                    else
+                        if Connections_Manager['Triggerbot UI'] then
+                            Connections_Manager['Triggerbot UI']:Disconnect()
+                            Connections_Manager['Triggerbot UI'] = nil
+                        end
                         TriggerbotParried = false
                     end
-    
-                end)
-            else
-                if Connections_Manager['Triggerbot'] then
-                    Connections_Manager['Triggerbot']:Disconnect()
-                    Connections_Manager['Triggerbot'] = nil
                 end
+    
+                button.MouseButton1Click:Connect(toggle)
+            else
+                if game.CoreGui:FindFirstChild("TriggerbotUI") then
+                    game.CoreGui:FindFirstChild("TriggerbotUI"):Destroy()
+                end
+    
+                if Connections_Manager['Triggerbot UI'] then
+                    Connections_Manager['Triggerbot UI']:Disconnect()
+                    Connections_Manager['Triggerbot UI'] = nil
+                end
+                TriggerbotParried = false
             end
         end
     })
+end
 
-    Triggerbot:create_checkbox({
-        title = "Infinity Detection",
-        flag = "Infinity_Detection",
-        callback = function(value: boolean)
-            getgenv().TriggerbotInfinityDetection = value
-        end
-    })
+Triggerbot:create_checkbox({
+    title = "Keypress",
+    flag = "Triggerbot_Keypress",
+    callback = function(value: boolean)
+        getgenv().TriggerbotKeypress = value
+    end
+})
 
-    Triggerbot:create_checkbox({
-        title = "Keypress",
-        flag = "Triggerbot_Keypress",
-        callback = function(value: boolean)
-            getgenv().TriggerbotKeypress = value
-        end
-    })
+Triggerbot:create_checkbox({
+    title = "Notify",
+    flag = "Triggerbot_Notify",
+    callback = function(value: boolean)
+        getgenv().TriggerbotNotify = value
+    end
+})
 
-    Triggerbot:create_checkbox({
-        title = "Notify",
-        flag = "TriggerbotNotify",
-        callback = function(value: boolean)
-            getgenv().TriggerbotNotify = value
-        end
-    })
+Triggerbot:create_checkbox({
+    title = "Infinity Detection",
+    flag = "Triggerbot_Infinity_Detection",
+    callback = function(value: boolean)
+        getgenv().TriggerbotInfinityDetection = value
+    end
+})
 
     local HotkeyParryType = rage:create_module({
         title = 'Hotkey Parry Type',
