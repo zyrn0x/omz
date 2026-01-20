@@ -7742,7 +7742,7 @@ ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent:Connect(function(_, root
 
     local Curve_Detected = Auto_Parry.Is_Curved()
 
-    if Target_Distance < 15 and Distance < 15 and Dot > -0.25 then -- wtf ?? maybe the big issue
+    if Target_Distance < 15 and Distance < 15 and Dot < -0.25 then -- wtf ?? maybe the big issue
         if Curve_Detected then
             Auto_Parry.Parry(Selected_Parry_Type)
         end
