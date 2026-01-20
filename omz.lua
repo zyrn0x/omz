@@ -4610,10 +4610,10 @@ if isMobile then
                     button.Text = activated and "Stop" or "Trigger Mode"
                     if activated then
                         Connections_Manager['Triggerbot UI'] = game:GetService("RunService").PreSimulation:Connect(function()
-                            if getgenv().triggerbotui then
-                                return
-                            end
-
+                            -- SUPPRIMER CETTE LIGNE: if getgenv().triggerbotui then return end
+                            -- La remplacer par:
+                            if not activated then return end
+                            
                             local Balls = Auto_Parry.Get_Balls()
                             
                             for _, Ball in pairs(Balls) do
