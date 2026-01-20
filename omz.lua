@@ -3522,8 +3522,8 @@ function Auto_Parry.Spam_Service(self)
 
     -- AMÉLIORATION 1: Meilleure formule pour Maximum_Spam_Distance
     -- Base + ajustement dynamique selon la vitesse (plus agressif pour hautes vitesses)
-    local basePingAdjustment = self.Ping * 1.2  -- 20% de marge pour le ping
-    local speedAdjustment = math.min(Speed / 4, 120)  -- Plus sensible à la vitesse (/4 au lieu de /6)
+    local basePingAdjustment = self.Ping * 0.8  -- 20% de marge pour le ping
+    local speedAdjustment = math.min(Speed / 3, 100)  -- Plus sensible à la vitesse (/4 au lieu de /6)
     local Maximum_Spam_Distance = basePingAdjustment + speedAdjustment
 
     -- AMÉLIORATION 2: Vérifications avec seuils ajustés
