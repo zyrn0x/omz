@@ -5392,7 +5392,7 @@ end
                 end
                 local specialMesh = Instance.new("SpecialMesh")
                 specialMesh.MeshId = "rbxassetid://101851696"
-                specialMesh.TextureId = "rbxassetid://115727863"
+                specialMesh.TextureId = "rbxassetid://14331410470"
                 specialMesh.Scale = Vector3.new(1, 1, 1)
                 specialMesh.Parent = rightLeg
             end
