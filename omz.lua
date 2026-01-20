@@ -3416,7 +3416,7 @@ function Auto_Parry.Is_Curved()
         end
     end
     
-    local Dot_Threshold = (0.5 - Ping / 1000)
+    local Dot_Threshold = (0.3 - Ping / 1000)
     local Direction_Difference = (Ball_Direction - Velocity.Unit)
     local Direction_Similarity = Direction:Dot(Direction_Difference.Unit)
     local Dot_Difference = Dot - Direction_Similarity
@@ -3823,12 +3823,12 @@ do
 
                         local Ping = game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue() / 10
 
-                        local Ping_Threshold = math.clamp(Ping / 10, 5, 17)
+                        local Ping_Threshold = math.clamp(Ping / 15, 3, 12)
 
                         local Speed = Velocity.Magnitude
 
                         local cappedSpeedDiff = math.min(math.max(Speed - 9.5, 0), 650)
-                        local speed_divisor_base = 2.4 + cappedSpeedDiff * 0.002
+                        local speed_divisor_base = 2.8 + cappedSpeedDiff * 0.0015
 
                         local effectiveMultiplier = Speed_Divisor_Multiplier
                         if getgenv().RandomParryAccuracyEnabled then
@@ -7475,7 +7475,7 @@ local PlayerCosmetics = player:create_module({
     })
 
     Visualiser:create_slider({
-        title = 'Color Hue',
+        title = 'Color',
         flag = 'VisualiserHue',
         minimum_value = 0,
         maximum_value = 360,
