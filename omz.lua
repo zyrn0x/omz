@@ -1,5 +1,3 @@
-
-
 repeat
 
     task.wait()
