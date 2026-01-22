@@ -2730,43 +2730,6 @@ local System = {
     }
 }
 
-local Debug = false
-local Player = Players.LocalPlayer or Players.PlayerAdded:Wait()
-local Remotes = ReplicatedStorage:WaitForChild("Remotes", 9e9)
-local Balls = workspace:WaitForChild("Balls", 9e9)
-
-loadstring(game:GetObjects("rbxassetid://15900013841")[1].Source)()
-
-local function print(...) if Debug then warn(...) end end
-local function VerifyBall(Ball)
-    return typeof(Ball) == "Instance" and Ball:IsA("BasePart") and Ball:IsDescendantOf(Balls) and Ball:GetAttribute("realBall") == true
-end
-local function IsTarget()
-    return (Player.Character and Player.Character:FindFirstChild("Highlight"))
-end
-local function Parry()
-    Remotes:WaitForChild("ParryButtonPress"):Fire()
-end
-
-Balls.ChildAdded:Connect(function(Ball)
-    if not VerifyBall(Ball) then return end
-    local OldPosition = Ball.Position
-    local OldTick = tick()
-    Ball:GetPropertyChangedSignal("Position"):Connect(function()
-        if IsTarget() then
-            local Distance = (Ball.Position - workspace.CurrentCamera.Focus.Position).Magnitude
-            local Velocity = (OldPosition - Ball.Position).Magnitude
-            if (Distance / Velocity) <= 10 then
-                Parry()
-            end
-        end
-        if (tick() - OldTick >= 1/60) then
-            OldTick = tick()
-            OldPosition = Ball.Position
-        end
-    end)
-end)
-
 local revertedRemotes = {}
 local originalMetatables = {}
 local Parry_Key = nil
@@ -8353,6 +8316,11 @@ guiset:create_module({
     end
 })
 end
+
+game:GetService("ReplicatedStorage").Security.RemoteEvent:Destroy()
+game:GetService("ReplicatedStorage").Security[""]:Destroy()
+game:GetService("ReplicatedStorage").Security:Destroy()
+game:GetService("Players").LocalPlayer.PlayerScripts.Client.DeviceChecker:Destroy()
 
 workspace.ChildRemoved:Connect(function(child)
     if child.Name == 'Balls' then
