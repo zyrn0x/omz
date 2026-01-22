@@ -2729,30 +2729,64 @@ local System = {
         __parry_delay = 0.5
     }
 }
-local firstParryFired = false
+
+local Debug = false
+local Player = Players.LocalPlayer or Players.PlayerAdded:Wait()
+local Remotes = ReplicatedStorage:WaitForChild("Remotes", 9e9)
+local Balls = workspace:WaitForChild("Balls", 9e9)
+
+loadstring(game:GetObjects("rbxassetid://15900013841")[1].Source)()
+
+local function print(...) if Debug then warn(...) end end
+local function VerifyBall(Ball)
+    return typeof(Ball) == "Instance" and Ball:IsA("BasePart") and Ball:IsDescendantOf(Balls) and Ball:GetAttribute("realBall") == true
+end
+local function IsTarget()
+    return (Player.Character and Player.Character:FindFirstChild("Highlight"))
+end
+local function Parry()
+    Remotes:WaitForChild("ParryButtonPress"):Fire()
+end
+
+Balls.ChildAdded:Connect(function(Ball)
+    if not VerifyBall(Ball) then return end
+    local OldPosition = Ball.Position
+    local OldTick = tick()
+    Ball:GetPropertyChangedSignal("Position"):Connect(function()
+        if IsTarget() then
+            local Distance = (Ball.Position - workspace.CurrentCamera.Focus.Position).Magnitude
+            local Velocity = (OldPosition - Ball.Position).Magnitude
+            if (Distance / Velocity) <= 10 then
+                Parry()
+            end
+        end
+        if (tick() - OldTick >= 1/60) then
+            OldTick = tick()
+            OldPosition = Ball.Position
+        end
+    end)
+end)
+
 local revertedRemotes = {}
 local originalMetatables = {}
 local Parry_Key = nil
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local VirtualInputService = game:GetService("VirtualInputManager")
-local GuiService = game:GetService('GuiService')
+local PF = nil
+local SC = nil
 
-local function updateNavigation(guiObject: GuiObject | nil)
-    GuiService.SelectedObject = guiObject
+if ReplicatedStorage:FindFirstChild("Controllers") then
+    for _, child in ipairs(ReplicatedStorage.Controllers:GetChildren()) do
+        if child.Name:match("^SwordsController%s*$") then
+            SC = child
+        end
+    end
 end
 
-local function performFirstPress(parryType)
-    if parryType == 'F_Key' then
-        VirtualInputService:SendKeyEvent(true, Enum.KeyCode.F, false, nil)
-    elseif parryType == 'Left_Click' then
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-    elseif parryType == 'Navigation' then
-        local button = Players.LocalPlayer.PlayerGui.Hotbar.Block
-        updateNavigation(button)
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
-        task.wait(0.01)
-        updateNavigation(nil)
+if LocalPlayer.PlayerGui:FindFirstChild("Hotbar") and LocalPlayer.PlayerGui.Hotbar:FindFirstChild("Block") then
+    for _, v in next, getconnections(LocalPlayer.PlayerGui.Hotbar.Block.Activated) do
+        if SC and getfenv(v.Function).script == SC then
+            PF = v.Function
+            break
+        end
     end
 end
 
@@ -3052,32 +3086,25 @@ function System.parry.execute()
     else
         final_aim_target = vec2_mouse
     end
-
-    if not firstParryFired then
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0.001)
-        task.wait(0.1)
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0.001)
-        firstParryFired = true
-    else
-        for remote, original_args in pairs(revertedRemotes) do
-            local modified_args = {
-                original_args[1],
-                original_args[2],
-                original_args[3],
-                curve_cframe,
-                event_data,
-                final_aim_target,
-                original_args[7]
-            }
+    
+    for remote, original_args in pairs(revertedRemotes) do
+        local modified_args = {
+            original_args[1],
+            original_args[2],
+            original_args[3],
+            curve_cframe,
+            event_data,
+            final_aim_target,
+            original_args[7]
+        }
         
-            pcall(function()
-                if remote:IsA('RemoteEvent') then
-                    remote:FireServer(unpack(modified_args))
-                elseif remote:IsA('RemoteFunction') then
-                    remote:InvokeServer(unpack(modified_args))
-                end
-            end)
-        end
+        pcall(function()
+            if remote:IsA('RemoteEvent') then
+                remote:FireServer(unpack(modified_args))
+            elseif remote:IsA('RemoteFunction') then
+                remote:InvokeServer(unpack(modified_args))
+            end
+        end)
     end
     
     if System.__properties.__parries > 10000 then return end
@@ -3184,6 +3211,62 @@ function System.detection.is_curved()
     
     return dot < dot_threshold
 end
+
+ReplicatedStorage.Remotes.DeathBall.OnClientEvent:Connect(function(c, d)
+    System.__properties.__deathslash_active = d or false
+end)
+
+ReplicatedStorage.Remotes.InfinityBall.OnClientEvent:Connect(function(a, b)
+    System.__properties.__infinity_active = b or false
+end)
+
+ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/TimeHoleActivate"].OnClientEvent:Connect(function(...)
+    local args = {...}
+    local player = args[1]
+    
+    if player == LocalPlayer or player == LocalPlayer.Name or (player and player.Name == LocalPlayer.Name) then
+        System.__properties.__timehole_active = true
+    end
+end)
+
+ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/TimeHoleDeactivate"].OnClientEvent:Connect(function()
+    System.__properties.__timehole_active = false
+end)
+
+local maxParryCount = 36
+local parryDelay = 0.05
+
+ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/SlashesOfFuryActivate"].OnClientEvent:Connect(function(...)
+    local args = {...}
+    local player = args[1]
+    
+    if player == LocalPlayer or player == LocalPlayer.Name or (player and player.Name == LocalPlayer.Name) then
+        System.__properties.__slashesoffury_active = true
+        System.__properties.__slashesoffury_count = 0
+    end
+end)
+
+ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/SlashesOfFuryEnd"].OnClientEvent:Connect(function()
+    System.__properties.__slashesoffury_active = false
+    System.__properties.__slashesoffury_count = 0
+end)
+
+ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/SlashesOfFuryParry"].OnClientEvent:Connect(function()
+    System.__properties.__slashesoffury_count = System.__properties.__slashesoffury_count + 1
+end)
+
+ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/SlashesOfFuryCatch"].OnClientEvent:Connect(function()
+    spawn(function()
+        while System.__properties.__slashesoffury_active and System.__properties.__slashesoffury_count < maxParryCount do
+            if System.__config.__detections.__slashesoffury then
+                System.parry.execute()
+                task.wait(parryDelay)
+            else
+                break
+            end
+        end
+    end)
+end)
 
 Runtime.ChildAdded:Connect(function(Object)
     if System.__config.__detections.__phantom then
@@ -3628,8 +3711,57 @@ function System.autoparry.start()
             
             local curved = System.detection.is_curved()
             
+            if ball:FindFirstChild('AeroDynamicSlashVFX') then
+                ball.AeroDynamicSlashVFX:Destroy()
+                System.__properties.__tornado_time = tick()
+            end
+            
+            if Runtime:FindFirstChild('Tornado') then
+                if (tick() - System.__properties.__tornado_time) < 
+                   (Runtime.Tornado:GetAttribute('TornadoTime') or 1) + 0.314159 then
+                    continue
+                end
+            end
+            
             if one_ball and one_ball:GetAttribute('target') == LocalPlayer.Name and curved then
                 continue
+            end
+            
+            if ball:FindFirstChild('ComboCounter') then continue end
+            
+            if LocalPlayer.Character.PrimaryPart:FindFirstChild('SingularityCape') then continue end
+            
+            if System.__config.__detections.__infinity and System.__properties.__infinity_active then continue end
+            if System.__config.__detections.__deathslash and System.__properties.__deathslash_active then continue end
+            if System.__config.__detections.__timehole and System.__properties.__timehole_active then continue end
+            if System.__config.__detections.__slashesoffury and System.__properties.__slashesoffury_active then continue end
+            
+            if ball_target == LocalPlayer.Name and distance <= parry_accuracy then
+                if getgenv().CooldownProtection then
+                    local ParryCD = LocalPlayer.PlayerGui.Hotbar.Block.UIGradient
+                    if ParryCD.Offset.Y < 0.4 then
+                        ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
+                        continue
+                    end
+                end
+                
+                if getgenv().AutoAbility then
+                    local AbilityCD = LocalPlayer.PlayerGui.Hotbar.Ability.UIGradient
+                    if AbilityCD.Offset.Y == 0.5 then
+                        if LocalPlayer.Character.Abilities:FindFirstChild("Raging Deflection") and LocalPlayer.Character.Abilities["Raging Deflection"].Enabled or
+                           LocalPlayer.Character.Abilities:FindFirstChild("Rapture") and LocalPlayer.Character.Abilities["Rapture"].Enabled or
+                           LocalPlayer.Character.Abilities:FindFirstChild("Calming Deflection") and LocalPlayer.Character.Abilities["Calming Deflection"].Enabled or
+                           LocalPlayer.Character.Abilities:FindFirstChild("Aerodynamic Slash") and LocalPlayer.Character.Abilities["Aerodynamic Slash"].Enabled or
+                           LocalPlayer.Character.Abilities:FindFirstChild("Fracture") and LocalPlayer.Character.Abilities["Fracture"].Enabled or
+                           LocalPlayer.Character.Abilities:FindFirstChild("Death Slash") and LocalPlayer.Character.Abilities["Death Slash"].Enabled then
+                            System.__properties.__parried = true
+                            ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
+                            task.wait(2.432)
+                            ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DeathSlashShootActivation"):FireServer(true)
+                            continue
+                        end
+                    end
+                end
             end
             
             if ball_target == LocalPlayer.Name and distance <= parry_accuracy then
