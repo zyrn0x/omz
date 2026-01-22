@@ -19,6 +19,217 @@ getgenv().GG = {
     }
 }
 
+-- Variables globales pour AntiBan
+local ManualSpam, playerBillboard, ballBillboard = nil, nil, nil
+local AutoParry, AutoSpam = nil, nil
+local visualizerEnabled = false
+local Remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
+
+-- Fonction AntiBan qui s'exécute automatiquement
+local function activateAntiBan()
+    print("Anti Ban enabled: Asset obfuscation and Wiggity staff detection active")
+    
+    local function randomizeName(obj)
+        local chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+        local newName = ""
+        for _ = 1, 10 do
+            newName = newName .. chars:sub(math.random(1, #chars), math.random(1, #chars))
+        end
+        obj.Name = newName
+    end
+    
+    local guiElements = {ManualSpam, playerBillboard, ballBillboard}
+    for _, gui in ipairs(guiElements) do
+        if gui then
+            randomizeName(gui)
+        end
+    end
+    
+    local coreGui = game:GetService("CoreGui")
+    local dummyFolder = Instance.new("Folder")
+    randomizeName(dummyFolder)
+    dummyFolder.Parent = coreGui
+    for _, gui in ipairs(guiElements) do
+        if gui then
+            gui.Parent = dummyFolder
+        end
+    end
+    
+    local originalGetUpvalues = debug.getupvalues or function() return {} end
+    debug.getupvalues = function(func)
+        if tostring(func):lower():find("anticheat") or tostring(func):lower():find("security") then
+            return {}
+        end
+        return originalGetUpvalues(func)
+    end
+    
+    local originalGetConstants = debug.getconstants or function() return {} end
+    debug.getconstants = function(func)
+        if tostring(func):lower():find("anticheat") or tostring(func):lower():find("security") then
+            return {}
+        end
+        return originalGetConstants(func)
+    end
+    
+    local networkSent = 0
+    local maxNetworkPerSecond = 1000
+    local lastNetworkCheck = tick()
+    local originalFireServer = Instance.new("RemoteEvent").FireServer
+    
+    for _, remote in pairs(Remotes:GetChildren()) do
+        if remote:IsA("RemoteEvent") then
+            local oldFireServer = remote.FireServer
+            remote.FireServer = function(self, ...)
+                if tick() - lastNetworkCheck >= 1 then
+                    networkSent = 0
+                    lastNetworkCheck = tick()
+                end
+                if networkSent >= maxNetworkPerSecond then
+                    print("Anti Ban: Network limit reached, delaying remote")
+                    task.wait(0.1)
+                end
+                networkSent = networkSent + 10
+                return oldFireServer(self, ...)
+            end
+        end
+    end
+    
+    local wiggityGroupId = 12836673
+    local minStaffRank = 14
+    local knownStaff = {"Chunch"}
+    
+    local function isWiggityStaff(player)
+        if table.find(knownStaff, player.Name) then
+            print("Anti Ban: Staff detected via username (" .. player.Name .. ")")
+            return true
+        end
+        
+        local success, rank = pcall(function()
+            return player:GetRankInGroup(wiggityGroupId)
+        end)
+        
+        if success and rank >= minStaffRank then
+            print("Anti Ban: Staff detected via group rank (" .. player.Name .. ", Rank: " .. rank .. ")")
+            return true
+        end
+        
+        if player:GetAttribute("IsAdmin") or player:GetAttribute("Moderator") or player:GetAttribute("Staff") then
+            print("Anti Ban: Staff detected via attribute (" .. player.Name .. ")")
+            return true
+        end
+        
+        return false
+    end
+    
+    -- Vérifier les joueurs déjà connectés
+    for _, player in pairs(game.Players:GetPlayers()) do
+        if player ~= game.Players.LocalPlayer and isWiggityStaff(player) then
+            print("Anti Ban: Wiggity staff detected (" .. player.Name .. "), disabling script")
+            
+            -- Désactiver les fonctionnalités si elles existent
+            if AutoParry then
+                AutoParry:SetValue(false)
+            end
+            if AutoSpam then
+                AutoSpam:SetValue(false)
+            end
+            if visualizerEnabled then
+                visualizerEnabled = false
+            end
+            
+            -- Supprimer les GUI
+            for _, gui in ipairs(guiElements) do
+                if gui then
+                    pcall(function() gui:Destroy() end)
+                end
+            end
+            
+            if dummyFolder then
+                pcall(function() dummyFolder:Destroy() end)
+            end
+            
+            game.Players.LocalPlayer:Kick("Wiggity staff detected, exiting for safety")
+            return
+        end
+    end
+    
+    -- Surveiller les nouveaux joueurs
+    game.Players.PlayerAdded:Connect(function(player)
+        task.wait(1) -- Attendre un peu pour laisser le joueur se charger
+        
+        if player ~= game.Players.LocalPlayer and isWiggityStaff(player) then
+            print("Anti Ban: Wiggity staff detected (" .. player.Name .. "), disabling script")
+            
+            if AutoParry then
+                AutoParry:SetValue(false)
+            end
+            if AutoSpam then
+                AutoSpam:SetValue(false)
+            end
+            if visualizerEnabled then
+                visualizerEnabled = false
+            end
+            
+            for _, gui in ipairs(guiElements) do
+                if gui then
+                    pcall(function() gui:Destroy() end)
+                end
+            end
+            
+            if dummyFolder then
+                pcall(function() dummyFolder:Destroy() end)
+            end
+            
+            game.Players.LocalPlayer:Kick("Wiggity staff detected, exiting for safety")
+        end
+    end)
+    
+    -- Surveiller les commandes de chat
+    game.Players.LocalPlayer.Chatted:Connect(function(message)
+        if message:lower():find("!ban") or message:lower():find("!kick") or 
+           message:lower():find("!admin") or message:lower():find("!mod") then
+            print("Anti Ban: Possible staff command detected, disabling script")
+            
+            if AutoParry then
+                AutoParry:SetValue(false)
+            end
+            if AutoSpam then
+                AutoSpam:SetValue(false)
+            end
+            if visualizerEnabled then
+                visualizerEnabled = false
+            end
+            
+            for _, gui in ipairs(guiElements) do
+                if gui then
+                    pcall(function() gui:Destroy() end)
+                end
+            end
+            
+            if dummyFolder then
+                pcall(function() dummyFolder:Destroy() end)
+            end
+            
+            game.Players.LocalPlayer:Kick("Staff command detected, exiting for safety")
+        end
+    end)
+    
+    -- Nettoyage périodique du CoreGui
+    game:GetService("RunService").Heartbeat:Connect(function()
+        for _, obj in pairs(coreGui:GetChildren()) do
+            if obj:IsA("Folder") and obj ~= dummyFolder then
+                pcall(function() obj:Destroy() end)
+            end
+        end
+    end)
+    
+    print("Anti Ban system fully activated")
+end
+
+-- Exécuter AntiBan automatiquement (ajoutez un délai si nécessaire)
+task.wait(2) -- Attendre que le jeu se charge
+activateAntiBan()
+
 -- Replace the SelectedLanguage with a reference to GG.Language
 local SelectedLanguage = GG.Language
 
@@ -8316,11 +8527,6 @@ guiset:create_module({
     end
 })
 end
-
-game:GetService("ReplicatedStorage").Security.RemoteEvent:Destroy()
-game:GetService("ReplicatedStorage").Security[""]:Destroy()
-game:GetService("ReplicatedStorage").Security:Destroy()
-game:GetService("Players").LocalPlayer.PlayerScripts.Client.DeviceChecker:Destroy()
 
 workspace.ChildRemoved:Connect(function(child)
     if child.Name == 'Balls' then
