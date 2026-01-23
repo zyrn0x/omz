@@ -3599,11 +3599,19 @@ FOVSection:Slider({
     end
 })
 
-local CharacterModifier = pl:create_module({
-    title = 'Character',
-    flag = 'CharacterModifier',
-    description = 'Changes various character properties',
-    section = 'right',
+local PlayerTab = Window:Tab({ 
+    Title = "Character", 
+    Icon = "solar:user-bold", 
+    IconColor = Color3.fromHex("#EF4F1D") })
+
+local CharacterModifierSection = PlayerTab:Section({ 
+    Title = "Character Modifier" 
+})
+
+CharacterModifierSection:Toggle({
+    Title = 'Character Modifier',
+    Flag = 'CharacterModifier',
+    Description = 'Changes various character properties',
 
     callback = function(value)
         getgenv().CharacterModifierEnabled = value
@@ -3694,15 +3702,6 @@ local CharacterModifier = pl:create_module({
             end
         end
     end
-})
-
-local PlayerTab = Window:Tab({ 
-    Title = "Character", 
-    Icon = "solar:user-bold", 
-    IconColor = Color3.fromHex("#EF4F1D") })
-
-local CharacterModifierSection = PlayerTab:Section({ 
-    Title = "Character Modifier" 
 })
 
 CharacterModifierSection:Toggle({
@@ -4888,7 +4887,7 @@ AISection:Slider({
     Min = 0,
     Max = 100,
     Default = AutoPlayModule.CONFIG.TRAVERSING,
-    }
+    },
     Callback = function(value)
         AutoPlayModule.CONFIG.TRAVERSING = value
     end
