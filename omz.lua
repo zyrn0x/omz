@@ -6971,4 +6971,8 @@ end
     t1:CreateDropdown({Description = "Special Type - Player", Callback = "", SpecialType = "Player"})
 end]]--
 
+task.delay(4, function() 
+	Luna:LoadAutoloadConfig()
+end)
+
 return Luna
