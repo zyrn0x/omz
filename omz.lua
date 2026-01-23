@@ -1347,7 +1347,7 @@ TriggerSection:Toggle({
     end 
 })
 
-local AboutSection = CombatTab:Section({
+local HotkeySection = CombatTab:Section({
     Title = "AutoCurve Hotkey",
 })
 
@@ -1647,7 +1647,7 @@ local function updateCurveType(newType)
     end
 end
 
-TriggerSection:Toggle({ 
+HotkeySection:Toggle({ 
     Title = "AutoCurve Hotkey" .. (System.__properties.__is_mobile and "(Mobile)" or "(PC)"), 
     Default = false, 
     Callback = function(state)
@@ -1667,7 +1667,7 @@ TriggerSection:Toggle({
     end
 })
 
-TriggerSection:Toggle({ 
+HotkeySection:Toggle({ 
     Title = "Notify", 
     Default = false, 
     Callback = function(value)
