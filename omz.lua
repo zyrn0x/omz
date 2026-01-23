@@ -1209,7 +1209,7 @@ ParrySection:Dropdown({
 
 ParrySection:Dropdown({
     Title = "AutoCurve",
-    Values = {System.__config.__curve_names},  -- adapte avec ta vraie liste
+    Values = System.__config.__curve_names,  -- adapte avec ta vraie liste
     Default = "Camera",
     Callback = function(value)
         for i, name in ipairs(System.__config.__curve_names) do
