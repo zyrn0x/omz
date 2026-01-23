@@ -25,8 +25,6 @@ Window:Tag({ Title = "v1.0 • OMZ", Icon = "github", Color = Color3.fromHex("#1
 
 end)
 
-repeat task.wait() until game:IsLoaded()
-
 local Players = cloneref(game:GetService('Players'))
 local ReplicatedStorage = cloneref(game:GetService('ReplicatedStorage'))
 local UserInputService = cloneref(game:GetService('UserInputService'))
