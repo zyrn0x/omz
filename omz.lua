@@ -1,5 +1,4 @@
--- KEY SYSTEM V2 UI LIBRARY:
--- UI by mr.xrer | Code by mstudio45
+
 
 local KeySystemUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/MaGiXxScripter0/keysystemv2api/master/ui/xrer_mstudio45.lua"))()
 KeySystemUI.New({
