@@ -1929,36 +1929,3 @@ ManualSpamSection:Slider({
         System.__properties.__spam_rate = value
     end
 })
-
--- ────────────────────────────────────────────────────────────────
---  EMOTES TAB
--- ────────────────────────────────────────────────────────────────
-
-local TabEmotes = Window:Tab({ Title = "Emotes", Icon = "solar:emoji-funny-bold", IconColor = Color3.fromHex("#ECA201") })
-
-TabEmotes:Section({ Title = "Animations System" })
-
-TabEmotes:Toggle({
-    Title = "Animations",
-    Default = false,
-    Callback = function(state)
-        getgenv().Animations = state
-        -- → ajoute ici ton code : if state then animation_system.start() else animation_system.cleanup() end
-    end
-})
-
-TabEmotes:Toggle({
-    Title = "Auto Stop",
-    Default = true,
-    Callback = function(state) getgenv().AutoStop = state end
-})
-
-TabEmotes:Dropdown({
-    Title = "Emote Type",
-    Values = animation_system.get_emotes_list() or {"None", "Dance", "Sit", "Wave", "Zombie", "Robot", "Floss"},
-    Default = "None",
-    Callback = function(selected)
-        getgenv().Selected_Animation = selected
-        -- → si Animations activé : animation_system.play(selected)
-    end
-})
