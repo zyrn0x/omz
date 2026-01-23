@@ -1921,65 +1921,11 @@ ManualSpamSection:Toggle({
     end
 })
 
-ManualSpamSectiont:Slider({
+ManualSpamSection:Slider({
     Title = "Spam Rate",
     Value = { Min = 60, Max = 5000, Default = 240 },
     Step = 10,
-    Callback = function(value)
+    Callback = ffunction(value)
         System.__properties.__spam_rate = value
     end
 })
-
-workspace.ChildRemoved:Connect(function(child)
-    if child.Name == 'Balls' then
-        System.__properties.__cached_balls = nil
-    end
-end)
-
-local balls = workspace:FindFirstChild('Balls')
-if balls then
-    balls.ChildAdded:Connect(function()
-        System.__properties.__parried = false
-    end)
-    
-    balls.ChildRemoved:Connect(function()
-        System.__properties.__parries = 0
-        System.__properties.__parried = false
-    end)
-end
-
-workspace.ChildRemoved:Connect(function(child)
-    if child.Name == 'Balls' then
-        System.__properties.__cached_balls = nil
-    end
-end)
-
-local balls = workspace:FindFirstChild('Balls')
-if balls then
-    balls.ChildAdded:Connect(function()
-        System.__properties.__parried = false
-    end)
-    
-    balls.ChildRemoved:Connect(function()
-        System.__properties.__parries = 0
-        System.__properties.__parried = false
-    end)
-end
-
-workspace.ChildRemoved:Connect(function(child)
-    if child.Name == 'Balls' then
-        System.__properties.__cached_balls = nil
-    end
-end)
-
-local balls = workspace:FindFirstChild('Balls')
-if balls then
-    balls.ChildAdded:Connect(function()
-        System.__properties.__parried = false
-    end)
-    
-    balls.ChildRemoved:Connect(function()
-        System.__properties.__parries = 0
-        System.__properties.__parried = false
-    end)
-end
