@@ -23,6 +23,10 @@ local Window = WindUI:CreateWindow({
 -- Tags (optionnel)
 Window:Tag({ Title = "v1.0 • OMZ", Icon = "github", Color = Color3.fromHex("#1c1c1c"), Border = true })
 
+while not WindUI do
+    task.wait()
+end
+
 local Players = cloneref(game:GetService('Players'))
 local ReplicatedStorage = cloneref(game:GetService('ReplicatedStorage'))
 local UserInputService = cloneref(game:GetService('UserInputService'))
