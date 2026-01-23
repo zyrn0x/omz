@@ -3321,10 +3321,19 @@ local No_Render = OtherVisualsSection:Toggle({
     Default = false,
     Callback = function(state)
         LocalPlayer.PlayerScripts.EffectScripts.ClientFX.Disabled = state
-    end
-    })
 
-    No_Render:change_state(false)
+        if state then
+            Connections_Manager['No Render'] = workspace.Runtime.ChildAdded:Connect(function(Value)
+                Debris:AddItem(Value, 0)   -- Debris est probablement game:GetService("Debris")
+            end)
+        else
+            if Connections_Manager['No Render'] then
+                Connections_Manager['No Render']:Disconnect()
+                Connections_Manager['No Render'] = nil
+            end
+        end
+    end
+})
 
 --[[local ParticleSystem = {
     Particles = {},
