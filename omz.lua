@@ -1,3 +1,28 @@
+local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+
+-- Création de la fenêtre principale
+local Window = WindUI:CreateWindow({
+    Title = "OMZ Hub",
+    --Author = "zyrn0x",
+    Folder = "OMZ_Config",
+    Icon = "solar:folder-2-bold-duotone",
+    OpenButton = {
+        Title = "Ouvrir OMZ",
+        CornerRadius = UDim.new(1,0),
+        Enabled = true,
+        Draggable = true,
+        Scale = 0.55,
+        Color = ColorSequence.new(
+            Color3.fromHex("#00ffea"),
+            Color3.fromHex("#ff00aa")
+        )
+    },
+    Topbar = { Height = 44, ButtonsType = "Mac" },
+})
+
+-- Tags (optionnel)
+Window:Tag({ Title = "v1.0 • OMZ", Icon = "github", Color = Color3.fromHex("#1c1c1c"), Border = true })
+
 repeat task.wait() until game:IsLoaded()
 
 local Players = cloneref(game:GetService('Players'))
@@ -1135,30 +1160,6 @@ local function destroy_mobile_gui(gui_data)
     end
 end
 
-local WindUI
-
-do
-    local ok, result = pcall(function()
-        return require("./src/Init")
-    end)
-    
-    if ok then
-        WindUI = result
-    else 
-        if cloneref(game:GetService("RunService"):IsStudio()) then
-            WindUI = require(cloneref(ReplicatedStorage:WaitForChild("WindUI"):WaitForChild("Init")))
-        else
-            WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
-        end
-    end
-end
-
-local Window = WindUI:CreateWindow({
-    Title = "My Super Hub",
-    Icon = "door-open", -- lucide icon. optional
-    Author = "by .ftgs and .ftgs", -- optional
-})
-
 -- ────────────────────────────────────────────────────────────────
 --  COMBAT / AUTOPARRY / SPAM TAB
 -- ────────────────────────────────────────────────────────────────
@@ -1926,7 +1927,7 @@ ManualSpamSection:Slider({
     Title = "Spam Rate",
     Value = { Min = 60, Max = 5000, Default = 240 },
     Step = 10,
-    Callback = ffunction(value)
+    Callback = function(value)
         System.__properties.__spam_rate = value
     end
 })
@@ -3319,22 +3320,524 @@ local No_Render = OtherVisualsSection:Toggle({
     Title = "No Render",
     Default = false,
     Callback = function(state)
-            LocalPlayer.PlayerScripts.EffectScripts.ClientFX.Disabled = state
-    
-            if state then
-                Connections_Manager['No Render'] = workspace.Runtime.ChildAdded:Connect(function(Value)
-                    Debris:AddItem(Value, 0)
-                end)
-            else
-                if Connections_Manager['No Render'] then
-                    Connections_Manager['No Render']:Disconnect()
-                    Connections_Manager['No Render'] = nil
-                end
-            end
-        end
+        LocalPlayer.PlayerScripts.EffectScripts.ClientFX.Disabled = state
+    end
     })
 
     No_Render:change_state(false)
+
+--[[local ParticleSystem = {
+    Particles = {},
+    MaxParticles = 5000,
+    SpawnArea = 500,
+    FallSpeed = 25,
+    SpawnHeight = 100,
+    SpawnRate = 3,
+    ParticleColor = Color3.fromRGB(100, 200, 255),
+    Enabled = false
+}
+
+local ParticleFolder = Instance.new("Folder")
+ParticleFolder.Name = "MagicalParticles"
+ParticleFolder.Parent = Workspace
+
+local Particles = {}
+
+function Particles.create()
+    local particle = Instance.new("Part")
+    particle.Name = "MagicalParticle"
+    particle.Size = Vector3.new(0.9, 0.9, 0.9)
+    particle.Shape = Enum.PartType.Ball
+    particle.Material = Enum.Material.Neon
+    particle.Color = ParticleSystem.ParticleColor
+    particle.CanCollide = false
+    particle.Anchored = true
+    particle.Transparency = 0
+    particle.CastShadow = false
+    particle.Parent = ParticleFolder
+    
+    local light = Instance.new("PointLight")
+    light.Brightness = 2.5
+    light.Range = 10
+    light.Color = ParticleSystem.ParticleColor
+    light.Parent = particle
+    
+    local trail = Instance.new("Trail")
+    trail.Lifetime = 0.5
+    trail.MinLength = 0.1
+    trail.FaceCamera = true
+    trail.LightEmission = 0.8
+    trail.Color = ColorSequence.new(ParticleSystem.ParticleColor)
+    trail.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.4),
+        NumberSequenceKeypoint.new(1, 1)
+    })
+    trail.WidthScale = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 1),
+        NumberSequenceKeypoint.new(1, 0)
+    })
+    
+    local attachment0 = Instance.new("Attachment")
+    attachment0.Parent = particle
+    local attachment1 = Instance.new("Attachment")
+    attachment1.Parent = particle
+    attachment1.Position = Vector3.new(0, -0.6, 0)
+    
+    trail.Attachment0 = attachment0
+    trail.Attachment1 = attachment1
+    trail.Parent = particle
+    
+    return particle
+end
+
+function Particles.get_player_position()
+    local character = LocalPlayer.Character
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        return character.HumanoidRootPart.Position
+    end
+    return Camera.CFrame.Position
+end
+
+function Particles.spawn()
+    if not ParticleSystem.Enabled then return end
+    if #ParticleSystem.Particles >= ParticleSystem.MaxParticles then return end
+    
+    local player_pos = Particles.get_player_position()
+    local random_x = player_pos.X + math.random(-ParticleSystem.SpawnArea, ParticleSystem.SpawnArea)
+    local random_z = player_pos.Z + math.random(-ParticleSystem.SpawnArea, ParticleSystem.SpawnArea)
+    local spawn_y = player_pos.Y + ParticleSystem.SpawnHeight
+    
+    local particle = Particles.create()
+    particle.Position = Vector3.new(random_x, spawn_y, random_z)
+    
+    local particle_data = {
+        Part = particle,
+        Velocity = Vector3.new(
+            math.random(-2, 2),
+            -ParticleSystem.FallSpeed,
+            math.random(-2, 2)
+        ),
+        RotationSpeed = Vector3.new(
+            math.random(-3, 3),
+            math.random(-3, 3),
+            math.random(-3, 3)
+        ),
+        FloatAmplitude = math.random(2, 5),
+        FloatFrequency = math.random(2, 4),
+        TimeAlive = 0
+    }
+    
+    table.insert(ParticleSystem.Particles, particle_data)
+end
+
+function Particles.update(delta_time)
+    local player_pos = Particles.get_player_position()
+    
+    for i = #ParticleSystem.Particles, 1, -1 do
+        local particle_data = ParticleSystem.Particles[i]
+        local particle = particle_data.Part
+        
+        if not particle or not particle.Parent then
+            table.remove(ParticleSystem.Particles, i)
+            continue
+        end
+        
+        particle_data.TimeAlive = particle_data.TimeAlive + delta_time
+        
+        local float_x = math.sin(particle_data.TimeAlive * particle_data.FloatFrequency) * particle_data.FloatAmplitude * delta_time
+        local float_z = math.cos(particle_data.TimeAlive * particle_data.FloatFrequency) * particle_data.FloatAmplitude * delta_time
+        
+        local new_position = particle.Position + Vector3.new(
+            particle_data.Velocity.X * delta_time + float_x,
+            particle_data.Velocity.Y * delta_time,
+            particle_data.Velocity.Z * delta_time + float_z
+        )
+        
+        particle.Position = new_position
+        particle.Orientation = particle.Orientation + particle_data.RotationSpeed
+        
+        local distance_to_player = (new_position - player_pos).Magnitude
+        if distance_to_player > ParticleSystem.SpawnArea * 1.5 then
+            particle:Destroy()
+            table.remove(ParticleSystem.Particles, i)
+            continue
+        end
+        
+        if new_position.Y < player_pos.Y - 20 then
+            particle:Destroy()
+            table.remove(ParticleSystem.Particles, i)
+        end
+    end
+end
+
+function Particles.clear_all()
+    for i = #ParticleSystem.Particles, 1, -1 do
+        local particle_data = ParticleSystem.Particles[i]
+        if particle_data.Part then
+            particle_data.Part:Destroy()
+        end
+        table.remove(ParticleSystem.Particles, i)
+    end
+end
+
+function Particles.update_colors()
+    for _, particle_data in ipairs(ParticleSystem.Particles) do
+        local particle = particle_data.Part
+        if particle and particle.Parent then
+            particle.Color = ParticleSystem.ParticleColor
+            local light = particle:FindFirstChildOfClass("PointLight")
+            if light then
+                light.Color = ParticleSystem.ParticleColor
+            end
+            local trail = particle:FindFirstChildOfClass("Trail")
+            if trail then
+                trail.Color = ColorSequence.new(ParticleSystem.ParticleColor)
+            end
+        end
+    end
+end
+
+local BallSystem = {}
+
+function BallSystem.get_ball()
+    local balls = Workspace:FindFirstChild('Balls')
+    if not balls then return nil end
+    
+    for _, ball in pairs(balls:GetChildren()) do
+        if not ball:GetAttribute('realBall') then
+            ball.CanCollide = false
+            return ball
+        end
+    end
+    return nil
+end
+
+local PlasmaTrails = {
+    Active = false,
+    Enabled = false,
+    TrailAttachments = {},
+    NumTrails = 8,
+    TrailColor = Color3.fromRGB(0, 255, 255)
+}
+
+local Plasma = {}
+
+function Plasma.create_trails(ball)
+    if PlasmaTrails.Active then return end
+    
+    PlasmaTrails.Active = true
+    PlasmaTrails.TrailAttachments = {}
+    
+    for i = 1, PlasmaTrails.NumTrails do
+        local angle = (i / PlasmaTrails.NumTrails) * math.pi * 2
+        local radius = math.random(150, 250) / 100
+        local height = math.random(-150, 150) / 100
+        
+        local offset1 = Vector3.new(
+            math.cos(angle) * radius,
+            height + math.sin(angle * 3) * 0.8,
+            math.sin(angle) * radius
+        )
+        
+        local offset2 = Vector3.new(
+            math.cos(angle + math.pi * 0.7) * radius * 1.3,
+            -height + math.cos(angle * 2.5) * 0.8,
+            math.sin(angle + math.pi * 0.7) * radius * 1.3
+        )
+        
+        local attachment0 = Instance.new("Attachment")
+        attachment0.Name = "PlasmaAttachment0_" .. i
+        attachment0.Position = offset1
+        attachment0.Parent = ball
+        
+        local attachment1 = Instance.new("Attachment")
+        attachment1.Name = "PlasmaAttachment1_" .. i
+        attachment1.Position = offset2
+        attachment1.Parent = ball
+        
+        local trail = Instance.new("Trail")
+        trail.Name = "PlasmaTrail_" .. i
+        trail.Attachment0 = attachment0
+        trail.Attachment1 = attachment1
+        trail.Lifetime = 0.6
+        trail.MinLength = 0
+        trail.FaceCamera = true
+        trail.LightEmission = 1
+        trail.LightInfluence = 0
+        trail.Texture = "rbxassetid://5029929719"
+        trail.TextureMode = Enum.TextureMode.Stretch
+        
+        local base_color = PlasmaTrails.TrailColor
+        trail.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, base_color),
+            ColorSequenceKeypoint.new(0.5, Color3.new(
+                math.min(base_color.R * 1.3, 1),
+                math.min(base_color.G * 1.3, 1),
+                math.min(base_color.B * 1.3, 1)
+            )),
+            ColorSequenceKeypoint.new(1, base_color)
+        })
+        
+        trail.Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.2),
+            NumberSequenceKeypoint.new(0.3, 0),
+            NumberSequenceKeypoint.new(0.7, 0.3),
+            NumberSequenceKeypoint.new(1, 1)
+        })
+        
+        trail.WidthScale = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.1),
+            NumberSequenceKeypoint.new(0.3, 0.25),
+            NumberSequenceKeypoint.new(0.7, 0.15),
+            NumberSequenceKeypoint.new(1, 0.02)
+        })
+        
+        trail.Parent = ball
+        
+        table.insert(PlasmaTrails.TrailAttachments, {
+            attachment0 = attachment0,
+            attachment1 = attachment1,
+            trail = trail,
+            baseAngle = angle,
+            angle = 0,
+            speed = math.random(15, 30) / 10,
+            spiralSpeed = math.random(25, 45) / 10,
+            radiusMultiplier = math.random(80, 130) / 100,
+            pulseOffset = math.random() * math.pi * 2,
+            baseRadius = radius,
+            baseHeight = height,
+            chaosSpeed = math.random(10, 20) / 10
+        })
+    end
+end
+
+function Plasma.animate_trails(ball, delta_time)
+    if not PlasmaTrails.Active then return end
+    
+    local time = tick()
+    
+    for _, trail_data in ipairs(PlasmaTrails.TrailAttachments) do
+        trail_data.angle = trail_data.angle + trail_data.speed * delta_time
+        
+        local spiral_angle = trail_data.angle * trail_data.spiralSpeed
+        local pulse = math.sin(time * 4 + trail_data.pulseOffset) * 0.4 + 1
+        local twist = math.sin(trail_data.angle * 3) * 0.7
+        local chaos = math.sin(time * trail_data.chaosSpeed + trail_data.pulseOffset) * 0.5
+        
+        local radius1 = trail_data.baseRadius * trail_data.radiusMultiplier * pulse
+        local radius2 = trail_data.baseRadius * 1.3 * trail_data.radiusMultiplier * pulse
+        
+        local spiral_offset1 = Vector3.new(
+            math.cos(spiral_angle) * 0.6,
+            math.sin(spiral_angle * 2) * 0.6,
+            math.sin(spiral_angle) * 0.6
+        )
+        
+        local spiral_offset2 = Vector3.new(
+            math.sin(spiral_angle * 1.3) * 0.5,
+            math.cos(spiral_angle * 1.7) * 0.5,
+            math.cos(spiral_angle * 1.1) * 0.5
+        )
+        
+        trail_data.attachment0.Position = Vector3.new(
+            math.cos(trail_data.baseAngle + trail_data.angle) * radius1,
+            trail_data.baseHeight + math.sin((trail_data.baseAngle + trail_data.angle) * 3) * 0.8 + twist + chaos,
+            math.sin(trail_data.baseAngle + trail_data.angle) * radius1
+        ) + spiral_offset1
+        
+        trail_data.attachment1.Position = Vector3.new(
+            math.cos(trail_data.baseAngle + trail_data.angle + math.pi * 0.7) * radius2,
+            -trail_data.baseHeight + math.cos((trail_data.baseAngle + trail_data.angle) * 2.5) * 0.8 - twist - chaos,
+            math.sin(trail_data.baseAngle + trail_data.angle + math.pi * 0.7) * radius2
+        ) + spiral_offset2
+        
+        local brightness = (math.sin(time * 5 + trail_data.pulseOffset) * 0.4 + 0.6)
+        trail_data.trail.LightEmission = brightness
+    end
+end
+
+function Plasma.cleanup_trails(ball)
+    if not ball then return end
+    
+    for _, obj in pairs(ball:GetChildren()) do
+        if obj.Name:match("Plasma") then
+            obj:Destroy()
+        end
+    end
+    
+    PlasmaTrails.Active = false
+    PlasmaTrails.TrailAttachments = {}
+end
+
+function Plasma.update_trail_colors(ball)
+    if not ball then return end
+    
+    for _, obj in pairs(ball:GetChildren()) do
+        if obj:IsA("Trail") and obj.Name:match("PlasmaTrail") then
+            local base_color = PlasmaTrails.TrailColor
+            obj.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, base_color),
+                ColorSequenceKeypoint.new(0.5, Color3.new(
+                    math.min(base_color.R * 1.3, 1),
+                    math.min(base_color.G * 1.3, 1),
+                    math.min(base_color.B * 1.3, 1)
+                )),
+                ColorSequenceKeypoint.new(1, base_color)
+            })
+        end
+    end
+end
+
+local last_ball = nil
+local spawn_timer = 0
+local spawn_interval = 0.04
+
+RunService.Heartbeat:Connect(function(delta_time)
+    if ParticleSystem.Enabled then
+        spawn_timer = spawn_timer + delta_time
+        
+        if spawn_timer >= spawn_interval then
+            for i = 1, ParticleSystem.SpawnRate do
+                Particles.spawn()
+            end
+            spawn_timer = 0
+        end
+    end
+    
+    Particles.update(delta_time)
+    
+    if PlasmaTrails.Enabled then
+        local ball = BallSystem.get_ball()
+        
+        if ball and ball ~= last_ball then
+            if last_ball then
+                Plasma.cleanup_trails(last_ball)
+            end
+            Plasma.create_trails(ball)
+            last_ball = ball
+        elseif not ball and last_ball then
+            Plasma.cleanup_trails(last_ball)
+            last_ball = nil
+        end
+        
+        if ball and PlasmaTrails.Active then
+            Plasma.animate_trails(ball, delta_time)
+        end
+    else
+        if last_ball then
+            Plasma.cleanup_trails(last_ball)
+            last_ball = nil
+        end
+    end
+end)
+
+local particle_module = visuals:create_module({
+    title = 'Rain',
+    description = '',
+    section = 'left',
+    flag = 'particle_rain_module',
+    callback = function(state)
+        ParticleSystem.Enabled = state
+        if not state then
+            Particles.clear_all()
+        end
+    end,
+})
+
+particle_module:create_slider({
+    title = 'Max Particles',
+    flag = 'max_particles',
+    maximum_value = 20000,
+    minimum_value = 100,
+    value = 5000,
+    round_number = true,
+    callback = function(value)
+        ParticleSystem.MaxParticles = value
+    end,
+})
+
+particle_module:create_slider({
+    title = 'Spawn Rate',
+    flag = 'spawn_rate',
+    maximum_value = 25,
+    minimum_value = 1,
+    value = 3,
+    round_number = true,
+    callback = function(value)
+        ParticleSystem.SpawnRate = value
+    end,
+})
+
+particle_module:create_slider({
+    title = 'Fall Speed',
+    flag = 'fall_speed',
+    maximum_value = 150,
+    minimum_value = 5,
+    value = 25,
+    round_number = true,
+    callback = function(value)
+        ParticleSystem.FallSpeed = value
+        for _, particle_data in ipairs(ParticleSystem.Particles) do
+            particle_data.Velocity = Vector3.new(
+                particle_data.Velocity.X,
+                -value,
+                particle_data.Velocity.Z
+            )
+        end
+    end,
+})
+
+particle_module:create_colorpicker({
+    title = 'Particle Color',
+    flag = 'particle_color',
+    callback = function(color)
+        ParticleSystem.ParticleColor = color
+        Particles.update_colors()
+    end,
+})
+
+local plasma_module = visuals:create_module({
+    title = 'Ball Trail',
+    description = '',
+    section = 'right',
+    flag = 'plasma_trails_module',
+    callback = function(state)
+        PlasmaTrails.Enabled = state
+        if not state and last_ball then
+            Plasma.cleanup_trails(last_ball)
+            last_ball = nil
+        end
+    end,
+})
+
+plasma_module:create_slider({
+    title = 'Number of Trails',
+    flag = 'num_trails',
+    maximum_value = 16,
+    minimum_value = 2,
+    value = 8,
+    round_number = true,
+    callback = function(value)
+        PlasmaTrails.NumTrails = value
+        if last_ball then
+            Plasma.cleanup_trails(last_ball)
+            if PlasmaTrails.Enabled then
+                Plasma.create_trails(last_ball)
+            end
+        end
+    end,
+})
+
+plasma_module:create_colorpicker({
+    title = 'Trail Color',
+    flag = 'trail_color',
+    callback = function(color)
+        PlasmaTrails.TrailColor = color
+        if last_ball then
+            Plasma.update_trail_colors(last_ball)
+        end
+    end,
+})]]
 
 local swordInstancesInstance = ReplicatedStorage:WaitForChild("Shared",9e9):WaitForChild("ReplicatedInstances",9e9):WaitForChild("Swords",9e9)
 local swordInstances = require(swordInstancesInstance)
@@ -3441,8 +3944,8 @@ task.spawn(function()
     end
 end)
 
-local SkinChangerSection = VisualTab:Section({ 
-    Title = "Skin Changer" 
+local SkinChangerSection = VisualTab:Section({
+    Title = "Skin Changer"
 })
 
 SkinChangerSection:Toggle({
@@ -4989,12 +5492,3 @@ if balls then
         System.__properties.__parried = false
     end)
 end
-
-local StarterGui = game:GetService('StarterGui')
-
-StarterGui:SetCore('SendNotification', {
-    Title = 'BETA',
-    Text = 'This Version is on BETA',
-    Icon = 'rbxassetid://123456789',
-    Duration = 10,
-})
