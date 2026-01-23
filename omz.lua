@@ -16,7 +16,7 @@ local Window = WindUI:CreateWindow({
             Color3.fromHex("#ff00aa")
         )
     },
-    Topbar = { Height = 60, ButtonsType = "Mac" }
+    Topbar = { Height = 44, ButtonsType = "Mac" }
 })
 
 Window:Tag({ Title = "v1.0 • OMZ", Icon = "github", Color = Color3.fromHex("#1c1c1c"), Border = true })
