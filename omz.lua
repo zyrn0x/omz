@@ -1,5 +1,3 @@
--- OBFUSCATEUR RAPIDE
-local scriptToObfuscate = [[
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -523,7 +521,7 @@ function Library:create_ui()
         Debris:AddItem(old_Omz, 0)
     end
 
-    local Omz = Instance.new('ScreenGui')
+    local Omz = Instance.new('CoreGui')
     Omz.ResetOnSpawn = false
     Omz.Name = 'Omz'
     Omz.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -2658,44 +2656,6 @@ local pl = main:create_tab('Player', 'rbxassetid://126017907477623')
 local visuals = main:create_tab('Visuals', 'rbxassetid://10723346959')
 local misc = main:create_tab('Misc', 'rbxassetid://132243429647479')
 local devJV = main:create_tab('Exclusive', 'rbxassetid://10734966248')
-]]
-
-local words = {
-    "Library", "Config", "UI", "Gui", "Frame", "Button", "Text", "Label",
-    "Service", "Tween", "Http", "Run", "Player", "Mouse", "Camera",
-    "Visual", "Misc", "Rage", "Auto", "Parry", "Detection", "Spam",
-    "Setting", "Option", "Module", "Tab", "Section", "Slider", "Dropdown",
-    "Checkbox", "Notification", "Container", "Handler", "Toggle", "Flag",
-    "Keybind", "Save", "Load", "Connect", "Disconnect", "Callback",
-    "Function", "Variable", "Local", "Global", "Shared", "GetGenv"
-}
-
-math.randomseed(os.time())
-local used = {}
-
-local function randomName()
-    local chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
-    local name = ""
-    for i = 1, math.random(5, 12) do
-        name = name .. chars:sub(math.random(1, #chars), math.random(1, #chars))
-    end
-    return name
-end
-
-for _, word in ipairs(words) do
-    if scriptToObfuscate:find(word) then
-        local newName
-        repeat
-            newName = randomName()
-        until not used[newName]
-        
-        used[newName] = true
-        scriptToObfuscate = scriptToObfuscate:gsub(word, newName)
-    end
-end
-
-print("-- SCRIPT OBFUSQUÉ --")
-print(scriptToObfuscate)
 
 repeat task.wait() until game:IsLoaded()
 
@@ -3830,7 +3790,7 @@ function System.autoparry.stop()
 end
 
 local function create_mobile_button(name, position_y, color)
-    local gui = Instance.new('ScreenGui')
+    local gui = Instance.new('CoreGui')
     gui.Name = 'Sigma' .. name .. 'Mobile'
     gui.ResetOnSpawn = false
     gui.IgnoreGuiInset = true
@@ -3877,7 +3837,7 @@ local function create_mobile_button(name, position_y, color)
 end
 
 local function create_mobile_button(name, position_y, color)
-    local gui = Instance.new('ScreenGui')
+    local gui = Instance.new('CoreGui')
     gui.Name = 'Sigma' .. name .. 'Mobile'
     gui.ResetOnSpawn = false
     gui.IgnoreGuiInset = true
@@ -4116,7 +4076,7 @@ triggerbot_module:create_checkbox({
 })
 
 local function create_curve_selector_mobile()
-    local gui = Instance.new('ScreenGui')
+    local gui = Instance.new('CoreGui')
     gui.Name = 'SigmaCurveSelectorMobile'
     gui.ResetOnSpawn = false
     gui.IgnoreGuiInset = true
@@ -6092,7 +6052,7 @@ function ball_velocity.create_stroke(thickness, color)
 end
 
 function ball_velocity.create_gui()
-    local gui = Instance.new("ScreenGui")
+    local gui = Instance.new("CoreGui")
     gui.Name = ball_velocity.__config.gui_name
     gui.ResetOnSpawn = false
     gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
