@@ -3304,6 +3304,7 @@ end
 
 OtherVisualsSection:Toggle({
     Title = "Show Ball Velocity",
+    Flag = "ballvelocity",
     Default = false,
     Callback = function(state)
         if state then
@@ -3745,7 +3746,7 @@ local particle_module = visuals:create_module({
     description = '',
     section = 'left',
     flag = 'particle_rain_module',
-    callback = function(state)
+    Callback = function(state)
         ParticleSystem.Enabled = state
         if not state then
             Particles.clear_all()
@@ -3760,7 +3761,7 @@ particle_module:create_slider({
     minimum_value = 100,
     value = 5000,
     round_number = true,
-    callback = function(value)
+    Callback = function(value)
         ParticleSystem.MaxParticles = value
     end,
 })
@@ -3772,7 +3773,7 @@ particle_module:create_slider({
     minimum_value = 1,
     value = 3,
     round_number = true,
-    callback = function(value)
+    Callback = function(value)
         ParticleSystem.SpawnRate = value
     end,
 })
@@ -3784,7 +3785,7 @@ particle_module:create_slider({
     minimum_value = 5,
     value = 25,
     round_number = true,
-    callback = function(value)
+    Callback = function(value)
         ParticleSystem.FallSpeed = value
         for _, particle_data in ipairs(ParticleSystem.Particles) do
             particle_data.Velocity = Vector3.new(
@@ -3799,7 +3800,7 @@ particle_module:create_slider({
 particle_module:create_colorpicker({
     title = 'Particle Color',
     flag = 'particle_color',
-    callback = function(color)
+    Callback = function(color)
         ParticleSystem.ParticleColor = color
         Particles.update_colors()
     end,
@@ -3810,7 +3811,7 @@ local plasma_module = visuals:create_module({
     description = '',
     section = 'right',
     flag = 'plasma_trails_module',
-    callback = function(state)
+    Callback = function(state)
         PlasmaTrails.Enabled = state
         if not state and last_ball then
             Plasma.cleanup_trails(last_ball)
@@ -3826,7 +3827,7 @@ plasma_module:create_slider({
     minimum_value = 2,
     value = 8,
     round_number = true,
-    callback = function(value)
+    Callback = function(value)
         PlasmaTrails.NumTrails = value
         if last_ball then
             Plasma.cleanup_trails(last_ball)
@@ -3840,7 +3841,7 @@ plasma_module:create_slider({
 plasma_module:create_colorpicker({
     title = 'Trail Color',
     flag = 'trail_color',
-    callback = function(color)
+    Callback = function(color)
         PlasmaTrails.TrailColor = color
         if last_ball then
             Plasma.update_trail_colors(last_ball)
@@ -3974,7 +3975,7 @@ SkinChangerSection:Toggle({
 SkinChangerSection:Toggle({
     Title = "Change Sword Model",
     Desc = "Active le changement de modèle d'épée",   -- optionnel
-    Value = true,                -- état initial (true = coché au démarrage)
+    Value = false,                -- état initial (true = coché au démarrage)
     Flag = "ChangeSwordModel",   -- pour le système de config/save
     Callback = function(value: boolean)
         getgenv().changeSwordModel = value
@@ -3988,7 +3989,7 @@ SkinChangerSection:Input({
     Title = "Sword Model Name",
     Desc = "Nom du modèle d'épée à utiliser",
     Placeholder = "Enter Sword Model Name...",
-    Value = "",                      -- valeur par défaut (vide au départ)
+    Value = "",                    -- valeur par défaut (vide au départ)
     Flag = "SwordModelTextbox",
     InputIcon = "sword",             -- icône lucide optionnelle (cherche "sword" sur lucide.dev/icons)
     Callback = function(text: string)
@@ -4002,7 +4003,7 @@ SkinChangerSection:Input({
 -- Checkbox + Textbox pour Change Sword Animation
 SkinChangerSection:Toggle({
     Title = "Change Sword Animation",
-    Value = true,
+    Value = false,
     Flag = "ChangeSwordAnimation",
     Callback = function(value: boolean)
         getgenv().changeSwordAnimation = value
@@ -4030,7 +4031,7 @@ SkinChangerSection:Input({
 -- Checkbox + Textbox pour Change Sword FX
 SkinChangerSection:Toggle({
     Title = "Change Sword FX",
-    Value = true,
+    Value = false,
     Flag = "ChangeSwordFX",
     Callback = function(value: boolean)
         getgenv().changeSwordFX = value
@@ -5183,12 +5184,12 @@ AutoPlayModule.movement = {
 }
 
 AutoPlayModule.signal = {
-    connect = function(name, connection, callback)
+    connect = function(name, connection, Callback)
         if not name then
             name = AutoPlayModule.customService.HttpService:GenerateGUID()
         end
     
-        AutoPlayModule.signals[name] = connection:Connect(callback)
+        AutoPlayModule.signals[name] = connection:Connect(Callback)
         return AutoPlayModule.signals[name]
     end,
     
