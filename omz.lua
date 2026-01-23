@@ -3091,7 +3091,8 @@ local ball_velocity = {
         active = false,
         gui = nil,
         ball_data = {},
-        is_dragging = false
+        is_dragging = false,
+        connection = nil
     }
 }
 
