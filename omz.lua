@@ -16,7 +16,7 @@ local Window = WindUI:CreateWindow({
             Color3.fromHex("#ff00aa")
         )
     },
-    Topbar = { Height = 44, ButtonsType = "Mac" }
+    Topbar = { Height = 44, ButtonsType = "Default" }
 })
 
 Window:Tag({ Title = "v1.0 • OMZ", Icon = "github", Color = Color3.fromHex("#1c1c1c"), Border = true })
@@ -1931,7 +1931,7 @@ ManualSpamSection:Slider({
 })
 
 -- ────────────────────────────────────────────────────────────────
---  EMOTES TAB
+--  VISUAL TAB
 -- ────────────────────────────────────────────────────────────────
 local __players = cloneref(game:GetService('Players'))
 local __localplayer = __players.LocalPlayer
@@ -2380,7 +2380,7 @@ EmotesSection:Toggle({
     end
 })
 
-EmotesSection:Dropdown({
+local animation_dropdown = EmotesSection:Dropdown({
     Title = "Emote Type",
     Values = emotes_data,
     Default = "None",
@@ -2390,6 +2390,2585 @@ EmotesSection:Dropdown({
         if getgenv().Animations then
             animation_system.play(value)
         end
+    end
+})
+
+animation_dropdown:Select(selected_animation)
+
+local ability_esp = {
+    __config = {
+        gui_name = "AbilityESPGui",
+        gui_size = UDim2.new(0, 200, 0, 40),
+        studs_offset = Vector3.new(0, 3.2, 0),
+        text_color = Color3.fromRGB(255, 255, 255),
+        stroke_color = Color3.fromRGB(0, 0, 0),
+        font = Enum.Font.GothamBold,
+        text_size = 14,
+        update_rate = 1/30
+    },
+    
+    __state = {
+        active = false,
+        players = {},
+        update_task = nil
+    }
+}
+
+function ability_esp.create_billboard(player)
+    local character = player.Character
+    if not character or not character.Parent then 
+        return nil
+    end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoid then
+        return nil
+    end
+    
+    local head = character:FindFirstChild("Head")
+    if not head then
+        return nil
+    end
+    
+    local existing = head:FindFirstChild(ability_esp.__config.gui_name)
+    if existing then
+        existing:Destroy()
+    end
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = ability_esp.__config.gui_name
+    billboard.Adornee = head
+    billboard.Size = ability_esp.__config.gui_size
+    billboard.StudsOffset = ability_esp.__config.studs_offset
+    billboard.AlwaysOnTop = true
+    billboard.Parent = head
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = ability_esp.__config.text_color
+    label.TextStrokeColor3 = ability_esp.__config.stroke_color
+    label.TextStrokeTransparency = 0.5
+    label.Font = ability_esp.__config.font
+    label.TextSize = ability_esp.__config.text_size
+    label.TextWrapped = true
+    label.TextXAlignment = Enum.TextXAlignment.Center
+    label.TextYAlignment = Enum.TextYAlignment.Center
+    label.Parent = billboard
+    
+    humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+    
+    return label, billboard
+end
+
+function ability_esp.update_label(player, label)
+    if not player or not player.Parent or not label or not label.Parent then
+        return false
+    end
+    
+    local character = player.Character
+    if not character or not character.Parent or not character:FindFirstChild("Humanoid") then
+        return false
+    end
+    
+    if ability_esp.__state.active then
+        label.Visible = true
+        local ability_name = player:GetAttribute("EquippedAbility")
+        label.Text = ability_name and 
+            (player.DisplayName .. "  [" .. ability_name .. "]") or 
+            player.DisplayName
+    else
+        label.Visible = false
+    end
+    
+    return true
+end
+
+function ability_esp.setup_character(player)
+    if not ability_esp.__state.active then
+        return
+    end
+    
+    task.wait(0.1)
+    
+    local character = player.Character
+    if not character or not character.Parent or not character:FindFirstChild("Humanoid") then
+        return
+    end
+    
+    local label, billboard = ability_esp.create_billboard(player)
+    if not label then
+        return
+    end
+    
+    if not ability_esp.__state.players[player] then
+        ability_esp.__state.players[player] = {}
+    end
+    
+    ability_esp.__state.players[player].label = label
+    ability_esp.__state.players[player].billboard = billboard
+    ability_esp.__state.players[player].character = character
+    
+    local char_connection = character.AncestryChanged:Connect(function()
+        if not character.Parent then
+            if ability_esp.__state.players[player] then
+                if ability_esp.__state.players[player].billboard then
+                    ability_esp.__state.players[player].billboard:Destroy()
+                end
+                ability_esp.__state.players[player].label = nil
+                ability_esp.__state.players[player].billboard = nil
+                ability_esp.__state.players[player].character = nil
+            end
+        end
+    end)
+    
+    if not System.__properties.__connections.ability_esp then
+        System.__properties.__connections.ability_esp = {}
+    end
+    
+    if not System.__properties.__connections.ability_esp[player] then
+        System.__properties.__connections.ability_esp[player] = {}
+    end
+    
+    System.__properties.__connections.ability_esp[player].char_removing = char_connection
+end
+
+function ability_esp.add_player(player)
+    if player == LocalPlayer then
+        return
+    end
+    
+    if ability_esp.__state.players[player] then
+        ability_esp.remove_player(player)
+    end
+    
+    if not System.__properties.__connections.ability_esp then
+        System.__properties.__connections.ability_esp = {}
+    end
+    
+    if not System.__properties.__connections.ability_esp[player] then
+        System.__properties.__connections.ability_esp[player] = {}
+    end
+    
+    local char_added_connection = player.CharacterAdded:Connect(function()
+        ability_esp.setup_character(player)
+    end)
+    
+    System.__properties.__connections.ability_esp[player].char_added = char_added_connection
+    
+    if player.Character then
+        task.spawn(function()
+            ability_esp.setup_character(player)
+        end)
+    end
+end
+
+function ability_esp.remove_player(player)
+    if System.__properties.__connections.ability_esp and System.__properties.__connections.ability_esp[player] then
+        for _, connection in pairs(System.__properties.__connections.ability_esp[player]) do
+            if connection and connection.Connected then
+                connection:Disconnect()
+            end
+        end
+        System.__properties.__connections.ability_esp[player] = nil
+    end
+    
+    local player_data = ability_esp.__state.players[player]
+    if player_data then
+        if player_data.billboard then
+            player_data.billboard:Destroy()
+        end
+        ability_esp.__state.players[player] = nil
+    end
+end
+
+function ability_esp.update_loop()
+    while ability_esp.__state.active do
+        task.wait(ability_esp.__config.update_rate)
+        
+        local players_to_remove = {}
+        
+        for player, player_data in pairs(ability_esp.__state.players) do
+            if not player or not player.Parent then
+                table.insert(players_to_remove, player)
+                continue
+            end
+            
+            local character = player.Character
+            if not character or not character.Parent or not character:FindFirstChild("Humanoid") then
+                if player_data.billboard then
+                    player_data.billboard:Destroy()
+                    player_data.billboard = nil
+                    player_data.label = nil
+                end
+                continue
+            end
+            
+            if not player_data.billboard or not player_data.label then
+                local label, billboard = ability_esp.create_billboard(player)
+                if label then
+                    player_data.label = label
+                    player_data.billboard = billboard
+                    player_data.character = character
+                end
+            end
+            
+            if player_data.label then
+                local success = ability_esp.update_label(player, player_data.label)
+                if not success then
+                    local label, billboard = ability_esp.create_billboard(player)
+                    if label then
+                        player_data.label = label
+                        player_data.billboard = billboard
+                        player_data.character = character
+                    end
+                end
+            end
+        end
+        
+        for _, player in ipairs(players_to_remove) do
+            if ability_esp.__state.players[player] then
+                if ability_esp.__state.players[player].billboard then
+                    ability_esp.__state.players[player].billboard:Destroy()
+                end
+                ability_esp.__state.players[player] = nil
+            end
+        end
+    end
+end
+
+function ability_esp.start()
+    if ability_esp.__state.active then
+        return
+    end
+    
+    ability_esp.__state.active = true
+    getgenv().AbilityESP = true
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            ability_esp.add_player(player)
+        end
+    end
+    
+    if not System.__properties.__connections.ability_esp then
+        System.__properties.__connections.ability_esp = {}
+    end
+    
+    System.__properties.__connections.ability_esp.player_added = Players.PlayerAdded:Connect(function(player)
+        if ability_esp.__state.active and player ~= LocalPlayer then
+            task.wait(1)
+            ability_esp.add_player(player)
+        end
+    end)
+    
+    ability_esp.__state.update_task = task.spawn(function()
+        ability_esp.update_loop()
+    end)
+end
+
+function ability_esp.stop()
+    if not ability_esp.__state.active then
+        return
+    end
+    
+    ability_esp.__state.active = false
+    getgenv().AbilityESP = false
+    
+    if ability_esp.__state.update_task then
+        task.cancel(ability_esp.__state.update_task)
+        ability_esp.__state.update_task = nil
+    end
+    
+    if System.__properties.__connections.ability_esp then
+        for player, connections in pairs(System.__properties.__connections.ability_esp) do
+            if type(connections) == "table" then
+                for _, connection in pairs(connections) do
+                    if connection and connection.Connected then
+                        connection:Disconnect()
+                    end
+                end
+            elseif connections and connections.Connected then
+                connections:Disconnect()
+            end
+        end
+        
+        System.__properties.__connections.ability_esp = nil
+    end
+    
+    for player in pairs(ability_esp.__state.players) do
+        ability_esp.remove_player(player)
+    end
+end
+
+function ability_esp.toggle(value)
+    if value then
+        ability_esp.start()
+    else
+        ability_esp.stop()
+    end
+end
+
+local OtherVisualsSection = VisualTab:Section({ 
+    Title = "Other Visuals" 
+})
+
+local ability_esp = {
+    __config = {
+        gui_name = "AbilityESPGui",
+        gui_size = UDim2.new(0, 200, 0, 40),
+        studs_offset = Vector3.new(0, 3.2, 0),
+        text_color = Color3.fromRGB(255, 255, 255),
+        stroke_color = Color3.fromRGB(0, 0, 0),
+        font = Enum.Font.GothamBold,
+        text_size = 14,
+        update_rate = 1/30
+    },
+    
+    __state = {
+        active = false,
+        players = {},
+        update_task = nil
+    }
+}
+
+function ability_esp.create_billboard(player)
+    local character = player.Character
+    if not character or not character.Parent then 
+        return nil
+    end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoid then
+        return nil
+    end
+    
+    local head = character:FindFirstChild("Head")
+    if not head then
+        return nil
+    end
+    
+    local existing = head:FindFirstChild(ability_esp.__config.gui_name)
+    if existing then
+        existing:Destroy()
+    end
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = ability_esp.__config.gui_name
+    billboard.Adornee = head
+    billboard.Size = ability_esp.__config.gui_size
+    billboard.StudsOffset = ability_esp.__config.studs_offset
+    billboard.AlwaysOnTop = true
+    billboard.Parent = head
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = ability_esp.__config.text_color
+    label.TextStrokeColor3 = ability_esp.__config.stroke_color
+    label.TextStrokeTransparency = 0.5
+    label.Font = ability_esp.__config.font
+    label.TextSize = ability_esp.__config.text_size
+    label.TextWrapped = true
+    label.TextXAlignment = Enum.TextXAlignment.Center
+    label.TextYAlignment = Enum.TextYAlignment.Center
+    label.Parent = billboard
+    
+    humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+    
+    return label, billboard
+end
+
+function ability_esp.update_label(player, label)
+    if not player or not player.Parent or not label or not label.Parent then
+        return false
+    end
+    
+    local character = player.Character
+    if not character or not character.Parent or not character:FindFirstChild("Humanoid") then
+        return false
+    end
+    
+    if ability_esp.__state.active then
+        label.Visible = true
+        local ability_name = player:GetAttribute("EquippedAbility")
+        label.Text = ability_name and 
+            (player.DisplayName .. "  [" .. ability_name .. "]") or 
+            player.DisplayName
+    else
+        label.Visible = false
+    end
+    
+    return true
+end
+
+function ability_esp.setup_character(player)
+    if not ability_esp.__state.active then
+        return
+    end
+    
+    task.wait(0.1)
+    
+    local character = player.Character
+    if not character or not character.Parent or not character:FindFirstChild("Humanoid") then
+        return
+    end
+    
+    local label, billboard = ability_esp.create_billboard(player)
+    if not label then
+        return
+    end
+    
+    if not ability_esp.__state.players[player] then
+        ability_esp.__state.players[player] = {}
+    end
+    
+    ability_esp.__state.players[player].label = label
+    ability_esp.__state.players[player].billboard = billboard
+    ability_esp.__state.players[player].character = character
+    
+    local char_connection = character.AncestryChanged:Connect(function()
+        if not character.Parent then
+            if ability_esp.__state.players[player] then
+                if ability_esp.__state.players[player].billboard then
+                    ability_esp.__state.players[player].billboard:Destroy()
+                end
+                ability_esp.__state.players[player].label = nil
+                ability_esp.__state.players[player].billboard = nil
+                ability_esp.__state.players[player].character = nil
+            end
+        end
+    end)
+    
+    if not System.__properties.__connections.ability_esp then
+        System.__properties.__connections.ability_esp = {}
+    end
+    
+    if not System.__properties.__connections.ability_esp[player] then
+        System.__properties.__connections.ability_esp[player] = {}
+    end
+    
+    System.__properties.__connections.ability_esp[player].char_removing = char_connection
+end
+
+function ability_esp.add_player(player)
+    if player == LocalPlayer then
+        return
+    end
+    
+    if ability_esp.__state.players[player] then
+        ability_esp.remove_player(player)
+    end
+    
+    if not System.__properties.__connections.ability_esp then
+        System.__properties.__connections.ability_esp = {}
+    end
+    
+    if not System.__properties.__connections.ability_esp[player] then
+        System.__properties.__connections.ability_esp[player] = {}
+    end
+    
+    local char_added_connection = player.CharacterAdded:Connect(function()
+        ability_esp.setup_character(player)
+    end)
+    
+    System.__properties.__connections.ability_esp[player].char_added = char_added_connection
+    
+    if player.Character then
+        task.spawn(function()
+            ability_esp.setup_character(player)
+        end)
+    end
+end
+
+function ability_esp.remove_player(player)
+    if System.__properties.__connections.ability_esp and System.__properties.__connections.ability_esp[player] then
+        for _, connection in pairs(System.__properties.__connections.ability_esp[player]) do
+            if connection and connection.Connected then
+                connection:Disconnect()
+            end
+        end
+        System.__properties.__connections.ability_esp[player] = nil
+    end
+    
+    local player_data = ability_esp.__state.players[player]
+    if player_data then
+        if player_data.billboard then
+            player_data.billboard:Destroy()
+        end
+        ability_esp.__state.players[player] = nil
+    end
+end
+
+function ability_esp.update_loop()
+    while ability_esp.__state.active do
+        task.wait(ability_esp.__config.update_rate)
+        
+        local players_to_remove = {}
+        
+        for player, player_data in pairs(ability_esp.__state.players) do
+            if not player or not player.Parent then
+                table.insert(players_to_remove, player)
+                continue
+            end
+            
+            local character = player.Character
+            if not character or not character.Parent or not character:FindFirstChild("Humanoid") then
+                if player_data.billboard then
+                    player_data.billboard:Destroy()
+                    player_data.billboard = nil
+                    player_data.label = nil
+                end
+                continue
+            end
+            
+            if not player_data.billboard or not player_data.label then
+                local label, billboard = ability_esp.create_billboard(player)
+                if label then
+                    player_data.label = label
+                    player_data.billboard = billboard
+                    player_data.character = character
+                end
+            end
+            
+            if player_data.label then
+                local success = ability_esp.update_label(player, player_data.label)
+                if not success then
+                    local label, billboard = ability_esp.create_billboard(player)
+                    if label then
+                        player_data.label = label
+                        player_data.billboard = billboard
+                        player_data.character = character
+                    end
+                end
+            end
+        end
+        
+        for _, player in ipairs(players_to_remove) do
+            if ability_esp.__state.players[player] then
+                if ability_esp.__state.players[player].billboard then
+                    ability_esp.__state.players[player].billboard:Destroy()
+                end
+                ability_esp.__state.players[player] = nil
+            end
+        end
+    end
+end
+
+function ability_esp.start()
+    if ability_esp.__state.active then
+        return
+    end
+    
+    ability_esp.__state.active = true
+    getgenv().AbilityESP = true
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            ability_esp.add_player(player)
+        end
+    end
+    
+    if not System.__properties.__connections.ability_esp then
+        System.__properties.__connections.ability_esp = {}
+    end
+    
+    System.__properties.__connections.ability_esp.player_added = Players.PlayerAdded:Connect(function(player)
+        if ability_esp.__state.active and player ~= LocalPlayer then
+            task.wait(1)
+            ability_esp.add_player(player)
+        end
+    end)
+    
+    ability_esp.__state.update_task = task.spawn(function()
+        ability_esp.update_loop()
+    end)
+end
+
+function ability_esp.stop()
+    if not ability_esp.__state.active then
+        return
+    end
+    
+    ability_esp.__state.active = false
+    getgenv().AbilityESP = false
+    
+    if ability_esp.__state.update_task then
+        task.cancel(ability_esp.__state.update_task)
+        ability_esp.__state.update_task = nil
+    end
+    
+    if System.__properties.__connections.ability_esp then
+        for player, connections in pairs(System.__properties.__connections.ability_esp) do
+            if type(connections) == "table" then
+                for _, connection in pairs(connections) do
+                    if connection and connection.Connected then
+                        connection:Disconnect()
+                    end
+                end
+            elseif connections and connections.Connected then
+                connections:Disconnect()
+            end
+        end
+        
+        System.__properties.__connections.ability_esp = nil
+    end
+    
+    for player in pairs(ability_esp.__state.players) do
+        ability_esp.remove_player(player)
+    end
+end
+
+function ability_esp.toggle(value)
+    if value then
+        ability_esp.start()
+    else
+        ability_esp.stop()
+    end
+end
+
+OtherVisualsSection:Toggle({
+    Title = "Ability ESP",
+    Default = false,
+    Callback = function(value)
+        ability_esp.toggle(value)
+    end
+})
+
+local HttpService = game:GetService("HttpService")
+local UserInputService = game:GetService("UserInputService")
+
+local save_folder = workspace:FindFirstChild("OwO") or Instance.new("Folder", workspace)
+save_folder.Name = "OwO"
+
+local function load_pos()
+    local file = save_folder:FindFirstChild("ball_ui_pos")
+    if not file then return nil end
+
+    local ok, data = pcall(function()
+        return HttpService:JSONDecode(file.Value)
+    end)
+
+    if ok and data and data.x and data.y then
+        return UDim2.new(0, data.x, 0, data.y)
+    end
+
+    return nil
+end
+
+local function save_pos(udim)
+    local data = {
+        x = udim.X.Offset,
+        y = udim.Y.Offset
+    }
+
+    local json = HttpService:JSONEncode(data)
+
+    local file = save_folder:FindFirstChild("ball_ui_pos") or Instance.new("StringValue", save_folder)
+    file.Name = "ball_ui_pos"
+    file.Value = json
+end
+
+
+local ball_velocity = {
+    __config = {
+        gui_name = "BallStatsGui",
+        colors = {
+            background = Color3.fromRGB(18, 18, 18),
+            container = Color3.fromRGB(28, 28, 28),
+            header = Color3.fromRGB(12, 12, 12),
+            text_primary = Color3.fromRGB(255, 255, 255),
+            text_secondary = Color3.fromRGB(170, 170, 170),
+            accent_green = Color3.fromRGB(34, 197, 94),
+            accent_orange = Color3.fromRGB(249, 115, 22),
+            border = Color3.fromRGB(40, 40, 40)
+        }
+    },
+
+    __state = {
+        active = false,
+        gui = nil,
+        ball_data = {},
+        is_dragging = false
+    }
+}
+
+function ball_velocity.create_corner(radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius or 8)
+    return corner
+end
+
+function ball_velocity.create_stroke(thickness, color)
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = thickness or 1
+    stroke.Color = color or ball_velocity.__config.colors.border
+    return stroke
+end
+
+function ball_velocity.create_gui()
+    local gui = Instance.new("ScreenGui")
+    gui.Name = ball_velocity.__config.gui_name
+    gui.ResetOnSpawn = false
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    gui.Parent = LocalPlayer:WaitForChild("CoreGui")
+
+    local main_frame = Instance.new("Frame")
+    main_frame.Name = "MainFrame"
+    main_frame.Size = UDim2.new(0, 180, 0, 95)
+    main_frame.Position = load_pos() or UDim2.new(0, 20, 0, 150)
+    main_frame.BackgroundColor3 = ball_velocity.__config.colors.background
+    main_frame.BorderSizePixel = 0
+    main_frame.Parent = gui
+
+    ball_velocity.create_corner(10).Parent = main_frame
+    ball_velocity.create_stroke(1, ball_velocity.__config.colors.border).Parent = main_frame
+
+    local header = Instance.new("Frame")
+    header.Name = "Header"
+    header.Size = UDim2.new(1, 0, 0, 26)
+    header.Position = UDim2.new(0, 0, 0, 0)
+    header.BackgroundColor3 = ball_velocity.__config.colors.header
+    header.BorderSizePixel = 0
+    header.Parent = main_frame
+
+    ball_velocity.create_corner(10).Parent = header
+
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(1, -12, 1, 0)
+    title.Position = UDim2.new(0, 12, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "Ball Stats"
+    title.TextColor3 = ball_velocity.__config.colors.text_primary
+    title.TextSize = 13
+    title.Font = Enum.Font.GothamBold
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Parent = header
+
+    local content = Instance.new("Frame")
+    content.Name = "Content"
+    content.Size = UDim2.new(1, -18, 1, -34)
+    content.Position = UDim2.new(0, 9, 0, 30)
+    content.BackgroundTransparency = 1
+    content.Parent = main_frame
+
+    local current_label = Instance.new("TextLabel")
+    current_label.Name = "CurrentLabel"
+    current_label.Size = UDim2.new(1, 0, 0, 14)
+    current_label.Position = UDim2.new(0, 0, 0, 2)
+    current_label.BackgroundTransparency = 1
+    current_label.Text = "Current"
+    current_label.TextColor3 = ball_velocity.__config.colors.text_secondary
+    current_label.TextSize = 10
+    current_label.Font = Enum.Font.Gotham
+    current_label.TextXAlignment = Enum.TextXAlignment.Left
+    current_label.Parent = content
+
+    local current_value = Instance.new("TextLabel")
+    current_value.Name = "CurrentValue"
+    current_value.Size = UDim2.new(1, 0, 0, 20)
+    current_value.Position = UDim2.new(0, 0, 0, 14)
+    current_value.BackgroundTransparency = 1
+    current_value.Text = "0.0"
+    current_value.TextColor3 = ball_velocity.__config.colors.accent_green
+    current_value.TextSize = 16
+    current_value.Font = Enum.Font.GothamBold
+    current_value.TextXAlignment = Enum.TextXAlignment.Left
+    current_value.Parent = content
+
+    local peak_label = Instance.new("TextLabel")
+    peak_label.Name = "PeakLabel"
+    peak_label.Size = UDim2.new(1, 0, 0, 14)
+    peak_label.Position = UDim2.new(0, 0, 0, 36)
+    peak_label.BackgroundTransparency = 1
+    peak_label.Text = "Peak"
+    peak_label.TextColor3 = ball_velocity.__config.colors.text_secondary
+    peak_label.TextSize = 10
+    peak_label.Font = Enum.Font.Gotham
+    peak_label.TextXAlignment = Enum.TextXAlignment.Left
+    peak_label.Parent = content
+
+    local peak_value = Instance.new("TextLabel")
+    peak_value.Name = "PeakValue"
+    peak_value.Size = UDim2.new(1, 0, 0, 20)
+    peak_value.Position = UDim2.new(0, 0, 0, 50)
+    peak_value.BackgroundTransparency = 1
+    peak_value.Text = "0.0"
+    peak_value.TextColor3 = ball_velocity.__config.colors.accent_orange
+    peak_value.TextSize = 16
+    peak_value.Font = Enum.Font.GothamBold
+    peak_value.TextXAlignment = Enum.TextXAlignment.Left
+    peak_value.Parent = content
+
+
+    local drag_start, start_pos
+
+    header.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+
+            ball_velocity.__state.is_dragging = true
+            drag_start = input.Position
+            start_pos = main_frame.Position
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if ball_velocity.__state.is_dragging and
+            (input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch) then
+
+            local delta = input.Position - drag_start
+            local newpos = UDim2.new(
+                start_pos.X.Scale, start_pos.X.Offset + delta.X,
+                start_pos.Y.Scale, start_pos.Y.Offset + delta.Y
+            )
+
+            main_frame.Position = newpos
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+
+            ball_velocity.__state.is_dragging = false
+            save_pos(main_frame.Position)
+        end
+    end)
+
+    return gui, current_value, peak_value
+end
+
+function ball_velocity.start()
+    if ball_velocity.__state.active then return end
+
+    ball_velocity.__state.active = true
+    ball_velocity.__state.ball_data = {}
+
+    local gui, current_value, peak_value = ball_velocity.create_gui()
+    ball_velocity.__state.gui = gui
+
+    System.__properties.__connections.ball_velocity =
+        RunService.Heartbeat:Connect(function()
+
+            local ball = System.ball.get()
+
+            if not ball then
+                current_value.Text = "0.0"
+                peak_value.Text = "0.0"
+                return
+            end
+
+            local zoomies = ball:FindFirstChild("zoomies")
+            if not zoomies then
+                current_value.Text = "0.0"
+                return
+            end
+
+            local velocity = zoomies.VectorVelocity.Magnitude
+
+            ball_velocity.__state.ball_data[ball] =
+                ball_velocity.__state.ball_data[ball] or 0
+
+            if velocity > ball_velocity.__state.ball_data[ball] then
+                ball_velocity.__state.ball_data[ball] = velocity
+            end
+
+            current_value.Text = string.format("%.1f", velocity)
+            peak_value.Text = string.format("%.1f",
+                ball_velocity.__state.ball_data[ball])
+        end)
+end
+
+function ball_velocity.stop()
+    if not ball_velocity.__state.active then return end
+
+    ball_velocity.__state.active = false
+
+    if System.__properties.__connections.ball_velocity then
+        System.__properties.__connections.ball_velocity:Disconnect()
+        System.__properties.__connections.ball_velocity = nil
+    end
+
+    if ball_velocity.__state.gui then
+        ball_velocity.__state.gui:Destroy()
+        ball_velocity.__state.gui = nil
+    end
+
+    ball_velocity.__state.ball_data = {}
+end
+
+OtherVisualsSection:Toggle({
+    Title = "Show Ball Velocity",
+    Default = false,
+    Callback = function(state)
+        if state then
+            ball_velocity.start()
+        else
+            ball_velocity.stop()
+        end
+    end
+})
+
+local Connections_Manager = {}
+
+local No_Render = OtherVisualsSection:Toggle({
+    Title = "No Render",
+    Default = false,
+    Callback = function(state)
+            LocalPlayer.PlayerScripts.EffectScripts.ClientFX.Disabled = state
+    
+            if state then
+                Connections_Manager['No Render'] = workspace.Runtime.ChildAdded:Connect(function(Value)
+                    Debris:AddItem(Value, 0)
+                end)
+            else
+                if Connections_Manager['No Render'] then
+                    Connections_Manager['No Render']:Disconnect()
+                    Connections_Manager['No Render'] = nil
+                end
+            end
+        end
+    })
+
+    No_Render:change_state(false)
+
+local swordInstancesInstance = ReplicatedStorage:WaitForChild("Shared",9e9):WaitForChild("ReplicatedInstances",9e9):WaitForChild("Swords",9e9)
+local swordInstances = require(swordInstancesInstance)
+
+local swordsController
+
+while task.wait() and (not swordsController) do
+    for i,v in getconnections(ReplicatedStorage.Remotes.FireSwordInfo.OnClientEvent) do
+        if v.Function and islclosure(v.Function) then
+            local upvalues = getupvalues(v.Function)
+            if #upvalues == 1 and type(upvalues[1]) == "table" then
+                swordsController = upvalues[1]
+                break
+            end
+        end
+    end
+end
+
+function getSlashName(swordName)
+    local slashName = swordInstances:GetSword(swordName)
+    return (slashName and slashName.SlashName) or "SlashEffect"
+end
+
+function setSword()
+    if not getgenv().skinChangerEnabled then return end
+    
+    setupvalue(rawget(swordInstances,"EquipSwordTo"),3,false)
+    
+    if getgenv().changeSwordModel then
+        swordInstances:EquipSwordTo(LocalPlayer.Character, getgenv().swordModel)
+    end
+    
+    if getgenv().changeSwordAnimation then
+        swordsController:SetSword(getgenv().swordAnimations)
+    end
+end
+
+local playParryFunc
+local parrySuccessAllConnection
+
+while task.wait() and not parrySuccessAllConnection do
+    for i,v in getconnections(ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent) do
+        if v.Function and getinfo(v.Function).name == "parrySuccessAll" then
+            parrySuccessAllConnection = v
+            playParryFunc = v.Function
+            v:Disable()
+        end
+    end
+end
+
+local parrySuccessClientConnection
+while task.wait() and not parrySuccessClientConnection do
+    for i,v in getconnections(ReplicatedStorage.Remotes.ParrySuccessClient.Event) do
+        if v.Function and getinfo(v.Function).name == "parrySuccessAll" then
+            parrySuccessClientConnection = v
+            v:Disable()
+        end
+    end
+end
+
+getgenv().slashName = getSlashName(getgenv().swordFX)
+
+local lastOtherParryTimestamp = 0
+local clashConnections = {}
+
+ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent:Connect(function(...)
+    setthreadidentity(2)
+    local args = {...}
+    if tostring(args[4]) ~= LocalPlayer.Name then
+        lastOtherParryTimestamp = tick()
+    elseif getgenv().skinChangerEnabled and getgenv().changeSwordFX then
+        args[1] = getgenv().slashName
+        args[3] = getgenv().swordFX
+    end
+    return playParryFunc(unpack(args))
+end)
+
+table.insert(clashConnections, getconnections(ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent)[1])
+
+getgenv().updateSword = function()
+    if getgenv().changeSwordFX then
+        getgenv().slashName = getSlashName(getgenv().swordFX)
+    end
+    setSword()
+end
+
+task.spawn(function()
+    while task.wait(1) do
+        if getgenv().skinChangerEnabled and getgenv().changeSwordModel then
+            local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            if LocalPlayer:GetAttribute("CurrentlyEquippedSword") ~= getgenv().swordModel then
+                setSword()
+            end
+            if char and (not char:FindFirstChild(getgenv().swordModel)) then
+                setSword()
+            end
+            for _,v in (char and char:GetChildren()) or {} do
+                if v:IsA("Model") and v.Name ~= getgenv().swordModel then
+                    v:Destroy()
+                end
+                task.wait()
+            end
+        end
+    end
+end)
+
+local SkinChangerSection = VisualTab:Section({ 
+    Title = "Skin Changer" 
+})
+
+SkinChangerSection:Toggle({
+    Title = "Skin Changer",
+    Default = false,
+    Callback = function(value: boolean)
+        getgenv().skinChangerEnabled = value
+        if value then
+            getgenv().updateSword()
+        end
+    end
+})
+
+-- SkinChangerSection est déjà créé avant (ex: local SkinChangerSection = Tab:Section({ Title = "Skin Changer" }))
+
+-- Checkbox + Textbox pour Change Sword Model
+SkinChangerSection:Toggle({
+    Title = "Change Sword Model",
+    Desc = "Active le changement de modèle d'épée",   -- optionnel
+    Value = true,                -- état initial (true = coché au démarrage)
+    Flag = "ChangeSwordModel",   -- pour le système de config/save
+    Callback = function(value: boolean)
+        getgenv().changeSwordModel = value
+        if getgenv().skinChangerEnabled then
+            getgenv().updateSword()
+        end
+    end
+})
+
+SkinChangerSection:Input({
+    Title = "Sword Model Name",
+    Desc = "Nom du modèle d'épée à utiliser",
+    Placeholder = "Enter Sword Model Name...",
+    Value = "",                      -- valeur par défaut (vide au départ)
+    Flag = "SwordModelTextbox",
+    InputIcon = "sword",             -- icône lucide optionnelle (cherche "sword" sur lucide.dev/icons)
+    Callback = function(text: string)
+        getgenv().swordModel = text
+        if getgenv().skinChangerEnabled and getgenv().changeSwordModel then
+            getgenv().updateSword()
+        end
+    end
+})
+
+-- Checkbox + Textbox pour Change Sword Animation
+SkinChangerSection:Toggle({
+    Title = "Change Sword Animation",
+    Value = true,
+    Flag = "ChangeSwordAnimation",
+    Callback = function(value: boolean)
+        getgenv().changeSwordAnimation = value
+        if getgenv().skinChangerEnabled then
+            getgenv().updateSword()
+        end
+    end
+})
+
+SkinChangerSection:Input({
+    Title = "Sword Animation Name",
+    Desc = "Nom de l'animation personnalisée",
+    Placeholder = "Enter Sword Animation Name...",
+    Value = "",
+    Flag = "SwordAnimationTextbox",
+    InputIcon = "play",
+    Callback = function(text: string)
+        getgenv().swordAnimations = text   -- note : tu avais swordAnimationS (pluriel)
+        if getgenv().skinChangerEnabled and getgenv().changeSwordAnimation then
+            getgenv().updateSword()
+        end
+    end
+})
+
+-- Checkbox + Textbox pour Change Sword FX
+SkinChangerSection:Toggle({
+    Title = "Change Sword FX",
+    Value = true,
+    Flag = "ChangeSwordFX",
+    Callback = function(value: boolean)
+        getgenv().changeSwordFX = value
+        if getgenv().skinChangerEnabled then
+            getgenv().updateSword()
+        end
+    end
+})
+
+SkinChangerSection:Input({
+    Title = "Sword FX Name",
+    Desc = "Nom de l'effet/particule personnalisé",
+    Placeholder = "Enter Sword FX Name...",
+    Value = "",
+    Flag = "SwordFXTextbox",
+    InputIcon = "sparkles",
+    Callback = function(text: string)
+        getgenv().swordFX = text
+        if getgenv().skinChangerEnabled and getgenv().changeSwordFX then
+            getgenv().updateSword()
+        end
+    end
+})
+
+
+
+-- ────────────────────────────────────────────────────────────────
+--  PLAYER TAB
+-- ────────────────────────────────────────────────────────────────
+
+local PlayerTab = Window:Tab({ 
+    Title = "Player", 
+    Icon = "solar:eye-bold", 
+    IconColor = Color3.fromHex("#257AF7") 
+})
+
+local FOVSection = PlayerTab:Section({ 
+    Title = "FOV Changer" 
+})
+
+FOVSection:Toggle({
+    Title = "FOV",
+    Default = false,
+    Callback = function(value)
+        getgenv().CameraEnabled = value
+        local Camera = game:GetService("Workspace").CurrentCamera
+    
+        if value then
+            getgenv().CameraFOV = getgenv().CameraFOV or 70
+            Camera.FieldOfView = getgenv().CameraFOV
+                
+            if not getgenv().FOVLoop then
+                getgenv().FOVLoop = game:GetService("RunService").RenderStepped:Connect(function()
+                    if getgenv().CameraEnabled then
+                        Camera.FieldOfView = getgenv().CameraFOV
+                    end
+                end)
+            end
+        else
+            Camera.FieldOfView = 70
+                
+            if getgenv().FOVLoop then
+                getgenv().FOVLoop:Disconnect()
+                getgenv().FOVLoop = nil
+            end
+        end
+    end
+})
+
+FOVSection:Slider({
+    Title = "Camera FOV",
+    Value = { Min = 50, Max = 120, Default = 70 },
+    Step = 1,
+    Callback = function(value)
+        getgenv().CameraFOV = value
+        if getgenv().CameraEnabled then
+            game:GetService("Workspace").CurrentCamera.FieldOfView = value
+        end
+    end
+})
+
+local CharacterModifier = pl:create_module({
+    title = 'Character',
+    flag = 'CharacterModifier',
+    description = 'Changes various character properties',
+    section = 'right',
+
+    callback = function(value)
+        getgenv().CharacterModifierEnabled = value
+
+        if value then
+            if not getgenv().CharacterConnection then
+                getgenv().OriginalValues = {}
+                getgenv().spinAngle = 0
+                
+                getgenv().CharacterConnection = RunService.Heartbeat:Connect(function()
+                    local char = LocalPlayer.Character
+                    if not char then return end
+                    
+                    local humanoid = char:FindFirstChild("Humanoid")
+                    local root = char:FindFirstChild("HumanoidRootPart")
+                    
+                    if humanoid then
+                        if not getgenv().OriginalValues.WalkSpeed then
+                            getgenv().OriginalValues.WalkSpeed = humanoid.WalkSpeed
+                            getgenv().OriginalValues.JumpPower = humanoid.JumpPower
+                            getgenv().OriginalValues.JumpHeight = humanoid.JumpHeight
+                            getgenv().OriginalValues.HipHeight = humanoid.HipHeight
+                            getgenv().OriginalValues.AutoRotate = humanoid.AutoRotate
+                        end
+                        
+                        if getgenv().WalkspeedCheckboxEnabled then
+                            humanoid.WalkSpeed = getgenv().CustomWalkSpeed or 36
+                        end
+                        
+                        if getgenv().JumpPowerCheckboxEnabled then
+                            if humanoid.UseJumpPower then
+                                humanoid.JumpPower = getgenv().CustomJumpPower or 50
+                            else
+                                humanoid.JumpHeight = getgenv().CustomJumpHeight or 7.2
+                            end
+                        end
+                        
+                        if getgenv().HipHeightCheckboxEnabled then
+                            humanoid.HipHeight = getgenv().CustomHipHeight or 0
+                        end
+
+                        if getgenv().SpinbotCheckboxEnabled and root then
+                            humanoid.AutoRotate = false
+                            getgenv().spinAngle = (getgenv().spinAngle + (getgenv().CustomSpinSpeed or 5)) % 360
+                            root.CFrame = CFrame.new(root.Position) * CFrame.Angles(0, math.rad(getgenv().spinAngle), 0)
+                        else
+                            if getgenv().OriginalValues.AutoRotate ~= nil then
+                                humanoid.AutoRotate = getgenv().OriginalValues.AutoRotate
+                            end
+                        end
+                    end
+                    
+                    if getgenv().GravityCheckboxEnabled and getgenv().CustomGravity then
+                        workspace.Gravity = getgenv().CustomGravity
+                    end
+                end)
+            end
+        else
+            if getgenv().CharacterConnection then
+                getgenv().CharacterConnection:Disconnect()
+                getgenv().CharacterConnection = nil
+                
+                local char = LocalPlayer.Character
+                if char then
+                    local humanoid = char:FindFirstChild("Humanoid")
+                    
+                    if humanoid and getgenv().OriginalValues then
+                        humanoid.WalkSpeed = getgenv().OriginalValues.WalkSpeed or 16
+                        if humanoid.UseJumpPower then
+                            humanoid.JumpPower = getgenv().OriginalValues.JumpPower or 50
+                        else
+                            humanoid.JumpHeight = getgenv().OriginalValues.JumpHeight or 7.2
+                        end
+                        humanoid.HipHeight = getgenv().OriginalValues.HipHeight or 0
+                        humanoid.AutoRotate = getgenv().OriginalValues.AutoRotate or true
+                    end
+                end
+                
+                workspace.Gravity = 196.2
+                
+                if getgenv().InfiniteJumpConnection then
+                    getgenv().InfiniteJumpConnection:Disconnect()
+                    getgenv().InfiniteJumpConnection = nil
+                end
+                
+                getgenv().OriginalValues = nil
+                getgenv().spinAngle = nil
+            end
+        end
+    end
+})
+
+local PlayerTab = Window:Tab({ 
+    Title = "Character", 
+    Icon = "solar:user-bold", 
+    IconColor = Color3.fromHex("#EF4F1D") })
+
+local CharacterModifierSection = PlayerTab:Section({ 
+    Title = "Character Modifier" 
+})
+
+CharacterModifierSection:Toggle({
+    Title = "Infinite Jump",
+    Default = false,
+    Callback = function(value)
+        getgenv().InfiniteJumpCheckboxEnabled = value
+        
+        if value and getgenv().CharacterModifierEnabled then
+            if not getgenv().InfiniteJumpConnection then
+                getgenv().InfiniteJumpConnection = UserInputService.JumpRequest:Connect(function()
+                    if getgenv().InfiniteJumpCheckboxEnabled and getgenv().CharacterModifierEnabled then
+                        local char = LocalPlayer.Character
+                        if char and char:FindFirstChild("Humanoid") then
+                            char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                        end
+                    end
+                end)
+            end
+        else
+            if getgenv().InfiniteJumpConnection then
+                getgenv().InfiniteJumpConnection:Disconnect()
+                getgenv().InfiniteJumpConnection = nil
+            end
+        end
+    end
+})
+
+CharacterModifierSection:Toggle({
+    Title = "Spin",
+    Default = false,
+    Callback = function(value)
+        getgenv().SpinbotCheckboxEnabled = value
+        
+        if not value and getgenv().CharacterModifierEnabled then
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") and getgenv().OriginalValues then
+                char.Humanoid.AutoRotate = getgenv().OriginalValues.AutoRotate or true
+            end
+        end
+    end
+})
+
+CharacterModifierSection:Slider({
+    Title = "Spin Speed",
+    Value = { Min = 1, Max = 50, Default = 5 },
+    Step = 1,
+    Callback = function(value)
+        getgenv().CustomSpinSpeed = value
+    end
+})
+
+CharacterModifierSection:Toggle({
+    Title = "Walk Speed",
+    Default = false,
+    Callback = function(value)
+        getgenv().WalkspeedCheckboxEnabled = value
+        
+        if not value and getgenv().CharacterModifierEnabled then
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") and getgenv().OriginalValues then
+                char.Humanoid.WalkSpeed = getgenv().OriginalValues.WalkSpeed or 16
+            end
+        end
+    end
+})
+
+CharacterModifierSection:Slider({
+    Title = "Walk Speed Value",
+    Value = { Min = 16, Max = 500, Default = 36 },
+    Step = 1,
+    Callback = function(value)
+        getgenv().CustomWalkSpeed = value
+        
+        if getgenv().CharacterModifierEnabled and getgenv().WalkspeedCheckboxEnabled then
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") then
+                char.Humanoid.WalkSpeed = value
+            end
+        end
+    end
+})
+
+CharacterModifierSection:Toggle({
+    Title = "Jump Power",
+    Default = false,
+    Callback = function(value)
+        getgenv().JumpPowerCheckboxEnabled = value
+        
+        if not value and getgenv().CharacterModifierEnabled then
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") and getgenv().OriginalValues then
+                local humanoid = char.Humanoid
+                if humanoid.UseJumpPower then
+                    humanoid.JumpPower = getgenv().OriginalValues.JumpPower or 50
+                else
+                    humanoid.JumpHeight = getgenv().OriginalValues.JumpHeight or 7.2
+                end
+            end
+        end
+    end
+})
+
+CharacterModifierSection:Slider({
+    Title = "Jump Power Value",
+    Value = { Min = 50, Max = 200, Default = 50 },
+    Step = 1,
+    Callback = function(value)
+        getgenv().CustomJumpPower = value
+        getgenv().CustomJumpHeight = value * 0.144
+        
+        if getgenv().CharacterModifierEnabled and getgenv().JumpPowerCheckboxEnabled then
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") then
+                local humanoid = char.Humanoid
+                if humanoid.UseJumpPower then
+                    humanoid.JumpPower = value
+                else
+                    humanoid.JumpHeight = value * 0.144
+                end
+            end
+        end
+    end
+})
+
+CharacterModifierSection:Toggle({
+    Title = "Gravity",
+    Default = false,
+    Callback = function(value)
+        getgenv().GravityCheckboxEnabled = value
+        
+        if not value and getgenv().CharacterModifierEnabled then
+            workspace.Gravity = 196.2
+        end
+    end
+})
+
+CharacterModifierSection:Slider({
+    Title = "Gravity Value",
+    Value = { Min = 0, Max = 400, Default = 196.2 },
+    Step = 0.2,
+    Callback = function(value)
+        getgenv().CustomGravity = value
+        
+        if getgenv().CharacterModifierEnabled and getgenv().GravityCheckboxEnabled then
+            workspace.Gravity = value
+        end
+    end
+})
+
+CharacterModifierSection:Toggle({
+    Title = "Hip Height",
+    Default = false,
+    Callback = function(value)
+        getgenv().HipHeightCheckboxEnabled = value
+        
+        if not value and getgenv().CharacterModifierEnabled then
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") and getgenv().OriginalValues then
+                char.Humanoid.HipHeight = getgenv().OriginalValues.HipHeight or 0
+            end
+        end
+    end
+})
+
+CharacterModifierSection:Slider({
+    Title = "Hip Height Value",
+    Value = { Min = -5, Max = 20, Default = 0 },
+    Step = 0.1,
+    Callback = function(value)
+        getgenv().CustomHipHeight = value
+        
+        if getgenv().CharacterModifierEnabled and getgenv().HipHeightCheckboxEnabled then
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") then
+                char.Humanoid.HipHeight = value
+            end
+        end
+    end
+})
+
+-- ────────────────────────────────────────────────────────────────
+--  AUTOFARM TAB
+-- ────────────────────────────────────────────────────────────────
+
+local AutoFarmTab = Window:Tab({ 
+    Title = "Auto Farm", 
+    Icon = "solar:eye-bold", 
+    IconColor = Color3.fromHex("#257AF7") 
+})
+
+local WKISection = AutoFarmTab:Section({ 
+    Title = "Walkable Semi-Immortal" 
+})
+
+local WalkableSemiImmortal = {}
+
+local state = {
+    enabled = false,
+    notify = false,
+    heartbeatConnection = nil
+}
+
+local desyncData = {
+    originalCFrame = nil,
+    originalVelocity = nil
+}
+
+local cache = {
+    character = nil,
+    hrp = nil,
+    head = nil,
+    headOffset = Vector3.new(0, 0, 0),
+    aliveFolder = nil
+}
+
+local hooks = {
+    oldIndex = nil
+}
+
+local constants = {
+    emptyCFrame = CFrame.new(),
+    radius = 25,
+    baseHeight = 5,
+    riseHeight = 30,
+    cycleSpeed = 11.9,
+    velocity = Vector3.new(1, 1, 1)
+}
+
+local function updateCache()
+    local character = LocalPlayer.Character
+    if character ~= cache.character then
+        cache.character = character
+        if character then
+            cache.hrp = character.HumanoidRootPart
+            cache.head = character.Head
+            cache.aliveFolder = workspace.Alive
+            if cache.hrp then
+                cache.headOffset = Vector3.new(0, cache.hrp.Size.Y * 0.5 + 0.5, 0)
+            end
+        else
+            cache.hrp = nil
+            cache.head = nil
+        end
+    end
+end
+
+local function isInAliveFolder()
+    return cache.aliveFolder and cache.character and cache.character.Parent == cache.aliveFolder
+end
+
+local function calculateOrbitPosition(hrp)
+    local angle = math.random(-2147483647, 2147483647) * 1000
+    local cycle = math.floor(tick() * constants.cycleSpeed) % 2
+    local yOffset = cycle == 0 and 0 or constants.riseHeight
+    
+    local pos = hrp.Position
+    local yBase = pos.Y - hrp.Size.Y * 0.5 + constants.baseHeight + yOffset
+    
+    return CFrame.new(
+        pos.X + math.cos(angle) * constants.radius,
+        yBase,
+        pos.Z + math.sin(angle) * constants.radius
+    )
+end
+
+local function performDesync()
+    updateCache()
+    
+    if not state.enabled or not cache.hrp or not isInAliveFolder() then
+        return
+    end
+    
+    local hrp = cache.hrp
+    desyncData.originalCFrame = hrp.CFrame
+    desyncData.originalVelocity = hrp.AssemblyLinearVelocity
+    
+    hrp.CFrame = calculateOrbitPosition(hrp)
+    hrp.AssemblyLinearVelocity = constants.velocity
+    
+    RunService.RenderStepped:Wait()
+    
+    hrp.CFrame = desyncData.originalCFrame
+    hrp.AssemblyLinearVelocity = desyncData.originalVelocity
+end
+
+local function sendNotification(text)
+    if state.notify and Library then
+        Library.SendNotification({
+            title = "Walkable Semi-Immortal",
+            text = text
+        })
+    end
+end
+
+function WalkableSemiImmortal.toggle(enabled)
+    if state.enabled == enabled then return end
+    
+    state.enabled = enabled
+    getgenv().Walkablesemiimortal = enabled
+    
+    if enabled then
+        if not state.heartbeatConnection then
+            state.heartbeatConnection = RunService.Heartbeat:Connect(performDesync)
+        end
+    else
+        if state.heartbeatConnection then
+            state.heartbeatConnection:Disconnect()
+            state.heartbeatConnection = nil
+        end
+        desyncData.originalCFrame = nil
+        desyncData.originalVelocity = nil
+    end
+    
+    sendNotification(enabled and "ON" or "OFF")
+end
+
+function WalkableSemiImmortal.setNotify(enabled)
+    state.notify = enabled
+    getgenv().WalkablesemiimortalNotify = enabled
+end
+
+function WalkableSemiImmortal.setRadius(value)
+    constants.radius = value
+end
+
+function WalkableSemiImmortal.setHeight(value)
+    constants.riseHeight = value
+end
+
+LocalPlayer.CharacterRemoving:Connect(function()
+    cache.character = nil
+    cache.hrp = nil
+    cache.head = nil
+    cache.aliveFolder = nil
+end)
+
+hooks.oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
+    if not state.enabled or checkcaller() or key ~= "CFrame" or not cache.hrp or not isInAliveFolder() then
+        return hooks.oldIndex(self, key)
+    end
+    
+    if self == cache.hrp then
+        return desyncData.originalCFrame or constants.emptyCFrame
+    elseif self == cache.head and desyncData.originalCFrame then
+        return desyncData.originalCFrame + cache.headOffset
+    end
+    
+    return hooks.oldIndex(self, key)
+end))
+
+WKISection:Toggle({
+    Title = "Walkable Semi-Immortal",
+    Default = false,
+    Callback = WalkableSemiImmortal.toggle
+})
+
+WKISection:Toggle({
+    Title = "Notify",
+    Flag = "WalkableSemi_Imortal_Notify",
+    Callback = WalkableSemiImmortal.setNotify
+})
+
+WKISection:Slider({
+    Title = "Immortal Radius",
+    Value = { Min = 0, Max = 100, Default = 25 },
+    Step = 1,
+    Callback = WalkableSemiImmortal.setRadius
+})
+
+WKISection:Slider({
+    Title = "Immortal Height",
+    Value = { Min = 0, Max = 60, Default = 30 },
+    Step = 1,
+    Callback = WalkableSemiImmortal.setHeight
+})
+
+
+
+local AISection = AutoFarmTab:Section({ 
+    Title = "AI Play (Experimental)" 
+})
+
+local AutoPlayModule = {}
+
+AutoPlayModule.CONFIG = {
+    DEFAULT_DISTANCE = 30,
+    MULTIPLIER_THRESHOLD = 70,
+    TRAVERSING = 25,
+    DIRECTION = 1,
+    JUMP_PERCENTAGE = 50,
+    DOUBLE_JUMP_PERCENTAGE = 50,
+    JUMPING_ENABLED = false,
+    MOVEMENT_DURATION = 0.8,
+    OFFSET_FACTOR = 0.7,
+    GENERATION_THRESHOLD = 0.25,
+    PLAYER_DISTANCE_ENABLED = false,
+    MINIMUM_PLAYER_DISTANCE = 15,
+
+    UPDATE_FREQUENCY = 6,
+    POSITION_UPDATE_RATE = 0.1,
+    BALL_CHECK_RATE = 0.2,
+    PLAYER_CHECK_RATE = 0.5
+}
+
+AutoPlayModule.ball = nil
+AutoPlayModule.lobbyChoice = nil
+AutoPlayModule.animationCache = nil
+AutoPlayModule.doubleJumped = false
+AutoPlayModule.ELAPSED = 0
+AutoPlayModule.CONTROL_POINT = nil
+AutoPlayModule.LAST_GENERATION = 0
+AutoPlayModule.signals = {}
+AutoPlayModule.Closest_Entity = nil
+AutoPlayModule.frameThrottle = 0
+
+local timeCache = {
+    lastPositionUpdate = 0,
+    lastBallCheck = 0,
+    lastPlayerCheck = 0,
+    lastFloorCheck = 0
+}
+
+local resultCache = {
+    floor = nil,
+    lastBallDirection = nil,
+    lastPlayerPosition = nil,
+    lastRandomPosition = nil,
+    ballSpeed = 0
+}
+
+local serviceCache = {}
+local function getService(name)
+    if not serviceCache[name] then
+        serviceCache[name] = cloneref and cloneref(game:GetService(name)) or game:GetService(name)
+    end
+    return serviceCache[name]
+end
+
+do
+    local getServiceFunction = game.GetService
+    
+    local function getClonerefPermission()
+        local permission = cloneref(getServiceFunction(game, "ReplicatedFirst"))
+        return permission
+    end
+    
+    AutoPlayModule.clonerefPermission = getClonerefPermission()
+    
+    if not AutoPlayModule.clonerefPermission then
+        warn("cloneref is not available on your executor!")
+    end
+    
+    function AutoPlayModule.findCachedService(self, name)
+        for index, value in pairs(self) do
+            if value and value.Name == name then
+                return value
+            end
+        end
+        return nil
+    end
+    
+    function AutoPlayModule.getService(self, name)
+        local cachedService = AutoPlayModule.findCachedService(self, name)
+    
+        if cachedService then
+            return cachedService
+        end
+    
+        local service = getServiceFunction(game, name)
+    
+        if AutoPlayModule.clonerefPermission then
+            service = cloneref(service)
+        end
+    
+        table.insert(self, service)
+        return service
+    end
+    
+    AutoPlayModule.customService = setmetatable({}, {
+        __index = AutoPlayModule.getService
+    })
+end
+
+AutoPlayModule.playerHelper = {
+    isAlive = function(player)
+        if not player or not player:IsA("Player") then
+            return false
+        end
+        
+        local character = player.Character
+        if not character then
+            return false
+        end
+    
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        local humanoid = character:FindFirstChild("Humanoid")
+    
+        return rootPart and humanoid and humanoid.Health > 0
+    end,
+    
+    inLobby = function(character)
+        return character and character.Parent == AutoPlayModule.customService.Workspace.Dead
+    end,
+    
+    onGround = function(character)
+        return character and character.Humanoid.FloorMaterial ~= Enum.Material.Air
+    end
+}
+
+AutoPlayModule.playerProximity = {
+    findClosestPlayer = function()
+        local currentTime = tick()
+        if currentTime - timeCache.lastPlayerCheck < AutoPlayModule.CONFIG.PLAYER_CHECK_RATE then
+            return AutoPlayModule.Closest_Entity
+        end
+        timeCache.lastPlayerCheck = currentTime
+        
+        local localPlayer = AutoPlayModule.customService.Players.LocalPlayer
+        
+        if not AutoPlayModule.playerHelper.isAlive(localPlayer) then
+            AutoPlayModule.Closest_Entity = nil
+            return nil
+        end
+
+        local maxDistance = math.huge
+        local foundEntity = nil
+        local localPosition = localPlayer.Character.HumanoidRootPart.Position
+
+        local aliveFolder = AutoPlayModule.customService.Workspace:FindFirstChild("Alive")
+        local searchFolders = aliveFolder and {aliveFolder} or {}
+
+        if not aliveFolder then
+            for _, player in pairs(AutoPlayModule.customService.Players:GetPlayers()) do
+                if player ~= localPlayer and player.Character then
+                    table.insert(searchFolders, player.Character.Parent)
+                end
+            end
+        end
+        
+        for _, folder in pairs(searchFolders) do
+            if folder then
+                for _, entity in pairs(folder:GetChildren()) do
+                    if entity ~= localPlayer.Character then
+                        local primaryPart = entity:FindFirstChild("HumanoidRootPart")
+                        
+                        if primaryPart then
+                            local distance = (localPosition - primaryPart.Position).Magnitude
+                            
+                            if distance < maxDistance then
+                                maxDistance = distance
+                                foundEntity = entity
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
+        AutoPlayModule.Closest_Entity = foundEntity
+        return foundEntity
+    end,
+    
+    getEntityProperties = function()
+        local closestPlayer = AutoPlayModule.playerProximity.findClosestPlayer()
+        local localPlayer = AutoPlayModule.customService.Players.LocalPlayer
+        
+        if not closestPlayer or not localPlayer.Character or not localPlayer.Character.HumanoidRootPart then
+            return false
+        end
+        
+        local primaryPart = closestPlayer:FindFirstChild("HumanoidRootPart")
+        if not primaryPart then
+            return false
+        end
+        
+        local localPosition = localPlayer.Character.HumanoidRootPart.Position
+        local entityPosition = primaryPart.Position
+        local entityDirection = (localPosition - entityPosition).Unit
+        local entityDistance = (localPosition - entityPosition).Magnitude
+        
+        return {
+            Velocity = primaryPart.Velocity,
+            Direction = entityDirection,
+            Distance = entityDistance,
+            Position = entityPosition
+        }
+    end,
+    
+    isPlayerTooClose = function()
+        if not AutoPlayModule.CONFIG.PLAYER_DISTANCE_ENABLED then
+            return false
+        end
+        
+        local entityProps = AutoPlayModule.playerProximity.getEntityProperties()
+        return entityProps and entityProps.Distance < AutoPlayModule.CONFIG.MINIMUM_PLAYER_DISTANCE
+    end,
+    
+    getAvoidancePosition = function()
+        local entityProps = AutoPlayModule.playerProximity.getEntityProperties()
+        local localPlayer = AutoPlayModule.customService.Players.LocalPlayer
+        
+        if not entityProps or not localPlayer.Character or not localPlayer.Character.HumanoidRootPart then
+            return nil
+        end
+        
+        local playerPosition = localPlayer.Character.HumanoidRootPart.Position
+        local avoidanceDirection = entityProps.Direction * AutoPlayModule.CONFIG.MINIMUM_PLAYER_DISTANCE * 1.5
+        local avoidancePosition = playerPosition + avoidanceDirection
+
+        local floor = AutoPlayModule.map.getFloor()
+        if floor then
+            avoidancePosition = Vector3.new(avoidancePosition.X, floor.Position.Y + 5, avoidancePosition.Z)
+        end
+        
+        return avoidancePosition
+    end
+}
+
+function AutoPlayModule.isLimited()
+    local passedTime = tick() - AutoPlayModule.LAST_GENERATION
+    return passedTime < AutoPlayModule.CONFIG.GENERATION_THRESHOLD
+end
+
+function AutoPlayModule.percentageCheck(limit)
+    if AutoPlayModule.isLimited() then
+        return false
+    end
+
+    local percentage = math.random(1, 100)
+    AutoPlayModule.LAST_GENERATION = tick()
+
+    return limit >= percentage
+end
+
+AutoPlayModule.ballUtils = {
+    getBall = function()
+        local currentTime = tick()
+        if currentTime - timeCache.lastBallCheck < AutoPlayModule.CONFIG.BALL_CHECK_RATE then
+            return
+        end
+        timeCache.lastBallCheck = currentTime
+        
+        local ballsFolder = AutoPlayModule.customService.Workspace:FindFirstChild("Balls")
+        if not ballsFolder then
+            AutoPlayModule.ball = nil
+            return
+        end
+        
+        for _, object in pairs(ballsFolder:GetChildren()) do
+            if object:GetAttribute("realBall") then
+                AutoPlayModule.ball = object
+                return
+            end
+        end
+    
+        AutoPlayModule.ball = nil
+    end,
+    
+    getDirection = function()
+        if not AutoPlayModule.ball then
+            return resultCache.lastBallDirection
+        end
+        
+        local localPlayer = AutoPlayModule.customService.Players.LocalPlayer
+        if not localPlayer.Character or not localPlayer.Character.HumanoidRootPart then
+            return resultCache.lastBallDirection
+        end
+    
+        local direction = (localPlayer.Character.HumanoidRootPart.Position - AutoPlayModule.ball.Position).Unit
+        resultCache.lastBallDirection = direction
+        return direction
+    end,
+    
+    getVelocity = function()
+        if not AutoPlayModule.ball then
+            return
+        end
+    
+        local zoomies = AutoPlayModule.ball:FindFirstChild("zoomies")
+        return zoomies and zoomies.VectorVelocity
+    end,
+    
+    getSpeed = function()
+        if not AutoPlayModule.ball then
+            return resultCache.ballSpeed
+        end
+        
+        local velocity = AutoPlayModule.ballUtils.getVelocity()
+        if velocity then
+            resultCache.ballSpeed = velocity.Magnitude
+        end
+        
+        return resultCache.ballSpeed
+    end,
+    
+    isExisting = function()
+        return AutoPlayModule.ball ~= nil
+    end
+}
+
+AutoPlayModule.lerp = function(start, finish, alpha)
+    return start + (finish - start) * alpha
+end
+
+AutoPlayModule.quadratic = function(start, middle, finish, alpha)
+    local firstLerp = AutoPlayModule.lerp(start, middle, alpha)
+    local secondLerp = AutoPlayModule.lerp(middle, finish, alpha)
+    return AutoPlayModule.lerp(firstLerp, secondLerp, alpha)
+end
+
+AutoPlayModule.getCandidates = function(middle, theta, offsetLength)
+    local halfPi = math.pi * 0.5
+    local cosTheta = math.cos(theta)
+    local sinTheta = math.sin(theta)
+    
+    local firstCandidate = middle + Vector3.new(
+        cosTheta * math.cos(halfPi) - sinTheta * math.sin(halfPi),
+        0,
+        sinTheta * math.cos(halfPi) + cosTheta * math.sin(halfPi)
+    ) * offsetLength
+
+    local secondCandidate = middle + Vector3.new(
+        cosTheta * math.cos(-halfPi) - sinTheta * math.sin(-halfPi),
+        0,
+        sinTheta * math.cos(-halfPi) + cosTheta * math.sin(-halfPi)
+    ) * offsetLength
+
+    return firstCandidate, secondCandidate
+end
+
+AutoPlayModule.getControlPoint = function(start, finish)
+    local middle = (start + finish) * 0.5
+    local difference = start - finish
+
+    if difference.Magnitude < 5 then
+        return finish
+    end
+
+    local theta = math.atan2(difference.Z, difference.X)
+    local offsetLength = difference.Magnitude * AutoPlayModule.CONFIG.OFFSET_FACTOR
+
+    local firstCandidate, secondCandidate = AutoPlayModule.getCandidates(middle, theta, offsetLength)
+    local dotValue = start - middle
+
+    return (firstCandidate - middle):Dot(dotValue) < 0 and firstCandidate or secondCandidate
+end
+
+AutoPlayModule.getCurve = function(start, finish, delta)
+    AutoPlayModule.ELAPSED = AutoPlayModule.ELAPSED + delta
+    local timeElapsed = math.clamp(AutoPlayModule.ELAPSED / AutoPlayModule.CONFIG.MOVEMENT_DURATION, 0, 1)
+
+    if timeElapsed >= 1 then
+        local distance = (start - finish).Magnitude
+
+        if distance >= 10 then
+            AutoPlayModule.ELAPSED = 0
+        end
+
+        AutoPlayModule.CONTROL_POINT = nil
+        return finish
+    end
+
+    if not AutoPlayModule.CONTROL_POINT then
+        AutoPlayModule.CONTROL_POINT = AutoPlayModule.getControlPoint(start, finish)
+    end
+
+    return AutoPlayModule.quadratic(start, AutoPlayModule.CONTROL_POINT, finish, timeElapsed)
+end
+
+AutoPlayModule.map = {
+    getFloor = function()
+        local currentTime = tick()
+        if resultCache.floor and currentTime - timeCache.lastFloorCheck < 5 then
+            return resultCache.floor
+        end
+        timeCache.lastFloorCheck = currentTime
+        
+        local floor = AutoPlayModule.customService.Workspace:FindFirstChild("FLOOR")
+        
+        if floor then
+            resultCache.floor = floor
+            return floor
+        end
+
+        local workspace = AutoPlayModule.customService.Workspace
+        for _, part in pairs(workspace:GetDescendants()) do
+            if part:IsA("BasePart") then
+                local size = part.Size
+                if size.X > 50 and size.Z > 50 and part.Position.Y < 5 then
+                    resultCache.floor = part
+                    return part
+                end
+            end
+        end
+        
+        return resultCache.floor
+    end
+}
+
+AutoPlayModule.getRandomPosition = function()
+    local currentTime = tick()
+    if currentTime - timeCache.lastPositionUpdate < AutoPlayModule.CONFIG.POSITION_UPDATE_RATE then
+        return resultCache.lastRandomPosition
+    end
+    timeCache.lastPositionUpdate = currentTime
+    
+    local floor = AutoPlayModule.map.getFloor()
+
+    if not floor or not AutoPlayModule.ballUtils.isExisting() then
+        return resultCache.lastRandomPosition
+    end
+
+    if AutoPlayModule.playerProximity.isPlayerTooClose() then
+        local avoidancePosition = AutoPlayModule.playerProximity.getAvoidancePosition()
+        if avoidancePosition then
+            resultCache.lastRandomPosition = avoidancePosition
+            return avoidancePosition
+        end
+    end
+
+    local ballDirection = AutoPlayModule.ballUtils.getDirection()
+    if not ballDirection then
+        return resultCache.lastRandomPosition
+    end
+    
+    ballDirection = ballDirection * AutoPlayModule.CONFIG.DIRECTION
+    local ballSpeed = AutoPlayModule.ballUtils.getSpeed()
+
+    local speedThreshold = math.min(ballSpeed * 0.1, AutoPlayModule.CONFIG.MULTIPLIER_THRESHOLD)
+    local speedMultiplier = AutoPlayModule.CONFIG.DEFAULT_DISTANCE + speedThreshold
+    local negativeDirection = ballDirection * speedMultiplier
+
+    local currentTimeScaled = currentTime * 0.83333
+    local sine = math.sin(currentTimeScaled) * AutoPlayModule.CONFIG.TRAVERSING
+    local cosine = math.cos(currentTimeScaled) * AutoPlayModule.CONFIG.TRAVERSING
+
+    local traversing = Vector3.new(sine, 0, cosine)
+    local finalPosition = floor.Position + negativeDirection + traversing
+
+    if AutoPlayModule.CONFIG.PLAYER_DISTANCE_ENABLED then
+        local entityProps = AutoPlayModule.playerProximity.getEntityProperties()
+        if entityProps and entityProps.Distance < AutoPlayModule.CONFIG.MINIMUM_PLAYER_DISTANCE * 2 then
+            local avoidanceOffset = entityProps.Direction * AutoPlayModule.CONFIG.MINIMUM_PLAYER_DISTANCE
+            finalPosition = finalPosition + avoidanceOffset
+        end
+    end
+
+    resultCache.lastRandomPosition = finalPosition
+    return finalPosition
+end
+
+AutoPlayModule.lobby = {
+    isChooserAvailable = function()
+        local spawn = AutoPlayModule.customService.Workspace:FindFirstChild("Spawn")
+        return spawn and spawn.NewPlayerCounter and spawn.NewPlayerCounter.GUI and 
+               spawn.NewPlayerCounter.GUI.SurfaceGui and spawn.NewPlayerCounter.GUI.SurfaceGui.Top and 
+               spawn.NewPlayerCounter.GUI.SurfaceGui.Top.Options and 
+               spawn.NewPlayerCounter.GUI.SurfaceGui.Top.Options.Visible
+    end,
+    
+    updateChoice = function(choice)
+        AutoPlayModule.lobbyChoice = choice
+    end,
+    
+    getMapChoice = function()
+        local choice = AutoPlayModule.lobbyChoice or math.random(1, 3)
+        local spawn = AutoPlayModule.customService.Workspace:FindFirstChild("Spawn")
+        if not spawn or not spawn.NewPlayerCounter or not spawn.NewPlayerCounter.Colliders then
+            return nil
+        end
+        
+        return spawn.NewPlayerCounter.Colliders:FindFirstChild(tostring(choice))
+    end,
+    
+    getPadPosition = function()
+        if not AutoPlayModule.lobby.isChooserAvailable() then
+            AutoPlayModule.lobbyChoice = nil
+            return
+        end
+    
+        local choice = AutoPlayModule.lobby.getMapChoice()
+        return choice and choice.Position, choice and choice.Name
+    end
+}
+
+AutoPlayModule.movement = {
+    removeCache = function()
+        AutoPlayModule.animationCache = nil
+    end,
+    
+    createJumpVelocity = function(player)
+        local rootPart = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        if not rootPart then return end
+        
+        local velocity = Instance.new("BodyVelocity")
+        velocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        velocity.Velocity = Vector3.new(0, 80, 0)
+        velocity.Parent = rootPart
+    
+        AutoPlayModule.customService.Debris:AddItem(velocity, 0.001)
+        
+        local replicatedStorage = AutoPlayModule.customService.ReplicatedStorage
+        local remotes = replicatedStorage:FindFirstChild("Remotes")
+        local doubleJump = remotes and remotes:FindFirstChild("DoubleJump")
+        if doubleJump then
+            doubleJump:FireServer()
+        end
+    end,
+    
+    playJumpAnimation = function(player)
+        if not AutoPlayModule.animationCache then
+            local replicatedStorage = AutoPlayModule.customService.ReplicatedStorage
+            local assets = replicatedStorage:FindFirstChild("Assets")
+            local tutorial = assets and assets:FindFirstChild("Tutorial")
+            local animations = tutorial and tutorial:FindFirstChild("Animations")
+            local doubleJumpAnim = animations and animations:FindFirstChild("DoubleJump")
+            
+            if doubleJumpAnim and player.Character and player.Character.Humanoid and player.Character.Humanoid.Animator then
+                AutoPlayModule.animationCache = player.Character.Humanoid.Animator:LoadAnimation(doubleJumpAnim)
+            end
+        end
+    
+        if AutoPlayModule.animationCache then
+            AutoPlayModule.animationCache:Play()
+        end
+    end,
+    
+    doubleJump = function(player)
+        if AutoPlayModule.doubleJumped or not player.Character then
+            return
+        end
+    
+        if not AutoPlayModule.percentageCheck(AutoPlayModule.CONFIG.DOUBLE_JUMP_PERCENTAGE) then
+            return
+        end
+    
+        AutoPlayModule.doubleJumped = true
+        AutoPlayModule.movement.createJumpVelocity(player)
+        AutoPlayModule.movement.playJumpAnimation(player)
+    end,
+    
+    jump = function(player)
+        if not AutoPlayModule.CONFIG.JUMPING_ENABLED or not player.Character then
+            return
+        end
+        
+        if not AutoPlayModule.playerHelper.onGround(player.Character) then
+            AutoPlayModule.movement.doubleJump(player)
+            return
+        end
+    
+        if not AutoPlayModule.percentageCheck(AutoPlayModule.CONFIG.JUMP_PERCENTAGE) then
+            return
+        end
+    
+        AutoPlayModule.doubleJumped = false
+        player.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end,
+    
+    move = function(player, playerPosition)
+        if player.Character and player.Character.Humanoid then
+            player.Character.Humanoid:MoveTo(playerPosition)
+        end
+    end,
+    
+    stop = function(player)
+        if player.Character and player.Character.HumanoidRootPart and player.Character.Humanoid then
+            player.Character.Humanoid:MoveTo(player.Character.HumanoidRootPart.Position)
+        end
+    end
+}
+
+AutoPlayModule.signal = {
+    connect = function(name, connection, callback)
+        if not name then
+            name = AutoPlayModule.customService.HttpService:GenerateGUID()
+        end
+    
+        AutoPlayModule.signals[name] = connection:Connect(callback)
+        return AutoPlayModule.signals[name]
+    end,
+    
+    disconnect = function(name)
+        if not name or not AutoPlayModule.signals[name] then
+            return
+        end
+    
+        AutoPlayModule.signals[name]:Disconnect()
+        AutoPlayModule.signals[name] = nil
+    end,
+    
+    stop = function()
+        for name, connection in pairs(AutoPlayModule.signals) do
+            if typeof(connection) == "RBXScriptConnection" then
+                connection:Disconnect()
+                AutoPlayModule.signals[name] = nil
+            end
+        end
+    end
+}
+
+AutoPlayModule.findPath = function(inLobby, delta)
+    local localPlayer = AutoPlayModule.customService.Players.LocalPlayer
+    if not localPlayer.Character or not localPlayer.Character.HumanoidRootPart then
+        return nil
+    end
+    
+    local rootPosition = localPlayer.Character.HumanoidRootPart.Position
+
+    if inLobby then
+        local padPosition, padNumber = AutoPlayModule.lobby.getPadPosition()
+        local choice = tonumber(padNumber)
+        if choice then
+            AutoPlayModule.lobby.updateChoice(choice)
+            if getgenv().AutoVote then
+                local replicatedStorage = AutoPlayModule.customService.ReplicatedStorage
+                local packages = replicatedStorage:FindFirstChild("Packages")
+                local index = packages and packages:FindFirstChild("_Index")
+                local net = index and index:FindFirstChild("sleitnick_net@0.1.0")
+                local netFolder = net and net:FindFirstChild("net")
+                local updateVotes = netFolder and netFolder:FindFirstChild("RE/UpdateVotes")
+                if updateVotes then
+                    updateVotes:FireServer("FFA")
+                end
+            end
+        end
+
+        if not padPosition then
+            return nil
+        end
+
+        return AutoPlayModule.getCurve(rootPosition, padPosition, delta)
+    end
+
+    local randomPosition = AutoPlayModule.getRandomPosition()
+    if not randomPosition then
+        return nil
+    end
+
+    return AutoPlayModule.getCurve(rootPosition, randomPosition, delta)
+end
+
+AutoPlayModule.followPath = function(delta)
+    AutoPlayModule.frameThrottle = AutoPlayModule.frameThrottle + 1
+
+    if AutoPlayModule.frameThrottle % AutoPlayModule.CONFIG.UPDATE_FREQUENCY ~= 0 then
+        return
+    end
+
+    local localPlayer = AutoPlayModule.customService.Players.LocalPlayer
+    if not AutoPlayModule.playerHelper.isAlive(localPlayer) then
+        AutoPlayModule.movement.removeCache()
+        return
+    end
+
+    local inLobby = localPlayer.Character.Parent == AutoPlayModule.customService.Workspace.Dead
+    local path = AutoPlayModule.findPath(inLobby, delta * AutoPlayModule.CONFIG.UPDATE_FREQUENCY)
+
+    if not path then
+        AutoPlayModule.movement.stop(localPlayer)
+        return
+    end
+
+    AutoPlayModule.movement.move(localPlayer, path)
+    AutoPlayModule.movement.jump(localPlayer)
+end
+
+AutoPlayModule.finishThread = function()
+    AutoPlayModule.signal.disconnect("auto-play")
+    AutoPlayModule.signal.disconnect("synchronize")
+    
+    local localPlayer = AutoPlayModule.customService.Players.LocalPlayer
+    if AutoPlayModule.playerHelper.isAlive(localPlayer) then
+        AutoPlayModule.movement.stop(localPlayer)
+    end
+
+    for key, _ in pairs(resultCache) do
+        resultCache[key] = nil
+    end
+    for key, _ in pairs(timeCache) do
+        timeCache[key] = 0
+    end
+end
+
+AutoPlayModule.runThread = function()
+    AutoPlayModule.signal.connect("auto-play", AutoPlayModule.customService.RunService.PostSimulation, AutoPlayModule.followPath)
+    AutoPlayModule.signal.connect("synchronize", AutoPlayModule.customService.RunService.PostSimulation, AutoPlayModule.ballUtils.getBall)
+end
+
+AISection:Toggle({
+    Title = "AI Auto Play",
+    Default = true,
+    Callback = function(value)
+        if value then
+            AutoPlayModule.runThread()
+        else
+            AutoPlayModule.finishThread()
+        end
+    end
+})
+
+AISection:Toggle({
+    Title = "AI Enable Jumping",
+    Default = true,
+    Callback = function(value)
+        AutoPlayModule.CONFIG.JUMPING_ENABLED = value
+    end
+})
+
+AISection:Toggle({
+    Title = "AI Auto Vote",
+    Default = false,
+    Callback = function(value)
+        getgenv().AutoVote = value
+    end
+})
+
+AISection:Toggle({
+    Title = "AI Avoid Players",
+    Default = false,
+    Callback = function(value)
+        AutoPlayModule.CONFIG.PLAYER_DISTANCE_ENABLED = value
+    end
+})
+
+AISection:Slider({
+    Title = "AI Update Frequency",
+    Step = 1,
+    Value = { 
+    Min = 3,
+    Max = 20,
+    Default = AutoPlayModule.CONFIG.UPDATE_FREQUENCY,
+    },
+    Callback = function(value)
+        AutoPlayModule.CONFIG.UPDATE_FREQUENCY = value
+    end
+})
+
+AISection:Slider({
+    Title = "AI Distance From Ball",
+    Step = 1,
+    Value = {
+    Min = 5,
+    Max = 100,
+    Default = AutoPlayModule.CONFIG.DEFAULT_DISTANCE,
+    },
+    Callback = function(value)
+        AutoPlayModule.CONFIG.DEFAULT_DISTANCE = value
+    end
+})
+
+AISection:Slider({
+    Title = "AI Distance From Players",
+    Step = 1,
+    Value = {
+    Min = 10,
+    Max = 150,
+    Default = AutoPlayModule.CONFIG.MINIMUM_PLAYER_DISTANCE,
+    },
+    Callback = function(value)
+        AutoPlayModule.CONFIG.MINIMUM_PLAYER_DISTANCE = value
+    end
+})
+
+AISection:Slider({
+    Title = "AI Speed Multiplier",
+    Step = 1,
+    Value = {
+    Min = 10,
+    Max = 200,
+    Default = AutoPlayModule.CONFIG.MULTIPLIER_THRESHOLD,
+    },
+    Callback = function(value)
+        AutoPlayModule.CONFIG.MULTIPLIER_THRESHOLD = value
+    end
+})
+
+AISection:Slider({
+    Title = "AI Transversing",
+    Step = 1,
+    Value = {
+    Min = 0,
+    Max = 100,
+    Default = AutoPlayModule.CONFIG.TRAVERSING,
+    }
+    Callback = function(value)
+        AutoPlayModule.CONFIG.TRAVERSING = value
+    end
+})
+
+AISection:Slider({
+    Title = "AI Direction",
+    Step = 0.1,
+    Value = {
+    Min = -1,
+    Max = 1,
+    Default = AutoPlayModule.CONFIG.DIRECTION,
+    },
+    Callback = function(value)
+        AutoPlayModule.CONFIG.DIRECTION = value
+    end
+})
+
+AISection:Slider({
+    Title = "AI Offset Factor",
+    Step = 0.05,
+    Value = {
+    Min = 0.1,
+    Max = 1,
+    Default = AutoPlayModule.CONFIG.OFFSET_FACTOR,
+    },
+    Callback = function(value)
+        AutoPlayModule.CONFIG.OFFSET_FACTOR = value
+    end
+})
+
+AISection:Slider({
+    Title = "AI Movement Duration",
+    Step = 0.05,
+    Value = {
+    Min = 0.1,
+    Max = 1,
+    Default = AutoPlayModule.CONFIG.MOVEMENT_DURATION,
+    },
+    Callback = function(value)
+        AutoPlayModule.CONFIG.MOVEMENT_DURATION = value
+    end
+})
+
+AISection:Slider({
+    Title = "AI Generation Threshold",
+    Step = 0.05,
+    Value = {
+    Min = 0.1,
+    Max = 0.5,
+    Default = AutoPlayModule.CONFIG.GENERATION_THRESHOLD,
+    },
+    Callback = function(value)
+        AutoPlayModule.CONFIG.GENERATION_THRESHOLD = value
+    end
+})
+
+AISection:Slider({
+    Title = "AI Jump Chance",
+    Step = 1,
+    Value = {
+    Min = 0,
+    Max = 100,
+    Default = AutoPlayModule.CONFIG.JUMP_PERCENTAGE,
+    },
+    Callback = function(value)
+        AutoPlayModule.CONFIG.JUMP_PERCENTAGE = value
+    end
+})
+
+AISection:Slider({
+    Title = "AI Double Jump Chance",
+    Step = 1,
+    Value = {
+    Min = 0,
+    Max = 100,
+    Default = AutoPlayModule.CONFIG.DOUBLE_JUMP_PERCENTAGE,
+    },
+    Callback = function(value)
+        AutoPlayModule.CONFIG.DOUBLE_JUMP_PERCENTAGE = value
     end
 })
 
@@ -2410,3 +4989,12 @@ if balls then
         System.__properties.__parried = false
     end)
 end
+
+local StarterGui = game:GetService('StarterGui')
+
+StarterGui:SetCore('SendNotification', {
+    Title = 'BETA',
+    Text = 'This Version is on BETA',
+    Icon = 'rbxassetid://123456789',
+    Duration = 10,
+})
