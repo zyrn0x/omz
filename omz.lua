@@ -4062,8 +4062,8 @@ SkinChangerSection:Input({
 -- ────────────────────────────────────────────────────────────────
 
 local PlayerTab = Window:Tab({ 
-    Title = "Player", 
-    Icon = "solar:eye-bold", 
+    Title = "Player",
+    Icon = "solar:eye-bold",
     IconColor = Color3.fromHex("#257AF7") 
 })
 
@@ -4120,8 +4120,7 @@ CharacterModifierSection:Toggle({
     Title = 'Character Modifier',
     Flag = 'CharacterModifier',
     Description = 'Changes various character properties',
-
-    callback = function(value)
+    Callback = function(value)
         getgenv().CharacterModifierEnabled = value
 
         if value then
