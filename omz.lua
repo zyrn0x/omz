@@ -1929,3 +1929,21 @@ ManualSpamSectiont:Slider({
         System.__properties.__spam_rate = value
     end
 })
+
+workspace.ChildRemoved:Connect(function(child)
+    if child.Name == 'Balls' then
+        System.__properties.__cached_balls = nil
+    end
+end)
+
+local balls = workspace:FindFirstChild('Balls')
+if balls then
+    balls.ChildAdded:Connect(function()
+        System.__properties.__parried = false
+    end)
+    
+    balls.ChildRemoved:Connect(function()
+        System.__properties.__parries = 0
+        System.__properties.__parried = false
+    end)
+end
