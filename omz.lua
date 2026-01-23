@@ -4112,11 +4112,6 @@ FOVSection:Slider({
     end
 })
 
-local PlayerTab = Window:Tab({ 
-    Title = "Character", 
-    Icon = "solar:user-bold", 
-    IconColor = Color3.fromHex("#EF4F1D") })
-
 local CharacterModifierSection = PlayerTab:Section({ 
     Title = "Character Modifier" 
 })
