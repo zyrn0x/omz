@@ -5963,7 +5963,7 @@ function ball_velocity.create_gui()
     gui.Name = ball_velocity.__config.gui_name
     gui.ResetOnSpawn = false
     gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    gui.Parent = LocalPlayer:WaitForChild("CoreGui")
 
     local main_frame = Instance.new("Frame")
     main_frame.Name = "MainFrame"
