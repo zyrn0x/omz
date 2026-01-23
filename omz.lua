@@ -1,6 +1,6 @@
+task.spawn(function()
 local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 
--- Création de la fenêtre principale
 local Window = WindUI:CreateWindow({
     Title = "OMZ Hub",
     --Author = "zyrn0x",
@@ -23,9 +23,9 @@ local Window = WindUI:CreateWindow({
 -- Tags (optionnel)
 Window:Tag({ Title = "v1.0 • OMZ", Icon = "github", Color = Color3.fromHex("#1c1c1c"), Border = true })
 
-while not WindUI do
-    task.wait()
-end
+end)
+
+repeat task.wait() until game:IsLoaded()
 
 local Players = cloneref(game:GetService('Players'))
 local ReplicatedStorage = cloneref(game:GetService('ReplicatedStorage'))
