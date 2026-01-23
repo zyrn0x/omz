@@ -1929,3 +1929,484 @@ ManualSpamSection:Slider({
         System.__properties.__spam_rate = value
     end
 })
+
+-- ────────────────────────────────────────────────────────────────
+--  EMOTES TAB
+-- ────────────────────────────────────────────────────────────────
+local __players = cloneref(game:GetService('Players'))
+local __localplayer = __players.LocalPlayer
+
+local __flags = {}
+local __currentDesc = nil
+local __targetUserId = nil
+local __persistent_tasks = {} -- index por Character para coroutines/threads de reaplicação
+
+-- Função utilitária para comparar se a descrição aplicada parece OK
+-- Não existe comparação perfeita, mas checamos algumas propriedades chave (Shirt/Pants/Graphic)
+local function __descriptions_match(a, b)
+    if not a or not b then return false end
+    -- Compara algumas propriedades comumente usadas
+    local keys = {"Shirt", "Pants", "ShirtGraphic", "Head", "Face", "BodyTypeScale", "HeightScale", "WidthScale", "DepthScale", "ProportionScale"}
+    for _,k in ipairs(keys) do
+        local av = a[k]
+        local bv = b[k]
+        if (av ~= nil and bv ~= nil) and tostring(av) ~= tostring(bv) then
+            return false
+        end
+    end
+    return true
+end
+
+-- APLICAÇÃO EXTREMAMENTE FORÇADA – várias estratégias
+local function __force_apply_brutal(hum, desc)
+    if not hum or not desc then return false end
+
+    -- 0) Tenta aplicar diretamente algumas vezes rápidas
+    for _ = 1, 20 do
+        pcall(function()
+            hum:ApplyDescriptionClientServer(desc)
+        end)
+        task.wait(0.05)
+        local applied = nil
+        pcall(function() applied = hum:GetAppliedDescription() end)
+        if applied and __descriptions_match(applied, desc) then
+            return true
+        end
+    end
+
+    -- 1) Reset suave e tentar de novo
+    pcall(function()
+        hum.Description = Instance.new("HumanoidDescription")
+    end)
+    task.wait(0.1)
+
+    for _ = 1, 20 do
+        pcall(function()
+            hum:ApplyDescriptionClientServer(desc)
+        end)
+        task.wait(0.05)
+        local applied = nil
+        pcall(function() applied = hum:GetAppliedDescription() end)
+        if applied and __descriptions_match(applied, desc) then
+            return true
+        end
+    end
+
+    -- 2) Tenta recriar humanoid se houver HumanoidRootPart (substituição forçada)
+    local parent = hum.Parent
+    local root = parent and parent:FindFirstChild("HumanoidRootPart")
+    if root and parent then
+        local old = hum
+        local success, newHum = pcall(function()
+            local nh = Instance.new("Humanoid")
+            nh.Name = "Humanoid"
+            nh.Parent = parent
+            return nh
+        end)
+        task.wait(0.05)
+        if success and newHum then
+            -- Destrói o antigo para forçar atualização de character
+            pcall(function() old:Destroy() end)
+            hum = newHum
+            task.wait(0.05)
+        end
+    end
+
+    -- 3) Última onda de tentativas estendidas
+    for _ = 1, 80 do
+        pcall(function()
+            hum:ApplyDescriptionClientServer(desc)
+        end)
+        task.wait(0.05)
+        local applied = nil
+        pcall(function() applied = hum:GetAppliedDescription() end)
+        if applied and __descriptions_match(applied, desc) then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function __apparence(__name)
+    local s, e = pcall(function()
+        local __id = __players:GetUserIdFromNameAsync(__name)
+        return __players:GetHumanoidDescriptionFromUserId(__id), __id
+    end)
+
+    if not s then
+        return nil, nil
+    end
+
+    return e -- e is actually two return values if successful
+end
+
+-- Inicia um loop persistente que reaplica a descrição enquanto o flag estiver ativo
+local function __start_persistent_reapply(character, desc)
+    if not character or not desc then return end
+    local charKey = character
+    -- Se já existe tarefa persistente para esse char, não crie outra
+    if __persistent_tasks[charKey] then return end
+
+    local stop = false
+    __persistent_tasks[charKey] = {
+        stop = function() stop = true end
+    }
+
+    spawn(function()
+        -- procura humanoid (pode demorar)
+        local hum = character:FindFirstChildOfClass("Humanoid") or character:WaitForChild("Humanoid", 5)
+        if not hum then
+            __persistent_tasks[charKey] = nil
+            return
+        end
+
+        -- Se o humanoid for substituído, reativa a tentativa (escuta Humanoid.AncestryChanged/Humanoid.Changed)
+        local conn
+        conn = hum:GetPropertyChangedSignal("Parent"):Connect(function()
+            if not hum.Parent then
+                -- humanoid removido, finaliza e espera novo humanoid
+                if conn then conn:Disconnect() end
+            end
+        end)
+
+        -- Loop principal: tenta forçar, depois reaplica periodicamente
+        while not stop and character.Parent do
+            -- aplica brutalmente uma vez
+            pcall(function()
+                __force_apply_brutal(hum, desc)
+            end)
+
+            -- checa se aplicado corretamente
+            local applied = nil
+            pcall(function() applied = hum:GetAppliedDescription() end)
+            if applied and __descriptions_match(applied, desc) then
+                -- boa aplicação; aguarda mais tempo antes de verificar novamente
+                for i = 1, 40 do
+                    if stop or not character.Parent then break end
+                    task.wait(0.25)
+                end
+            else
+                -- não aplicou corretamente -> aumentar frequência de tentativas
+                for i = 1, 20 do
+                    if stop or not character.Parent then break end
+                    pcall(function()
+                        hum:ApplyDescriptionClientServer(desc)
+                    end)
+                    task.wait(0.1)
+                    pcall(function() applied = hum:GetAppliedDescription() end)
+                    if applied and __descriptions_match(applied, desc) then break end
+                end
+            end
+
+            -- Se humanoid foi destruído e substituído, atualiza referência
+            if not hum.Parent or not hum.Parent:IsDescendantOf(game) then
+                hum = character:FindFirstChildOfClass("Humanoid") or character:WaitForChild("Humanoid", 5)
+            end
+        end
+
+        -- cleanup
+        if conn then pcall(function() conn:Disconnect() end) end
+        __persistent_tasks[charKey] = nil
+    end)
+end
+
+local function __stop_all_persistent()
+    for k,v in pairs(__persistent_tasks) do
+        if v and type(v.stop) == "function" then
+            pcall(v.stop)
+        end
+        __persistent_tasks[k] = nil
+    end
+end
+
+local function __set(__name, __char)
+    if not __name or __name == '' then
+        return
+    end
+
+    local __hum = __char and __char:WaitForChild('Humanoid', 5)
+
+    if not __hum then
+        return
+    end
+
+    local success, __desc, __id = pcall(function()
+        local id = __players:GetUserIdFromNameAsync(__name)
+        local desc = __players:GetHumanoidDescriptionFromUserId(id)
+        return desc, id
+    end)
+
+    if not success or not __desc then
+        warn("Failed to get appearance for: " .. tostring(__name))
+        return
+    end
+
+    -- Guarda alvo atual
+    __currentDesc = __desc
+    __targetUserId = __id
+
+    -- LIMPA TUDO localmente (mantendo seu comportamento)
+    pcall(function()
+        __localplayer:ClearCharacterAppearance()
+        __hum.Description = Instance.new("HumanoidDescription")
+    end)
+
+    task.wait(0.05)
+
+    -- APLICAÇÃO IMPOSSÍVEL DE FALHAR (tentativa imediata e depois persistente)
+    pcall(function()
+        __force_apply_brutal(__hum, __desc)
+    end)
+
+    -- Inicia reaplicação persistente para cobrir respawn/humanoid reset/substituição
+    __start_persistent_reapply(__char, __desc)
+end
+
+local VisualTab = Window:Tab({ 
+    Title = "Emotes", 
+    Icon = "solar:emoji-funny-bold", 
+    IconColor = Color3.fromHex("#ECA201") })
+
+local AvatarChangerSection = VisualTab:Section({
+    Title = "Avatar Changer",
+})
+
+AvatarChangerSection:Toggle({
+    Title = "Avatar Changer",
+    Default = false,
+    Callback = function(val)
+        __flags['Skin Changer'] = val
+
+        if val then
+            local __char = __localplayer.Character
+
+            if __char and __flags['name'] then
+                __set(__flags['name'], __char)
+            end
+
+            -- Conectar CharacterAdded para reaplicar sempre no spawn/respawn
+            __flags['loop'] = __localplayer.CharacterAdded:Connect(function(char)
+                task.wait(0.05)
+                if __flags['name'] then
+                    __set(__flags['name'], char)
+                end
+            end)
+        else
+            -- Desligando: desconectar e tentar restaurar skin local
+            if __flags['loop'] then
+                __flags['loop']:Disconnect()
+                __flags['loop'] = nil
+
+                -- Para tarefas persistentes
+                __stop_all_persistent()
+
+                local __char = __localplayer.Character
+
+                if __char then
+                    -- Restaura a aparência original do próprio jogador
+                    pcall(function()
+                        __localplayer:ClearCharacterAppearance()
+                        -- tenta reaplicar descrição padrão do usuário
+                        local ok, desc = pcall(function()
+                            return __players:GetHumanoidDescriptionFromUserId(__localplayer.UserId)
+                        end)
+                        if ok and desc then
+                            local hum = __char:FindFirstChildOfClass("Humanoid") or __char:WaitForChild("Humanoid", 3)
+                            if hum then
+                                hum:ApplyDescriptionClientServer(desc)
+                            end
+                        end
+                    end)
+                end
+            end
+        end
+    end
+})
+
+AvatarChangerSection:Input({
+    Title = "Username",
+    Desc = "Put the username of the avatar you want to change to.",
+    Placeholder = "Enter Username...",
+    InputIcon = "user",
+    Type = "Input",                       
+    Callback = function(val: string)
+        __flags['name'] = val
+
+        if __flags['Skin Changer'] and val ~= '' then
+            local __char = __localplayer.Character
+            if __char then
+                __set(val, __char)
+            end
+        end
+    end
+})
+
+local function create_animation(object, info, value)
+    local animation = game:GetService('TweenService'):Create(object, info, value)
+    animation:Play()
+    task.wait(info.Time)
+    animation:Destroy()
+end
+
+local animation_system = {
+    storage = {},
+    current = nil,
+    track = nil
+}
+
+function animation_system.load_animations()
+    local emotes_folder = game:GetService("ReplicatedStorage").Misc.Emotes
+    
+    for _, animation in pairs(emotes_folder:GetChildren()) do
+        if animation:IsA("Animation") and animation:GetAttribute("EmoteName") then
+            local emote_name = animation:GetAttribute("EmoteName")
+            animation_system.storage[emote_name] = animation
+        end
+    end
+end
+
+function animation_system.get_emotes_list()
+    local emotes_list = {}
+    
+    for emote_name in pairs(animation_system.storage) do
+        table.insert(emotes_list, emote_name)
+    end
+    
+    table.sort(emotes_list)
+    return emotes_list
+end
+
+function animation_system.play(emote_name)
+    local animation_data = animation_system.storage[emote_name]
+    
+    if not animation_data or not LocalPlayer.Character then
+        return false
+    end
+    
+    local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+    if not humanoid then
+        return false
+    end
+    
+    local animator = humanoid:FindFirstChild("Animator")
+    if not animator then
+        return false
+    end
+    
+    if animation_system.track then
+        animation_system.track:Stop()
+        animation_system.track:Destroy()
+    end
+    
+    animation_system.track = animator:LoadAnimation(animation_data)
+    animation_system.track:Play()
+    animation_system.current = emote_name
+    
+    return true
+end
+
+function animation_system.stop()
+    if animation_system.track then
+        animation_system.track:Stop()
+        animation_system.track:Destroy()
+        animation_system.track = nil
+    end
+    animation_system.current = nil
+end
+
+function animation_system.start()
+    if not System.__properties.__connections.animations then
+        System.__properties.__connections.animations = RunService.Heartbeat:Connect(function()
+            if not LocalPlayer.Character or not LocalPlayer.Character.PrimaryPart then
+                return
+            end
+            
+            local speed = LocalPlayer.Character.PrimaryPart.AssemblyLinearVelocity.Magnitude
+            
+            if speed > 30 and getgenv().AutoStop then
+                if animation_system.track and animation_system.track.IsPlaying then
+                    animation_system.track:Stop()
+                end
+            else
+                if animation_system.current and (not animation_system.track or not animation_system.track.IsPlaying) then
+                    animation_system.play(animation_system.current)
+                end
+            end
+        end)
+    end
+end
+
+function animation_system.cleanup()
+    animation_system.stop()
+    
+    if System.__properties.__connections.animations then
+        System.__properties.__connections.animations:Disconnect()
+        System.__properties.__connections.animations = nil
+    end
+end
+
+animation_system.load_animations()
+local emotes_data = animation_system.get_emotes_list()
+local selected_animation = emotes_data[1]
+
+local EmotesSection = VisualTab:Section({
+    Title = "Emotes",
+})
+
+EmotesSection:Toggle({
+    Title = "Emotes",
+    Default = false,
+    Callback = function(value)
+        getgenv().Animations = value
+        
+        if value then
+            animation_system.start()
+            
+            if selected_animation then
+                animation_system.play(selected_animation)
+            end
+        else
+            animation_system.cleanup()
+        end
+    end
+})
+
+EmotesSection:Toggle({
+    Title = "Auto Stop",
+    Default = true,
+    Callback = function(value)
+        getgenv().AutoStop = value
+    end
+})
+
+EmotesSection:Dropdown({
+    Title = "Emote Type",
+    Values = emotes_data,
+    Default = "None",
+    Callback = function(value)
+        selected_animation = value
+        
+        if getgenv().Animations then
+            animation_system.play(value)
+        end
+    end
+})
+
+workspace.ChildRemoved:Connect(function(child)
+    if child.Name == 'Balls' then
+        System.__properties.__cached_balls = nil
+    end
+end)
+
+local balls = workspace:FindFirstChild('Balls')
+if balls then
+    balls.ChildAdded:Connect(function()
+        System.__properties.__parried = false
+    end)
+    
+    balls.ChildRemoved:Connect(function()
+        System.__properties.__parries = 0
+        System.__properties.__parried = false
+    end)
+end
