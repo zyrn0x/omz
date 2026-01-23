@@ -1724,7 +1724,7 @@ DetectionSection:Toggle({
     end
 })
 
-DetectionSectiont:Slider({
+DetectionSection:Slider({
     Title = "Parry Delay",
     Value = { Min = 0.05, Max = 0.250, Default = 0.05 },
     Step = 0.01,
@@ -1751,7 +1751,7 @@ DetectionSection:Toggle({
 })
 
 local AutoSpamSection = CombatTab:Section({
-    Title = "Auto Spam",
+    Title = "Auto Spam Parry",
 })
 
 AutoSpamSection:Toggle({
@@ -1816,7 +1816,7 @@ AutoSpamSection:Slider({
 })
 
 local ManualSpamSection = CombatTab:Section({
-    Title = "Manual Spam",
+    Title = "Manual Spam Parry",
 })
 
 ManualSpamSection:Toggle({
