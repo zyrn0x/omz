@@ -1,54 +1,3 @@
-local RunService = game:GetService("RunService")
---[[
-
-    WindUI Example (wip)
-    
-]]
-
-
-local cloneref = (cloneref or clonereference or function(instance) return instance end)
-local ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
-
-
-local WindUI
-
-do
-    local ok, result = pcall(function()
-        return require("./src/Init")
-    end)
-    
-    if ok then
-        WindUI = result
-    else 
-        if cloneref(game:GetService("RunService"):IsStudio()) then
-            WindUI = require(cloneref(ReplicatedStorage:WaitForChild("WindUI"):WaitForChild("Init")))
-        else
-            WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
-        end
-    end
-end
-
-local Window = WindUI:CreateWindow({
-    Title = "OMZ Hub",
-    Folder = "OMZ_Config",
-    Icon = "solar:shield-bold-duotone",
-    OpenButton = {
-        Title = "OMZ",
-        CornerRadius = UDim.new(1, 0),
-        Enabled = true,
-        Draggable = true,
-        Scale = 0.6,
-        Color = ColorSequence.new(
-            Color3.fromHex("#00ffea"),
-            Color3.fromHex("#ff00aa")
-        )
-    },
-    Topbar = { Height = 44, ButtonsType = "Mac" }
-})
-
--- Tag version (optionnel)
-Window:Tag({ Title = "v1.0 • OMZ", Icon = "github", Color = Color3.fromHex("#1c1c1c"), Border = true })
-
 repeat task.wait() until game:IsLoaded()
 
 local Players = cloneref(game:GetService('Players'))
@@ -1185,6 +1134,30 @@ local function destroy_mobile_gui(gui_data)
         gui_data.gui:Destroy()
     end
 end
+
+local WindUI
+
+do
+    local ok, result = pcall(function()
+        return require("./src/Init")
+    end)
+    
+    if ok then
+        WindUI = result
+    else 
+        if cloneref(game:GetService("RunService"):IsStudio()) then
+            WindUI = require(cloneref(ReplicatedStorage:WaitForChild("WindUI"):WaitForChild("Init")))
+        else
+            WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+        end
+    end
+end
+
+local Window = WindUI:CreateWindow({
+    Title = "My Super Hub",
+    Icon = "door-open", -- lucide icon. optional
+    Author = "by .ftgs and .ftgs", -- optional
+})
 
 -- ────────────────────────────────────────────────────────────────
 --  COMBAT / AUTOPARRY / SPAM TAB
