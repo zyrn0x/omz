@@ -1,5 +1,4 @@
--- Bypass basique pour Blade Ball anti-cheat
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Fsploit/Frostware-/refs/heads/main/Bypass.lua"))()  -- Bypass commun<grok-card data-id="d78252" data-type="citation_card" data-plain-type="render_inline_citation" ></grok-card>
+
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
