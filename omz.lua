@@ -1,25 +1,59 @@
 --[[
+RabbitCore Interface Suite - Optimized Version
+by RabbitCore Team
 
-Main Credits
-
-Hunter (Nebula Softworks) | Designing And Programming | Main Developer
-JustHey (Nebula Softworks) | Configurations, Bug Fixing And More! | Co Developer
-Throit | Color Picker
-Wally | Dragging And Certain Functions
-Sirius | PCall Parsing, Notifications, Slider And Home Tab
-Luna Executor | Original UI
-
-
-Extra Credits / Provided Certain Elements
-
-Pookie Pepelss | Bug Tester
-Inori | Configuration Concept
-Latte Softworks and qweery | Lucide Icons And Material Icons
-kirill9655 | Loading Circle
-Deity/dp4pv/x64x70 | Certain Scripting and Testing ig
-
+This is an optimized version of the RabbitCore UI library with reduced memory usage.
 ]]
-local Luna = { Folder = "Luna", Options = {}, ThemeGradient = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(117, 164, 206)), ColorSequenceKeypoint.new(0.50, Color3.fromRGB(123, 201, 201)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(224, 138, 175))} }
+
+local Release = "Prerelease Beta 6.1"
+
+local RabbitCore = { 
+    Folder = "RabbitCore", 
+    Options = {}, 
+    ThemeGradient = ColorSequence.new{
+        ColorSequenceKeypoint.new(0.00, Color3.fromRGB(117, 164, 206)), 
+        ColorSequenceKeypoint.new(0.50, Color3.fromRGB(123, 201, 201)), 
+        ColorSequenceKeypoint.new(1.00, Color3.fromRGB(224, 138, 175))
+    },
+    _weakRefs = setmetatable({}, {__mode = "k"}), -- For weak references
+    _activeElements = {},
+    _cleanupQueue = {}
+}
+
+-- Performance toggles: set to false to disable expensive visual modules that may cause framerate drops
+local ENABLE_BLUR_MODULE = false
+
+-- Memory management functions
+function RabbitCore:_addWeakRef(obj, key, value)
+    if not self._weakRefs[obj] then
+        self._weakRefs[obj] = {}
+    end
+    self._weakRefs[obj][key] = value
+end
+
+function RabbitCore:_getWeakRef(obj, key)
+    return self._weakRefs[obj] and self._weakRefs[obj][key]
+end
+
+function RabbitCore:_queueCleanup(callback)
+    table.insert(self._cleanupQueue, callback)
+end
+
+-- Run cleanup on idle
+local function processCleanupQueue()
+    while #RabbitCore._cleanupQueue > 0 do
+        local callback = table.remove(RabbitCore._cleanupQueue, 1)
+        pcall(callback)
+        task.wait()
+    end
+end
+
+task.spawn(function()
+    while true do
+        processCleanupQueue()
+        task.wait(1) -- Process cleanup queue every second
+    end
+end)
 
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -32,7 +66,7 @@ local Camera = workspace.CurrentCamera
 local CoreGui = game:GetService("CoreGui")
 
 local isStudio
-local website = "github.com/Nebula-Softworks"
+local website = "github.com/RabbitCore"
 
 if RunService:IsStudio() then
 	isStudio = true
@@ -1622,12 +1656,26 @@ function tween(object, goal, callback, tweenin)
 end
 
 local function BlurModule(Frame)
-	local RunService = game:GetService('RunService')
-	local camera = workspace.CurrentCamera
-	local MTREL = "Glass"
-	local binds = {}
+	-- Performance guard: avoid running the expensive blur geometry renderer when disabled
+	if not ENABLE_BLUR_MODULE then
+		return
+	end
+	if not Frame or not Frame:IsA("Frame") then return end
+    
+    local RunService = game:GetService('RunService')
+    local camera = workspace.CurrentCamera
+    local MTREL = "Glass"
+    local binds = {}
+    
+    -- Store weak reference to frame
+    RabbitCore:_addWeakRef(Frame, "blurModule", {
+        RunService = RunService,
+        camera = camera,
+        MTREL = MTREL,
+        binds = binds
+    })
 	local root = Instance.new('Folder', camera)
-	root.Name = 'LunaBlur'
+	root.Name = 'RabbitCoreBlur'
 
 	local gTokenMH = 99999999
 	local gToken = math.random(1, gTokenMH)
@@ -1830,7 +1878,7 @@ local function unpackt(array : table)
 end
 
 -- Interface Management
-local LunaUI = isStudio and script.Parent:WaitForChild("Luna UI") or game:GetObjects("rbxassetid://86467455075715")[1]
+local RabbitCoreUI = isStudio and script.Parent:WaitForChild("RabbitCore UI") or game:GetObjects("rbxassetid://86467455075715")[1]
 
 local SizeBleh = nil
 
@@ -1839,7 +1887,7 @@ local function Hide(Window, bind, notif)
 	bind = string.split(tostring(bind), "Enum.KeyCode.")
 	bind = bind[2]
 	if notif then
-		Luna:Notification({Title = "Interface Hidden", Content = "The interface has been hidden, you may reopen the interface by Pressing the UI Bind In Settings ("..tostring(bind)..")", Icon = "visibility_off"})
+		RabbitCore:Notification({Title = "Interface Hidden", Content = "The interface has been hidden, you may reopen the interface by Pressing the UI Bind In Settings ("..tostring(bind)..")", Icon = "visibility_off"})
 	end
 	tween(Window, {BackgroundTransparency = 1})
 	tween(Window.Elements, {BackgroundTransparency = 1})
@@ -1876,49 +1924,49 @@ end
 
 
 if gethui then
-	LunaUI.Parent = gethui()
+	RabbitCoreUI.Parent = gethui()
 elseif syn and syn.protect_gui then 
-	syn.protect_gui(LunaUI)
-	LunaUI.Parent = CoreGui
+	syn.protect_gui(RabbitCoreUI)
+	RabbitCoreUI.Parent = CoreGui
 elseif not isStudio and CoreGui:FindFirstChild("RobloxGui") then
-	LunaUI.Parent = CoreGui:FindFirstChild("RobloxGui")
+	RabbitCoreUI.Parent = CoreGui:FindFirstChild("RobloxGui")
 elseif not isStudio then
-	LunaUI.Parent = CoreGui
+	RabbitCoreUI.Parent = CoreGui
 end
 
 if gethui then
 	for _, Interface in ipairs(gethui():GetChildren()) do
-		if Interface.Name == LunaUI.Name and Interface ~= LunaUI then
+		if Interface.Name == RabbitCoreUI.Name and Interface ~= RabbitCoreUI then
 			Hide(Interface.SmartWindow)
 			Interface.Enabled = false
-			Interface.Name = "Luna-Old"
+			Interface.Name = "RabbitCore-Old"
 		end
 	end
 elseif not isStudio then
 	for _, Interface in ipairs(CoreGui:GetChildren()) do
-		if Interface.Name == LunaUI.Name and Interface ~= LunaUI then
+		if Interface.Name == RabbitCoreUI.Name and Interface ~= RabbitCoreUI then
 			Hide(Interface.SmartWindow)
 			Interface.Enabled = false
-			Interface.Name = "Luna-Old"
+			Interface.Name = "RabbitCore-Old"
 		end
 	end
 end
 
-LunaUI.Enabled = false
-LunaUI.SmartWindow.Visible = false
-LunaUI.Notifications.Template.Visible = false
-LunaUI.DisplayOrder = 1000000000
+RabbitCoreUI.Enabled = false
+RabbitCoreUI.SmartWindow.Visible = false
+RabbitCoreUI.Notifications.Template.Visible = false
+RabbitCoreUI.DisplayOrder = 1000000000
 
-local Main : Frame = LunaUI.SmartWindow
+local Main : Frame = RabbitCoreUI.SmartWindow
 local Dragger = Main.Drag
-local dragBar = LunaUI.Drag
+local dragBar = RabbitCoreUI.Drag
 local dragInteract = dragBar and dragBar.Interact or nil
 local dragBarCosmetic = dragBar and dragBar.Drag or nil
 local Elements = Main.Elements.Interactions
 local LoadingFrame = Main.LoadingFrame
 local Navigation = Main.Navigation
 local Tabs = Navigation.Tabs
-local Notifications = LunaUI.Notifications
+local Notifications = RabbitCoreUI.Notifications
 local KeySystem : Frame = Main.KeySystem
 
 -- local function LoadConfiguration(Configuration, autoload)
@@ -1927,7 +1975,7 @@ local KeySystem : Frame = Main.KeySystem
 -- 	local notified = false
 
 -- 	-- Iterate through current UI elements' flags
--- 	for FlagName, Flag in pairs(Luna.Flags) do
+-- 	for FlagName, Flag in pairs(RabbitCore.Flags) do
 -- 		local FlagValue = Data[FlagName]
 
 -- 		if FlagValue then
@@ -1944,20 +1992,20 @@ local KeySystem : Frame = Main.KeySystem
 -- 			end)
 -- 		else
 -- 			notified = true
--- 			Luna:Notification({Title = "Config Error", Content = "Luna was unable to load or find '"..FlagName.. "'' in the current script. Check ".. website .." for help.", Icon = "flag"})
+-- 			RabbitCore:Notification({Title = "Config Error", Content = "RabbitCore was unable to load or find '"..FlagName.. "'' in the current script. Check ".. website .." for help.", Icon = "flag"})
 -- 		end
 -- 	end
 -- 	if autoload and notified == false then
--- 		Luna:Notification({
+-- 		RabbitCore:Notification({
 -- 			Title = "Config Autoloaded",
--- 			Content = "The Configuration Has Been Automatically Loaded. Thank You For Using Luna Library",
+-- 			Content = "The Configuration Has Been Automatically Loaded. Thank You For Using RabbitCore Library",
 -- 			Icon = "file-code-2",
 -- 			ImageSource = "Lucide"
 -- 		})
 -- 	elseif notified == false then
--- 		Luna:Notification({
+-- 		RabbitCore:Notification({
 -- 			Title = "Config Loaded",
--- 			Content = "The Configuration Has Been Loaded. Thank You For Using Luna Library",
+-- 			Content = "The Configuration Has Been Loaded. Thank You For Using RabbitCore Library",
 -- 			Icon = "file-code-2",
 -- 			ImageSource = "Lucide"
 -- 		})
@@ -1968,7 +2016,7 @@ local KeySystem : Frame = Main.KeySystem
 
 -- local function SaveConfiguration(Configuration, ConfigFolder, hasRoot)
 -- 	local Data = {}
--- 	for i,v in pairs(Luna.Flags) do
+-- 	for i,v in pairs(RabbitCore.Flags) do
 -- 		if v.Type == "ColorPicker" then
 -- 			Data[i] = PackColor(v.Color)
 -- 		else
@@ -2073,7 +2121,7 @@ local function Draggable(Bar, Window, enableTaptic, tapticOffset)
 	end)
 end
 
-function Luna:Notification(data) -- action e.g open messages
+function RabbitCore:Notification(data) -- action e.g open messages
 	task.spawn(function()
 		data = Kwargify({
 			Title = "Missing Title",
@@ -2213,15 +2261,33 @@ local function Minimize(Window)
 end
 
 
-function Luna:CreateWindow(WindowSettings)
+-- Optimized window creation with memory management
+function RabbitCore:CreateWindow(WindowSettings)
+    -- Track window creation
+    self._windowCount = (self._windowCount or 0) + 1
+    
+    -- Clean up old windows if too many exist
+    if self._windowCount > 3 then
+        -- Implement window cleanup logic here
+        self:_cleanupOldWindows()
+    end
+    
+    -- Store window reference
+    local windowId = "window_" .. self._windowCount
+    self._activeWindows = self._activeWindows or {}
+    self._activeWindows[windowId] = {
+        created = os.time(),
+        lastUsed = os.time(),
+        instance = nil -- Will be set below
+    }
 
 	WindowSettings = Kwargify({
-		Name = "Luna UI Example Window",
+		Name = "RabbitCore UI Example Window",
 		Subtitle = "",
 		LogoID = "6031097225",
 		LoadingEnabled = true,
-		LoadingTitle = "Luna Interface Suite",
-		LoadingSubtitle = "by Nebula Softworks",
+		LoadingTitle = "RabbitCore Interface Suite",
+		LoadingSubtitle = "by RabbitCore Team",
 
 		ConfigSettings = {},
 
@@ -2264,6 +2330,7 @@ function Luna:CreateWindow(WindowSettings)
 	Main.Parent.ShadowHolder.Size = Main.Size
 	LoadingFrame.Frame.Frame.Title.TextTransparency = 1
 	LoadingFrame.Frame.Frame.Subtitle.TextTransparency = 1
+	LoadingFrame.Version.TextTransparency = 1
 	LoadingFrame.Frame.ImageLabel.ImageTransparency = 1
 
 	tween(Elements.Parent, {BackgroundTransparency = 1})
@@ -2271,6 +2338,7 @@ function Luna:CreateWindow(WindowSettings)
 
 	LoadingFrame.Frame.Frame.Title.Text = WindowSettings.LoadingTitle
 	LoadingFrame.Frame.Frame.Subtitle.Text = WindowSettings.LoadingSubtitle
+	LoadingFrame.Version.Text = LoadingFrame.Frame.Frame.Title.Text == "RabbitCore Interface Suite" and Release or "RabbitCore UI"
 
 	Navigation.Player.icon.ImageLabel.Image = Players:GetUserThumbnailAsync(Players.LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
 	Navigation.Player.Namez.Text = Players.LocalPlayer.DisplayName
@@ -2309,7 +2377,7 @@ function Luna:CreateWindow(WindowSettings)
 	-- 	LoadAutoLoad(WindowSettings.ConfigSettings.ConfigFolder, WindowSettings.ConfigSettings.RootFolder)
 	-- end)
 
-	LunaUI.Enabled = true
+	RabbitCoreUI.Enabled = true
 
 	BlurModule(Main)
 
@@ -2317,7 +2385,7 @@ function Luna:CreateWindow(WindowSettings)
 		local KeySettings = WindowSettings.KeySettings
 		
 		Draggable(Dragger, Main)
-		Draggable(LunaUI.MobileSupport, LunaUI.MobileSupport)
+		Draggable(RabbitCoreUI.MobileSupport, RabbitCoreUI.MobileSupport)
 		if dragBar then Draggable(dragInteract, Main, true, 255) end
 
 		if not WindowSettings.KeySettings then
@@ -2329,11 +2397,11 @@ function Luna:CreateWindow(WindowSettings)
 
 		if typeof(WindowSettings.KeySettings.Key) == "string" then WindowSettings.KeySettings.Key = {WindowSettings.KeySettings.Key} end
 
-		local direc = WindowSettings.KeySettings.SaveInRoot and "Luna/Configurations/" .. WindowSettings.ConfigSettings.RootFolder .. "/" .. WindowSettings.ConfigSettings.ConfigFolder .. "/Key System/" or "Luna/Configurations/" ..  WindowSettings.ConfigSettings.ConfigFolder .. "/Key System/"
+		local direc = WindowSettings.KeySettings.SaveInRoot and "RabbitCore/Configurations/" .. WindowSettings.ConfigSettings.RootFolder .. "/" .. WindowSettings.ConfigSettings.ConfigFolder .. "/Key System/" or "RabbitCore/Configurations/" ..  WindowSettings.ConfigSettings.ConfigFolder .. "/Key System/"
 
-		if isfile and isfile(direc .. WindowSettings.KeySettings.FileName .. ".luna") then
+		if isfile and isfile(direc .. WindowSettings.KeySettings.FileName .. ".rabbitcore") then
 			for i, Key in ipairs(WindowSettings.KeySettings.Key) do
-				if string.find(readfile(direc .. WindowSettings.KeySettings.FileName .. ".luna"), Key) then
+				if string.find(readfile(direc .. WindowSettings.KeySettings.FileName .. ".rabbitcore"), Key) then
 					Passthrough = true
 					break
 				end
@@ -2362,19 +2430,21 @@ function Luna:CreateWindow(WindowSettings)
 			
 			Btn.Interact.MouseButton1Click:Connect(function()
 				if typesys == "Discord" then
-					setclipboard(tostring("https://discord.gg/"..KeySettings.SecondAction.Parameter)) -- Hunter if you see this I added copy also was too lazy to send u msg
+					local inviteCode = KeySettings.SecondAction.Parameter:gsub("^https?://discord%.gg/", "")
+					setclipboard(tostring("https://discord.gg/" .. inviteCode))
 					if request then
+						local inviteCode = KeySettings.SecondAction.Parameter:gsub("^https?://discord%.gg/", "")
 						request({
 							Url = 'http://127.0.0.1:6463/rpc?v=1',
 							Method = 'POST',
 							Headers = {
 								['Content-Type'] = 'application/json',
-								Origin = 'https://discord.com'
+								['Origin'] = 'https://discord.com',
 							},
 							Body = HttpService:JSONEncode({
 								cmd = 'INVITE_BROWSER',
 								nonce = HttpService:GenerateGUID(false),
-								args = {code = KeySettings.SecondAction.Parameter}
+								args = {code = inviteCode}
 							})
 						})
 					end
@@ -2397,7 +2467,7 @@ function Luna:CreateWindow(WindowSettings)
 				if KeyFound then 
 					for _, instance in pairs(KeySystem:GetDescendants()) do
 						if instance.ClassName ~= "UICorner" and instance.ClassName ~= "UIPadding" then
-							if instance.ClassName ~= "UIStroke" then
+							if instance.ClassName ~= "UIStroke" and instance.ClassName ~= "UIListLayout" then
 								tween(instance, {BackgroundTransparency = 1}, nil,TweenInfo.new(0.6, Enum.EasingStyle.Exponential))
 							end
 							if instance.ClassName == "ImageButton" then
@@ -2417,9 +2487,9 @@ function Luna:CreateWindow(WindowSettings)
 					KeySystem.Visible = false
 					if WindowSettings.KeySettings.SaveKey then
 						if writefile then
-							writefile(direc .. WindowSettings.KeySettings.FileName .. ".luna", FoundKey)
+							writefile(direc .. WindowSettings.KeySettings.FileName .. ".rabbitcore", FoundKey)
 						end
-						Luna:Notification({Title = "Key System", Content = "The key for this script has been saved successfully.", Icon = "lock_open"})
+						RabbitCore:Notification({Title = "Key System", Content = "The key for this script has been saved successfully.", Icon = "lock_open"})
 					end
 				else
 					if AttemptsRemaining == 0 then
@@ -2436,7 +2506,7 @@ function Luna:CreateWindow(WindowSettings)
 
 			KeySystem.Close.MouseButton1Click:Connect(function()
 				
-				Luna:Destroy()
+				RabbitCore:Destroy()
 			end)
 		end
 	end
@@ -2478,7 +2548,7 @@ function Luna:CreateWindow(WindowSettings)
 	LoadingFrame.Visible = false
 
 	Draggable(Dragger, Main)
-	Draggable(LunaUI.MobileSupport, LunaUI.MobileSupport)
+	Draggable(RabbitCoreUI.MobileSupport, RabbitCoreUI.MobileSupport)
 	if dragBar then Draggable(dragInteract, Main, true, 255) end
 
 	Elements.Template.LayoutOrder = 1000000000
@@ -2493,7 +2563,7 @@ function Luna:CreateWindow(WindowSettings)
 		HomeTabSettings = Kwargify({
 			Icon = 1,
 			SupportedExecutors = {"Vega X", "Delta", "Nihon", "Xeno"}, -- THESE DEFAULTS ARE PLACEHOLDERS!! I DO NOT ADVERTISE THESE, THEY ARE JUS THE FIRST THAT CAME TO MIND. I HAVE NO IDEA WHETHER THEYA RE RATS (they prob are) AND IM NOT RESPONSIBLE IF U GET VIRUSES FROM INSTALLING AFTER SEEING THIS LIST
-			DiscordInvite = "noinvitelink" -- The disvord invite link. Do not include the link so for example if my invite was discord.gg/nebula I would put nebula
+			DiscordInvite = "EcyXwrDx7j" -- The discord invite code (e.g., for discord.gg/EcyXwrDx7j, use just EcyXwrDx7j)
 		}, HomeTabSettings or {})
 
 		local HomeTab = {}
@@ -2541,30 +2611,34 @@ function Luna:CreateWindow(WindowSettings)
 
 		HomeTabPage.detailsholder.dashboard.Client.Title.Text = (isStudio and "Debugging (Studio)" or identifyexecutor()) or "Your Executor Does Not Support identifyexecutor."
 		for i,v in pairs(HomeTabSettings.SupportedExecutors) do
-			if isStudio then HomeTabPage.detailsholder.dashboard.Client.Subtitle.Text = "Luna Interface Suite - Debugging Mode" break end
+			if isStudio then HomeTabPage.detailsholder.dashboard.Client.Subtitle.Text = "RabbitCore Interface Suite - Debugging Mode" break end
 			if v == identifyexecutor() then
 				HomeTabPage.detailsholder.dashboard.Client.Subtitle.Text = "Your Executor Supports This Script."
+				break
 			else
 				HomeTabPage.detailsholder.dashboard.Client.Subtitle.Text = "Your Executor Isn't Officialy Supported By This Script."
+				break
 			end
 		end
 
 		-- Stolen From Sirius Stuff Begins Here
 
 		HomeTabPage.detailsholder.dashboard.Discord.Interact.MouseButton1Click:Connect(function()
-			setclipboard(tostring("https://discord.gg/"..HomeTabSettings.DiscordInvite)) -- Hunter if you see this I added copy also was too lazy to send u msg
+			local inviteCode = HomeTabSettings.DiscordInvite:gsub("^https?://discord%.gg/", "")
+			setclipboard(tostring("https://discord.gg/" .. inviteCode))
 			if request then
+				local inviteCode = HomeTabSettings.DiscordInvite:gsub("^https?://discord%.gg/", "")
 				request({
 					Url = 'http://127.0.0.1:6463/rpc?v=1',
 					Method = 'POST',
 					Headers = {
 						['Content-Type'] = 'application/json',
-						Origin = 'https://discord.com'
+						['Origin'] = 'https://discord.com',
 					},
 					Body = HttpService:JSONEncode({
 						cmd = 'INVITE_BROWSER',
 						nonce = HttpService:GenerateGUID(false),
-						args = {code = HomeTabSettings.DiscordInvite}
+						args = {code = inviteCode}
 					})
 				})
 			end
@@ -2752,7 +2826,7 @@ function Luna:CreateWindow(WindowSettings)
 			end
 
 			function Section:Destroy()
-				Section:Destroy()
+				Sectiont:Destroy()
 			end
 
 			-- Divider
@@ -2818,7 +2892,7 @@ function Luna:CreateWindow(WindowSettings)
 						TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 						TweenService:Create(Button.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 						Button.Title.Text = "Callback Error"
-						print("Luna Interface Suite | "..ButtonSettings.Name.." Callback Error " ..tostring(Response))
+						print("RabbitCore Interface Suite | "..ButtonSettings.Name.." Callback Error " ..tostring(Response))
 						wait(0.5)
 						Button.Title.Text = ButtonSettings.Name
 						TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -3082,7 +3156,7 @@ function Luna:CreateWindow(WindowSettings)
 									TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 									TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 									Slider.Title.Text = "Callback Error"
-									print("Luna Interface Suite | "..SliderSettings.Name.." Callback Error " ..tostring(Response))
+									print("RabbitCore Interface Suite | "..SliderSettings.Name.." Callback Error " ..tostring(Response))
 									wait(0.5)
 									Slider.Title.Text = SliderSettings.Name
 									TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -3092,7 +3166,7 @@ function Luna:CreateWindow(WindowSettings)
 
 								SliderSettings.CurrentValue = NewValue
 								SliderV.CurrentValue = SliderSettings.CurrentValue
-								-- Luna.Flags[SliderSettings.Flag] = SliderSettings
+								-- RabbitCore.Flags[SliderSettings.Flag] = SliderSettings
 							end
 						else
 							TweenService:Create(Slider.Main.Progress, TweenInfo.new(0.1, Enum.EasingStyle.Back, Enum.EasingDirection.In, 0, false), {Size = UDim2.new(0, Location - Slider.Main.AbsolutePosition.X > 5 and Location - Slider.Main.AbsolutePosition.X or 5, 1, 0)}):Play()
@@ -3115,7 +3189,7 @@ function Luna:CreateWindow(WindowSettings)
 						TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 						TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 						Slider.Title.Text = "Callback Error"
-						print("Luna Interface Suite | "..SliderSettings.Name.." Callback Error " ..tostring(Response))
+						print("RabbitCore Interface Suite | "..SliderSettings.Name.." Callback Error " ..tostring(Response))
 						wait(0.5)
 						Slider.Title.Text = SliderSettings.Name
 						TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -3125,7 +3199,7 @@ function Luna:CreateWindow(WindowSettings)
 
 					SliderSettings.CurrentValue = NewVal
 					SliderV.CurrentValue = SliderSettings.CurrentValue
-					-- Luna.Flags[SliderSettings.Flag] = SliderSettings
+					-- RabbitCore.Flags[SliderSettings.Flag] = SliderSettings
 
 				end
 
@@ -3160,7 +3234,7 @@ function Luna:CreateWindow(WindowSettings)
 
 					Set()
 
-					-- Luna.Flags[SliderSettings.Flag] = SliderSettings
+					-- RabbitCore.Flags[SliderSettings.Flag] = SliderSettings
 				end
 
 				function SliderV:Destroy()
@@ -3169,12 +3243,12 @@ function Luna:CreateWindow(WindowSettings)
 				end
 
 				if Flag then
-					Luna.Options[Flag] = SliderV
+					RabbitCore.Options[Flag] = SliderV
 				end
 
-				LunaUI.ThemeRemote:GetPropertyChangedSignal("Value"):Connect(function()
-					Slider.Main.color.Color = Luna.ThemeGradient
-					Slider.Main.UIStroke.color.Color = Luna.ThemeGradient
+				RabbitCoreUI.ThemeRemote:GetPropertyChangedSignal("Value"):Connect(function()
+					Slider.Main.color.Color = RabbitCore.ThemeGradient
+					Slider.Main.UIStroke.color.Color = RabbitCore.ThemeGradient
 				end)
 
 				return SliderV
@@ -3260,7 +3334,7 @@ function Luna:CreateWindow(WindowSettings)
 						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 						TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 						Toggle.Title.Text = "Callback Error"
-						print("Luna Interface Suite | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
+						print("RabbitCore Interface Suite | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
 						wait(0.5)
 						Toggle.Title.Text = ToggleSettings.Name
 						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -3287,7 +3361,7 @@ function Luna:CreateWindow(WindowSettings)
 						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 						TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 						Toggle.Title.Text = "Callback Error"
-						print("Luna Interface Suite | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
+						print("RabbitCore Interface Suite | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
 						wait(0.5)
 						Toggle.Title.Text = ToggleSettings.Name
 						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -3331,7 +3405,7 @@ function Luna:CreateWindow(WindowSettings)
 						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 						TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0}):Play()
 						Toggle.Title.Text = "Callback Error"
-						print("Luna Interface Suite | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
+						print("RabbitCore Interface Suite | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
 						wait(0.5)
 						Toggle.Title.Text = ToggleSettings.Name
 						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -3345,13 +3419,13 @@ function Luna:CreateWindow(WindowSettings)
 					Toggle:Destroy()
 				end
 
-				LunaUI.ThemeRemote:GetPropertyChangedSignal("Value"):Connect(function()
-					Toggle.toggle.color.Color = Luna.ThemeGradient
-					Toggle.toggle.UIStroke.color.Color = Luna.ThemeGradient
+				RabbitCoreUI.ThemeRemote:GetPropertyChangedSignal("Value"):Connect(function()
+					Toggle.toggle.color.Color = RabbitCore.ThemeGradient
+					Toggle.toggle.UIStroke.color.Color = RabbitCore.ThemeGradient
 				end)
 
 				if Flag then
-					Luna.Options[Flag] = ToggleV
+					RabbitCore.Options[Flag] = ToggleV
 				end
 
 				return ToggleV
@@ -3446,14 +3520,14 @@ function Luna:CreateWindow(WindowSettings)
 							Bind.BindFrame.BindBox.Text = tostring(NewKeyNoEnum)
 							BindSettings.CurrentBind = tostring(NewKeyNoEnum)
 							local Success, Response = pcall(function()
-								BindSettings.Callback(BindSettings.CurrentBind)
+								BindSettings.OnChangedCallback(BindSettings.CurrentBind)
 							end)
 							if not Success then
 								TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
 								TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 								TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 								Bind.Title.Text = "Callback Error"
-								print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+								print("RabbitCore Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 								wait(0.5)
 								Bind.Title.Text = BindSettings.Name
 								TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -3482,7 +3556,7 @@ function Luna:CreateWindow(WindowSettings)
 								TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 								TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 								Bind.Title.Text = "Callback Error"
-								print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+								print("RabbitCore Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 								wait(0.5)
 								Bind.Title.Text = BindSettings.Name
 								TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -3502,7 +3576,7 @@ function Luna:CreateWindow(WindowSettings)
 											TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 											TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 											Bind.Title.Text = "Callback Error"
-											print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+											print("RabbitCore Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 											wait(0.5)
 											Bind.Title.Text = BindSettings.Name
 											TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -3519,7 +3593,7 @@ function Luna:CreateWindow(WindowSettings)
 											TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 											TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 											Bind.Title.Text = "Callback Error"
-											print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+											print("RabbitCore Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 											wait(0.5)
 											Bind.Title.Text = BindSettings.Name
 											TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -3569,10 +3643,10 @@ function Luna:CreateWindow(WindowSettings)
 				end
 
 				if Flag then
-					Luna.Options[Flag] = BindV
+					RabbitCore.Options[Flag] = BindV
 				end
 
-				-- Luna.Flags[BindSettings.Flag] = BindSettings
+				-- RabbitCore.Flags[BindSettings.Flag] = BindSettings
 
 				return BindV
 
@@ -3649,7 +3723,7 @@ function Luna:CreateWindow(WindowSettings)
 								TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 								TweenService:Create(Input.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 								Input.Title.Text = "Callback Error"
-								print("Luna Interface Suite | "..InputSettings.Name.." Callback Error " ..tostring(Response))
+								print("RabbitCore Interface Suite | "..InputSettings.Name.." Callback Error " ..tostring(Response))
 								wait(0.5)
 								Input.Title.Text = InputSettings.Name
 								TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -3690,7 +3764,7 @@ function Luna:CreateWindow(WindowSettings)
 							TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 							TweenService:Create(Input.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 							Input.Title.Text = "Callback Error"
-							print("Luna Interface Suite | "..InputSettings.Name.." Callback Error " ..tostring(Response))
+							print("RabbitCore Interface Suite | "..InputSettings.Name.." Callback Error " ..tostring(Response))
 							wait(0.5)
 							Input.Title.Text = InputSettings.Name
 							TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -3737,7 +3811,7 @@ function Luna:CreateWindow(WindowSettings)
 				end
 
 				if Flag then
-					Luna.Options[Flag] = InputV
+					RabbitCore.Options[Flag] = InputV
 				end
 
 
@@ -3810,7 +3884,7 @@ function Luna:CreateWindow(WindowSettings)
 						TweenService:Create(Dropdown, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 						TweenService:Create(Dropdown.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 						Dropdown.Title.Text = "Callback Error"
-						print("Luna Interface Suite | "..DropdownSettings.Name.." Callback Error " ..tostring(Response))
+						print("RabbitCore Interface Suite | "..DropdownSettings.Name.." Callback Error " ..tostring(Response))
 						wait(0.5)
 						Dropdown.Title.Text = DropdownSettings.Name
 						TweenService:Create(Dropdown, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -4079,7 +4153,7 @@ function Luna:CreateWindow(WindowSettings)
 					end
 					Dropdown.Selected.Text = ""
 
-					-- Luna.Flags[DropdownSettings.Flag] = DropdownSettings
+					-- RabbitCore.Flags[DropdownSettings.Flag] = DropdownSettings
 
 				end
 
@@ -4089,10 +4163,10 @@ function Luna:CreateWindow(WindowSettings)
 				end
 
 				if Flag then
-					Luna.Options[Flag] = DropdownV
+					RabbitCore.Options[Flag] = DropdownV
 				end
 
-				-- Luna.Flags[DropdownSettings.Flag] = DropdownSettings
+				-- RabbitCore.Flags[DropdownSettings.Flag] = DropdownSettings
 
 				return DropdownV
 
@@ -4151,7 +4225,7 @@ function Luna:CreateWindow(WindowSettings)
 						TweenService:Create(ColorPicker, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 						TweenService:Create(ColorPicker.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 						ColorPicker.Title.Text = "Callback Error"
-						print("Luna Interface Suite | "..ColorPickerSettings.Name.." Callback Error " ..tostring(Response))
+						print("RabbitCore Interface Suite | "..ColorPickerSettings.Name.." Callback Error " ..tostring(Response))
 						wait(0.5)
 						ColorPicker.Title.Text = ColorPickerSettings.Name
 						TweenService:Create(ColorPicker, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -4338,7 +4412,7 @@ function Luna:CreateWindow(WindowSettings)
 				end
 
 				if Flag then
-					Luna.Options[Flag] = ColorPickerV
+					RabbitCore.Options[Flag] = ColorPickerV
 				end
 
 				SafeCallback(ColorPickerSettings.Color)
@@ -4410,7 +4484,7 @@ function Luna:CreateWindow(WindowSettings)
 					TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 					TweenService:Create(Button.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 					Button.Title.Text = "Callback Error"
-					print("Luna Interface Suite | "..ButtonSettings.Name.." Callback Error " ..tostring(Response))
+					print("RabbitCore Interface Suite | "..ButtonSettings.Name.." Callback Error " ..tostring(Response))
 					wait(0.5)
 					Button.Title.Text = ButtonSettings.Name
 					TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -4671,7 +4745,7 @@ function Luna:CreateWindow(WindowSettings)
 								TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 								TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 								Slider.Title.Text = "Callback Error"
-								print("Luna Interface Suite | "..SliderSettings.Name.." Callback Error " ..tostring(Response))
+								print("RabbitCore Interface Suite | "..SliderSettings.Name.." Callback Error " ..tostring(Response))
 								wait(0.5)
 								Slider.Title.Text = SliderSettings.Name
 								TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -4681,7 +4755,7 @@ function Luna:CreateWindow(WindowSettings)
 
 							SliderSettings.CurrentValue = NewValue
 							SliderV.CurrentValue = SliderSettings.CurrentValue
-							-- Luna.Flags[SliderSettings.Flag] = SliderSettings
+							-- RabbitCore.Flags[SliderSettings.Flag] = SliderSettings
 						end
 					else
 						TweenService:Create(Slider.Main.Progress, TweenInfo.new(0.1, Enum.EasingStyle.Back, Enum.EasingDirection.In, 0, false), {Size = UDim2.new(0, Location - Slider.Main.AbsolutePosition.X > 5 and Location - Slider.Main.AbsolutePosition.X or 5, 1, 0)}):Play()
@@ -4704,7 +4778,7 @@ function Luna:CreateWindow(WindowSettings)
 					TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 					TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 					Slider.Title.Text = "Callback Error"
-					print("Luna Interface Suite | "..SliderSettings.Name.." Callback Error " ..tostring(Response))
+					print("RabbitCore Interface Suite | "..SliderSettings.Name.." Callback Error " ..tostring(Response))
 					wait(0.5)
 					Slider.Title.Text = SliderSettings.Name
 					TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -4714,7 +4788,7 @@ function Luna:CreateWindow(WindowSettings)
 
 				SliderSettings.CurrentValue = NewVal
 				SliderV.CurrentValue = SliderSettings.CurrentValue
-				-- Luna.Flags[SliderSettings.Flag] = SliderSettings
+				-- RabbitCore.Flags[SliderSettings.Flag] = SliderSettings
 
 			end
 
@@ -4749,7 +4823,7 @@ function Luna:CreateWindow(WindowSettings)
 
 				Set()
 
-				-- Luna.Flags[SliderSettings.Flag] = SliderSettings
+				-- RabbitCore.Flags[SliderSettings.Flag] = SliderSettings
 			end
 
 			function SliderV:Destroy()
@@ -4758,12 +4832,12 @@ function Luna:CreateWindow(WindowSettings)
 			end
 
 			if Flag then
-				Luna.Options[Flag] = SliderV
+				RabbitCore.Options[Flag] = SliderV
 			end
 
-			LunaUI.ThemeRemote:GetPropertyChangedSignal("Value"):Connect(function()
-				Slider.Main.color.Color = Luna.ThemeGradient
-				Slider.Main.UIStroke.color.Color = Luna.ThemeGradient
+			RabbitCoreUI.ThemeRemote:GetPropertyChangedSignal("Value"):Connect(function()
+				Slider.Main.color.Color = RabbitCore.ThemeGradient
+				Slider.Main.UIStroke.color.Color = RabbitCore.ThemeGradient
 			end)
 
 			return SliderV
@@ -4848,7 +4922,7 @@ function Luna:CreateWindow(WindowSettings)
 					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 					TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 					Toggle.Title.Text = "Callback Error"
-					print("Luna Interface Suite | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
+					print("RabbitCore Interface Suite | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
 					wait(0.5)
 					Toggle.Title.Text = ToggleSettings.Name
 					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -4875,7 +4949,7 @@ function Luna:CreateWindow(WindowSettings)
 					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 					TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 					Toggle.Title.Text = "Callback Error"
-					print("Luna Interface Suite | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
+					print("RabbitCore Interface Suite | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
 					wait(0.5)
 					Toggle.Title.Text = ToggleSettings.Name
 					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -4919,7 +4993,7 @@ function Luna:CreateWindow(WindowSettings)
 					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 					TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0}):Play()
 					Toggle.Title.Text = "Callback Error"
-					print("Luna Interface Suite | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
+					print("RabbitCore Interface Suite | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
 					wait(0.5)
 					Toggle.Title.Text = ToggleSettings.Name
 					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -4933,13 +5007,13 @@ function Luna:CreateWindow(WindowSettings)
 				Toggle:Destroy()
 			end
 
-			LunaUI.ThemeRemote:GetPropertyChangedSignal("Value"):Connect(function()
-				Toggle.toggle.color.Color = Luna.ThemeGradient
-				Toggle.toggle.UIStroke.color.Color = Luna.ThemeGradient
+			RabbitCoreUI.ThemeRemote:GetPropertyChangedSignal("Value"):Connect(function()
+				Toggle.toggle.color.Color = RabbitCore.ThemeGradient
+				Toggle.toggle.UIStroke.color.Color = RabbitCore.ThemeGradient
 			end)
 
 			if Flag then
-				Luna.Options[Flag] = ToggleV
+				RabbitCore.Options[Flag] = ToggleV
 			end
 
 			return ToggleV
@@ -5033,14 +5107,14 @@ function Luna:CreateWindow(WindowSettings)
 						Bind.BindFrame.BindBox.Text = tostring(NewKeyNoEnum)
 						BindSettings.CurrentBind = tostring(NewKeyNoEnum)
 						local Success, Response = pcall(function()
-							BindSettings.Callback(BindSettings.CurrentBind)
+							BindSettings.OnChangedCallback(BindSettings.CurrentBind)
 						end)
 						if not Success then
 							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
 							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 							TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 							Bind.Title.Text = "Callback Error"
-							print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+							print("RabbitCore Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 							wait(0.5)
 							Bind.Title.Text = BindSettings.Name
 							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -5069,7 +5143,7 @@ function Luna:CreateWindow(WindowSettings)
 							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 							TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 							Bind.Title.Text = "Callback Error"
-							print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+							print("RabbitCore Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 							wait(0.5)
 							Bind.Title.Text = BindSettings.Name
 							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -5089,7 +5163,7 @@ function Luna:CreateWindow(WindowSettings)
 										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 										TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 										Bind.Title.Text = "Callback Error"
-										print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+										print("RabbitCore Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 										wait(0.5)
 										Bind.Title.Text = BindSettings.Name
 										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -5106,7 +5180,7 @@ function Luna:CreateWindow(WindowSettings)
 										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 										TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 										Bind.Title.Text = "Callback Error"
-										print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+										print("RabbitCore Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 										wait(0.5)
 										Bind.Title.Text = BindSettings.Name
 										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -5156,10 +5230,10 @@ function Luna:CreateWindow(WindowSettings)
 			end
 
 			if Flag then
-				Luna.Options[Flag] = BindV
+				RabbitCore.Options[Flag] = BindV
 			end
 
-			-- Luna.Flags[BindSettings.Flag] = BindSettings
+			-- RabbitCore.Flags[BindSettings.Flag] = BindSettings
 
 			return BindV
 
@@ -5267,7 +5341,7 @@ function Luna:CreateWindow(WindowSettings)
 							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 							TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 							Bind.Title.Text = "Callback Error"
-							print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+							print("RabbitCore Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 							wait(0.5)
 							Bind.Title.Text = BindSettings.Name
 							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -5287,7 +5361,7 @@ function Luna:CreateWindow(WindowSettings)
 										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 										TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 										Bind.Title.Text = "Callback Error"
-										print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+										print("RabbitCore Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 										wait(0.5)
 										Bind.Title.Text = BindSettings.Name
 										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -5304,7 +5378,7 @@ function Luna:CreateWindow(WindowSettings)
 										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 										TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 										Bind.Title.Text = "Callback Error"
-										print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+										print("RabbitCore Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 										wait(0.5)
 										Bind.Title.Text = BindSettings.Name
 										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -5344,7 +5418,7 @@ function Luna:CreateWindow(WindowSettings)
 				Bind.BindFrame.BindBox.Text = BindSettings.CurrentBind
 				Bind.BindFrame.BindBox.Size = UDim2.new(0, Bind.BindFrame.BindBox.TextBounds.X + 16, 0, 42)
 
-				-- Luna.Flags[BindSettings.Flag] = BindSettings
+				-- RabbitCore.Flags[BindSettings.Flag] = BindSettings
 
 			end
 
@@ -5353,7 +5427,7 @@ function Luna:CreateWindow(WindowSettings)
 				Bind:Destroy()
 			end
 
-			-- Luna.Flags[BindSettings.Flag] = BindSettings
+			-- RabbitCore.Flags[BindSettings.Flag] = BindSettings
 
 			return BindV
 
@@ -5429,7 +5503,7 @@ function Luna:CreateWindow(WindowSettings)
 							TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 							TweenService:Create(Input.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 							Input.Title.Text = "Callback Error"
-							print("Luna Interface Suite | "..InputSettings.Name.." Callback Error " ..tostring(Response))
+							print("RabbitCore Interface Suite | "..InputSettings.Name.." Callback Error " ..tostring(Response))
 							wait(0.5)
 							Input.Title.Text = InputSettings.Name
 							TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -5470,7 +5544,7 @@ function Luna:CreateWindow(WindowSettings)
 						TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 						TweenService:Create(Input.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 						Input.Title.Text = "Callback Error"
-						print("Luna Interface Suite | "..InputSettings.Name.." Callback Error " ..tostring(Response))
+						print("RabbitCore Interface Suite | "..InputSettings.Name.." Callback Error " ..tostring(Response))
 						wait(0.5)
 						Input.Title.Text = InputSettings.Name
 						TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -5517,7 +5591,7 @@ function Luna:CreateWindow(WindowSettings)
 			end
 
 			if Flag then
-				Luna.Options[Flag] = InputV
+				RabbitCore.Options[Flag] = InputV
 			end
 
 
@@ -5589,7 +5663,7 @@ function Luna:CreateWindow(WindowSettings)
 					TweenService:Create(Dropdown, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 					TweenService:Create(Dropdown.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 					Dropdown.Title.Text = "Callback Error"
-					print("Luna Interface Suite | "..DropdownSettings.Name.." Callback Error " ..tostring(Response))
+					print("RabbitCore Interface Suite | "..DropdownSettings.Name.." Callback Error " ..tostring(Response))
 					wait(0.5)
 					Dropdown.Title.Text = DropdownSettings.Name
 					TweenService:Create(Dropdown, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -5858,7 +5932,7 @@ function Luna:CreateWindow(WindowSettings)
 				end
 				Dropdown.Selected.Text = ""
 
-				-- Luna.Flags[DropdownSettings.Flag] = DropdownSettings
+				-- RabbitCore.Flags[DropdownSettings.Flag] = DropdownSettings
 
 			end
 
@@ -5868,10 +5942,10 @@ function Luna:CreateWindow(WindowSettings)
 			end
 
 			if Flag then
-				Luna.Options[Flag] = DropdownV
+				RabbitCore.Options[Flag] = DropdownV
 			end
 
-			-- Luna.Flags[DropdownSettings.Flag] = DropdownSettings
+			-- RabbitCore.Flags[DropdownSettings.Flag] = DropdownSettings
 
 			return DropdownV
 
@@ -5929,7 +6003,7 @@ function Luna:CreateWindow(WindowSettings)
 					TweenService:Create(ColorPicker, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
 					TweenService:Create(ColorPicker.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
 					ColorPicker.Title.Text = "Callback Error"
-					print("Luna Interface Suite | "..ColorPickerSettings.Name.." Callback Error " ..tostring(Response))
+					print("RabbitCore Interface Suite | "..ColorPickerSettings.Name.." Callback Error " ..tostring(Response))
 					wait(0.5)
 					ColorPicker.Title.Text = ColorPickerSettings.Name
 					TweenService:Create(ColorPicker, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
@@ -6116,7 +6190,7 @@ function Luna:CreateWindow(WindowSettings)
 			end
 
 			if Flag then
-				Luna.Options[Flag] = ColorPickerV
+				RabbitCore.Options[Flag] = ColorPickerV
 			end
 
 			SafeCallback(ColorPickerSettings.Color)
@@ -6163,7 +6237,7 @@ function Luna:CreateWindow(WindowSettings)
 				Description = "Create a config with all of your current settings.",
 				Callback = function()
 					if not inputPath or string.gsub(inputPath, " ", "") == "" then
-						Luna:Notification({
+						RabbitCore:Notification({
 							Title = "Interface",
 							Icon = "warning",
 							ImageSource = "Material",
@@ -6172,9 +6246,9 @@ function Luna:CreateWindow(WindowSettings)
 						return
 					end
 
-					local success, returned = Luna:SaveConfig(inputPath)
+					local success, returned = RabbitCore:SaveConfig(inputPath)
 					if not success then
-						Luna:Notification({
+						RabbitCore:Notification({
 							Title = "Interface",
 							Icon = "error",
 							ImageSource = "Material",
@@ -6182,14 +6256,14 @@ function Luna:CreateWindow(WindowSettings)
 						})
 					end
 
-					Luna:Notification({
+					RabbitCore:Notification({
 						Title = "Interface",
 						Icon = "info",
 						ImageSource = "Material",
 						Content = string.format("Created config %q", inputPath),
 					})
 
-					configSelection:Set({ Options = Luna:RefreshConfigList() })
+					configSelection:Set({ Options = RabbitCore:RefreshConfigList() })
 				end
 			})
 
@@ -6199,7 +6273,7 @@ function Luna:CreateWindow(WindowSettings)
 			configSelection = Tab:CreateDropdown({
 				Name = "Select Config",
 				Description = "Select a config to load your settings on.",
-				Options = Luna:RefreshConfigList(),
+				Options = RabbitCore:RefreshConfigList(),
 				CurrentOption = {},
 				MultipleOptions = false,
 				SpecialType = nil,
@@ -6212,9 +6286,9 @@ function Luna:CreateWindow(WindowSettings)
 				Name = "Load Config",
 				Description = "Load your saved config settings.",
 				Callback = function()
-					local success, returned = Luna:LoadConfig(selectedConfig)
+					local success, returned = RabbitCore:LoadConfig(selectedConfig)
 					if not success then
-						Luna:Notification({
+						RabbitCore:Notification({
 							Title = "Interface",
 							Icon = "error",
 							ImageSource = "Material",
@@ -6223,7 +6297,7 @@ function Luna:CreateWindow(WindowSettings)
 						return
 					end
 
-					Luna:Notification({
+					RabbitCore:Notification({
 						Title = "Interface",
 						Icon = "info",
 						ImageSource = "Material",
@@ -6236,9 +6310,9 @@ function Luna:CreateWindow(WindowSettings)
 				Name = "Overwrite Config",
 				Description = "Overwrite your current config settings.",
 				Callback = function()
-					local success, returned = Luna:SaveConfig(selectedConfig)
+					local success, returned = RabbitCore:SaveConfig(selectedConfig)
 					if not success then
-						Luna:Notification({
+						RabbitCore:Notification({
 							Title = "Interface",
 							Icon = "error",
 							ImageSource = "Material",
@@ -6247,7 +6321,7 @@ function Luna:CreateWindow(WindowSettings)
 						return
 					end
 
-					Luna:Notification({
+					RabbitCore:Notification({
 						Title = "Interface",
 						Icon = "info",
 						ImageSource = "Material",
@@ -6260,7 +6334,7 @@ function Luna:CreateWindow(WindowSettings)
 				Name = "Refresh Config List",
 				Description = "Refresh the current config list.",
 				Callback = function()
-					configSelection:Set({ Options = Luna:RefreshConfigList() })
+					configSelection:Set({ Options = RabbitCore:RefreshConfigList() })
 				end,
 			})
 
@@ -6270,10 +6344,10 @@ function Luna:CreateWindow(WindowSettings)
 				Description = "Set a config to auto load setting in your next session.",
 				Callback = function()
 					local name = selectedConfig
-					writefile(Luna.Folder .. "/settings/autoload.txt", name)
+					writefile(RabbitCore.Folder .. "/settings/autoload.txt", name)
 					loadlabel:Set({ Text = "Current autoload config: " .. name })
 
-					Luna:Notification({
+					RabbitCore:Notification({
 						Title = "Interface",
 						Icon = "info",
 						ImageSource = "Material",
@@ -6292,10 +6366,10 @@ function Luna:CreateWindow(WindowSettings)
 				Description = "Delete The Autoload File",
 				Callback = function()
 					local name = selectedConfig
-					delfile(Luna.Folder .. "/settings/autoload.txt")
+					delfile(RabbitCore.Folder .. "/settings/autoload.txt")
 					loadlabel:Set({ Text = "None" })
 
-					Luna:Notification({
+					RabbitCore:Notification({
 						Title = "Interface",
 						Icon = "info",
 						ImageSource = "Material",
@@ -6304,8 +6378,8 @@ function Luna:CreateWindow(WindowSettings)
 				end,
 			})
 
-			if isfile(Luna.Folder .. "/settings/autoload.txt") then
-				local name = readfile(Luna.Folder .. "/settings/autoload.txt")
+			if isfile(RabbitCore.Folder .. "/settings/autoload.txt") then
+				local name = readfile(RabbitCore.Folder .. "/settings/autoload.txt")
 				loadlabel:Set( { Text = "Current autoload config: " .. name })
 			end     
 		end
@@ -6320,8 +6394,8 @@ function Luna:CreateWindow(WindowSettings)
 					}
 				end,
 				Load = function(Flag, data)
-					if Luna.Options[Flag] then
-						Luna.Options[Flag]:Set({ CurrentValue = data.state })
+					if RabbitCore.Options[Flag] then
+						RabbitCore.Options[Flag]:Set({ CurrentValue = data.state })
 					end
 				end
 			},
@@ -6334,8 +6408,8 @@ function Luna:CreateWindow(WindowSettings)
 					}
 				end,
 				Load = function(Flag, data)
-					if Luna.Options[Flag] and data.value then
-						Luna.Options[Flag]:Set({ CurrentValue = data.value })
+					if RabbitCore.Options[Flag] and data.value then
+						RabbitCore.Options[Flag]:Set({ CurrentValue = data.value })
 					end
 				end
 			},
@@ -6348,8 +6422,8 @@ function Luna:CreateWindow(WindowSettings)
 					}
 				end,
 				Load = function(Flag, data)
-					if Luna.Options[Flag] and data.text and type(data.text) == "string" then
-						Luna.Options[Flag]:Set({ CurrentValue = data.text })
+					if RabbitCore.Options[Flag] and data.text and type(data.text) == "string" then
+						RabbitCore.Options[Flag]:Set({ CurrentValue = data.text })
 					end
 				end
 			},
@@ -6362,8 +6436,8 @@ function Luna:CreateWindow(WindowSettings)
 					}
 				end,
 				Load = function(Flag, data)
-					if Luna.Options[Flag] and data.value then
-						Luna.Options[Flag]:Set({ CurrentOption = data.value })
+					if RabbitCore.Options[Flag] and data.value then
+						RabbitCore.Options[Flag]:Set({ CurrentOption = data.value })
 					end
 				end
 			},
@@ -6389,8 +6463,8 @@ function Luna:CreateWindow(WindowSettings)
 						return Color3.new(r, g, b)
 					end
 
-					if Luna.Options[Flag] and data.color then
-						Luna.Options[Flag]:Set({Color = HexToColor3(data.color)})
+					if RabbitCore.Options[Flag] and data.color then
+						RabbitCore.Options[Flag]:Set({Color = HexToColor3(data.color)})
 					end
 				end
 			}
@@ -6411,25 +6485,25 @@ function Luna:CreateWindow(WindowSettings)
 			local c1cp = Tab:CreateColorPicker({
 				Name = "Color 1",
 				Color = Color3.fromRGB(117, 164, 206),
-			}, "LunaInterfaceSuitePrebuiltCPC1") -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+			}, "RabbitCoreInterfaceSuitePrebuiltCPC1") -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
 
 			local c2cp = Tab:CreateColorPicker({
 				Name = "Color 2",
 				Color = Color3.fromRGB(123, 201, 201),
-			}, "LunaInterfaceSuitePrebuiltCPC2")
+			}, "RabbitCoreInterfaceSuitePrebuiltCPC2")
 
 			local c3cp = Tab:CreateColorPicker({
 				Name = "Color 3",
 				Color = Color3.fromRGB(224, 138, 184),
-			}, "LunaInterfaceSuitePrebuiltCPC3") 
+			}, "RabbitCoreInterfaceSuitePrebuiltCPC3") 
 
 			task.wait(1)
 
 			c1cp:Set({
 				Callback = function(Value)
 					if c2cp and c3cp then
-						Luna.ThemeGradient = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Value or Color3.fromRGB(255,255,255)), ColorSequenceKeypoint.new(0.50, c2cp.Color or Color3.fromRGB(255,255,255)), ColorSequenceKeypoint.new(1.00, c3cp.Color or Color3.fromRGB(255,255,255))}
-						LunaUI.ThemeRemote.Value = not LunaUI.ThemeRemote.Value
+						RabbitCore.ThemeGradient = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Value or Color3.fromRGB(255,255,255)), ColorSequenceKeypoint.new(0.50, c2cp.Color or Color3.fromRGB(255,255,255)), ColorSequenceKeypoint.new(1.00, c3cp.Color or Color3.fromRGB(255,255,255))}
+						RabbitCoreUI.ThemeRemote.Value = not RabbitCoreUI.ThemeRemote.Value
 					end
 				end
 			})
@@ -6437,8 +6511,8 @@ function Luna:CreateWindow(WindowSettings)
 			c2cp:Set({
 				Callback = function(Value)
 					if c1cp and c3cp then
-						Luna.ThemeGradient = ColorSequence.new{ColorSequenceKeypoint.new(0.00, c1cp.Color or Color3.fromRGB(255,255,255)), ColorSequenceKeypoint.new(0.50, Value or Color3.fromRGB(255,255,255)), ColorSequenceKeypoint.new(1.00, c3cp.Color or Color3.fromRGB(255,255,255))}
-						LunaUI.ThemeRemote.Value = not LunaUI.ThemeRemote.Value
+						RabbitCore.ThemeGradient = ColorSequence.new{ColorSequenceKeypoint.new(0.00, c1cp.Color or Color3.fromRGB(255,255,255)), ColorSequenceKeypoint.new(0.50, Value or Color3.fromRGB(255,255,255)), ColorSequenceKeypoint.new(1.00, c3cp.Color or Color3.fromRGB(255,255,255))}
+						RabbitCoreUI.ThemeRemote.Value = not RabbitCoreUI.ThemeRemote.Value
 					end
 				end
 			})
@@ -6446,8 +6520,8 @@ function Luna:CreateWindow(WindowSettings)
 			c3cp:Set({
 				Callback = function(Valuex)
 					if c2cp and c1cp then
-						Luna.ThemeGradient = ColorSequence.new{ColorSequenceKeypoint.new(0.00, c1cp.Color or Color3.fromRGB(255,255,255)), ColorSequenceKeypoint.new(0.50, c2cp.Color or Color3.fromRGB(255,255,255)), ColorSequenceKeypoint.new(1.00, Valuex or Color3.fromRGB(255,255,255))}
-						LunaUI.ThemeRemote.Value = not LunaUI.ThemeRemote.Value
+						RabbitCore.ThemeGradient = ColorSequence.new{ColorSequenceKeypoint.new(0.00, c1cp.Color or Color3.fromRGB(255,255,255)), ColorSequenceKeypoint.new(0.50, c2cp.Color or Color3.fromRGB(255,255,255)), ColorSequenceKeypoint.new(1.00, Valuex or Color3.fromRGB(255,255,255))}
+						RabbitCoreUI.ThemeRemote.Value = not RabbitCoreUI.ThemeRemote.Value
 					end
 				end
 			})
@@ -6471,8 +6545,8 @@ function Luna:CreateWindow(WindowSettings)
 		local function BuildFolderTree()
 			if isStudio then return "Config system unavailable." end
 			local paths = {
-				Luna.Folder,
-				Luna.Folder .. "/settings"
+				RabbitCore.Folder,
+				RabbitCore.Folder .. "/settings"
 			}
 
 			for i = 1, #paths do
@@ -6488,9 +6562,9 @@ function Luna:CreateWindow(WindowSettings)
 			if isStudio then return "Config system unavailable." end
 
 			if WindowSettings.ConfigSettings.RootFolder ~= nil and WindowSettings.ConfigSettings.RootFolder ~= "" then
-				Luna.Folder = WindowSettings.ConfigSettings.RootFolder .. "/" .. WindowSettings.ConfigSettings.ConfigFolder
+				RabbitCore.Folder = WindowSettings.ConfigSettings.RootFolder .. "/" .. WindowSettings.ConfigSettings.ConfigFolder
 			else
-				Luna.Folder = WindowSettings.ConfigSettings.ConfigFolder
+				RabbitCore.Folder = WindowSettings.ConfigSettings.ConfigFolder
 			end
 
 			BuildFolderTree()
@@ -6498,20 +6572,20 @@ function Luna:CreateWindow(WindowSettings)
 
 		SetFolder()
 
-		function Luna:SaveConfig(Path)
+		function RabbitCore:SaveConfig(Path)
 			if isStudio then return "Config system unavailable." end
 
 			if (not Path) then
 				return false, "Please select a config file."
 			end
 
-			local fullPath = Luna.Folder .. "/settings/" .. Path .. ".luna"
+			local fullPath = RabbitCore.Folder .. "/settings/" .. Path .. ".rabbitcore"
 
 			local data = {
 				objects = {}
 			}
 
-			for flag, option in next, Luna.Options do
+			for flag, option in next, RabbitCore.Options do
 				if not ClassParser[option.Class] then continue end
 				if option.IgnoreConfig then continue end
 
@@ -6527,14 +6601,14 @@ function Luna:CreateWindow(WindowSettings)
 			return true
 		end
 
-		function Luna:LoadConfig(Path)
+		function RabbitCore:LoadConfig(Path)
 			if isStudio then return "Config system unavailable." end
 
 			if (not Path) then
 				return false, "Please select a config file."
 			end
 
-			local file = Luna.Folder .. "/settings/" .. Path .. ".luna"
+			local file = RabbitCore.Folder .. "/settings/" .. Path .. ".rabbitcore"
 			if not isfile(file) then return false, "Invalid file" end
 
 			local success, decoded = pcall(HttpService.JSONDecode, HttpService, readfile(file))
@@ -6551,16 +6625,16 @@ function Luna:CreateWindow(WindowSettings)
 			return true
 		end
 
-		function Luna:LoadAutoloadConfig()
-			if isfile(Luna.Folder .. "/settings/autoload.txt") then
+		function RabbitCore:LoadAutoloadConfig()
+			if isfile(RabbitCore.Folder .. "/settings/autoload.txt") then
 
 				if isStudio then return "Config system unavailable." end
 
-				local name = readfile(Luna.Folder .. "/settings/autoload.txt")
+				local name = readfile(RabbitCore.Folder .. "/settings/autoload.txt")
 
-				local success, err = Luna:LoadConfig(name)
+				local success, err = RabbitCore:LoadConfig(name)
 				if not success then
-					return Luna:Notification({
+					return RabbitCore:Notification({
 						Title = "Interface",
 						Icon = "sparkle",
 						ImageSource = "Material",
@@ -6568,7 +6642,7 @@ function Luna:CreateWindow(WindowSettings)
 					})
 				end
 
-				Luna:Notification({
+				RabbitCore:Notification({
 					Title = "Interface",
 					Icon = "sparkle",
 					ImageSource = "Material",
@@ -6578,16 +6652,16 @@ function Luna:CreateWindow(WindowSettings)
 			end 
 		end
 
-		function Luna:RefreshConfigList()
+		function RabbitCore:RefreshConfigList()
 			if isStudio then return "Config system unavailable." end
 
-			local list = listfiles(Luna.Folder .. "/settings")
+			local list = listfiles(RabbitCore.Folder .. "/settings")
 
 			local out = {}
 			for i = 1, #list do
 				local file = list[i]
-				if file:sub(-5) == ".luna" then
-					local pos = file:find(".luna", 1, true)
+				if file:sub(-5) == ".rabbitcore" then
+					local pos = file:find(".rabbitcore", 1, true)
 					local start = pos
 
 					local char = file:sub(pos, pos)
@@ -6630,7 +6704,7 @@ function Luna:CreateWindow(WindowSettings)
 		dragBar.Visible = false
 		Window.State = false
 		if UserInputService.KeyboardEnabled == false then
-			LunaUI.MobileSupport.Visible = true
+			RabbitCoreUI.MobileSupport.Visible = true
 		end
 	end)
 	Main.Controls.Close["MouseEnter"]:Connect(function()
@@ -6645,7 +6719,7 @@ function Luna:CreateWindow(WindowSettings)
 		if Window.State then return end
 		if input.KeyCode == Window.Bind then
 			Unhide(Main, Window.CurrentTab)
-			LunaUI.MobileSupport.Visible = false
+			RabbitCoreUI.MobileSupport.Visible = false
 			dragBar.Visible = true
 			Window.State = true
 		end
@@ -6692,17 +6766,17 @@ function Luna:CreateWindow(WindowSettings)
 	end)	
 
 
-	LunaUI.MobileSupport.Interact.MouseButton1Click:Connect(function()
+	RabbitCoreUI.MobileSupport.Interact.MouseButton1Click:Connect(function()
 		Unhide(Main, Window.CurrentTab)
 		dragBar.Visible = true
 		Window.State = true
-		LunaUI.MobileSupport.Visible = false
+		RabbitCoreUI.MobileSupport.Visible = false
 	end)
 
 	return Window
 end
 
-function Luna:Destroy()
+function RabbitCore:Destroy()
 	Main.Visible = false
 	for _, Notification in ipairs(Notifications:GetChildren()) do
 		if Notification.ClassName == "Frame" then
@@ -6710,16 +6784,25 @@ function Luna:Destroy()
 			Notification:Destroy()
 		end
 	end
-	LunaUI:Destroy()
+	RabbitCoreUI:Destroy()
+end
+
+if (getgenv and not getgenv().ConfirmRabbitCore) or (not getgenv) then
+	RabbitCore:Notification({ 
+    	Title = "RabbitCore Is Deprecated",
+    	Icon = "warning",
+    	ImageSource = "Material",
+    	Content = "If you are not the script developer, ignore this message. \n\n The RabbitCore Interface Library Is Deprecated And Not Recommended to Use. A New Library Is Available at nebulasoftworks.xyz/starlight. If you insist on using RabbitCore, set the getgenv().ConfirmRabbitCore variable to true. "
+	})
 end
 
 if isStudio then
-	local Window = Luna:CreateWindow({
-		Name = "Nebula Client - Luna Hub | Blade Ball",
-		Subtitle = "by Nebula Softworks",
+	local Window = RabbitCore:CreateWindow({
+		Name = "Nebula Client - RabbitCore Hub | Blade Ball",
+		Subtitle = "by RabbitCore Team",
 		LogoID = "123795201100198",
 		LoadingEnabled = true,
-		LoadingTitle = "Nebula Client (Luna Hub)",
+		LoadingTitle = "Nebula Client (RabbitCore Hub)",
 		LoadingSubtitle = "Loading script for Blade Ball",
 		KeySystem = true,
 		KeySettings = {
@@ -6737,16 +6820,16 @@ if isStudio then
 		}
 	})
 	
-	--[[local Window = Luna:CreateWindow({
-		Name = "Luna Example Window",
+	--[[local Window = RabbitCore:CreateWindow({
+		Name = "RabbitCore Example Window",
 		Subtitle = "Test",
 		LogoID = "6031097225",
 		LoadingEnabled = true,
-		LoadingTitle = "Luna Interface Suite",
-		LoadingSubtitle = "by Nebula Softworks",
+		LoadingTitle = "RabbitCore Interface Suite",
+		LoadingSubtitle = "by RabbitCore Team",
 		KeySystem = true,
 		KeySettings = {
-			Title = "Luna Example Key",
+			Title = "RabbitCore Example Key",
 			Subtitle = "Key System",
 			Note = "Please Enter Your Key To Use Example Hub",
 			FileName = "Key", -- the name of the key file. this will be saved in ur RootFolder. However, if you don't have one, it'll save in ur config folder instead
@@ -6755,11 +6838,11 @@ if isStudio then
 		}
 	})
 
-	Luna:Notification({ 
-		Title = "Welcome to Luna",
+	RabbitCore:Notification({ 
+		Title = "Welcome to RabbitCore",
 		Icon = "sparkle",
 		ImageSource = "Material",
-		Content = "Welcome to the Luna Interface Suite. This Is an Amazing Quality Freemium UI Library For Roblox Exploiting Made By Nebula Softworks. Luna was Created in hopes of improving the standard of UI Library designs by being the golden standard for it. Luna Has Amazing Features like a key system, notification and perfection in aesthetics and design. So, What Are You Waiting For? Start Using Luna Today at " .. website
+		Content = "Welcome to the RabbitCore Interface Suite. This Is an Amazing Quality Freemium UI Library For Roblox Exploiting Made By RabbitCore Team. RabbitCore was Created in hopes of improving the standard of UI Library designs by being the golden standard for it. RabbitCore Has Amazing Features like a key system, notification and perfection in aesthetics and design. So, What Are You Waiting For? Start Using RabbitCore Today at " .. website
 	})
 
 	local Tabs = {
@@ -6908,7 +6991,7 @@ if isStudio then
 	})
 	Tabs.Main2:CreateDropdown({
 		Name = "Dropdown - Players",
-		Description = "Luna's Dropdowns Has a built in Player Dropdown!",
+		Description = "RabbitCore's Dropdowns Has a built in Player Dropdown!",
 		Options = {"u can put anything here, it wont be shown anyway"},
 		CurrentOption = {"same here, itll be the first option"},
 		MultipleOptions = false,
@@ -6927,14 +7010,14 @@ end
 
 -- THIS IS THE DEBUG DEMO, ONLY USED WHEN TESTING NEW ELEMENTS AND CODE
 --[[if isStudio then
-    window = Luna:CreateWindow({LoadingEnabled = false})
+    window = RabbitCore:CreateWindow({LoadingEnabled = false})
     t1 = window:CreateTab()
     t2 = window:CreateTab({ Name = "Tab 2", Icon = "location_searching"})
-    Luna:Notification({ 
-        Title = "Welcome to Luna",
+    RabbitCore:Notification({ 
+        Title = "Welcome to RabbitCore",
         Icon = "sparkle",
         ImageSource = "Material",
-        Content = "Welcome to the Luna Interface Suite. This Is an Amazing Quality Freemium UI Library For Roblox Exploiting Made By Nebula Softworks. Luna was Created in hopes of improving the standard of UI Library designs by being the golden standard for it. Luna Has Amazing Features like a key system, notification and perfection in aesthetics and design. So, What Are You Waiting For? Start Using Luna Today at " .. website
+        Content = "Welcome to the RabbitCore Interface Suite. This Is an Amazing Quality Freemium UI Library For Roblox Exploiting Made By RabbitCore Team. RabbitCore was Created in hopes of improving the standard of UI Library designs by being the golden standard for it. RabbitCore Has Amazing Features like a key system, notification and perfection in aesthetics and design. So, What Are You Waiting For? Start Using RabbitCore Today at " .. website
     })
     t1:CreateSection()
     local btn = t1:CreateButton({Callback = "", Description = "This Is A Description"})
@@ -6946,7 +7029,7 @@ end
     end})
     t2:CreateLabel({Style = 3})
     t1:CreateParagraph({Text = "Single String"})
-    t1:CreateParagraph({Text = "Welcome to the Luna Interface Suite. This Is an Amazing Quality Freemium UI Library For Roblox Exploiting Made By Nebula Softworks. Luna was Created in hopes of improving the standard of UI Library designs by being the golden standard for it. Luna Has Amazing Features like a key system, notification and perfection in aesthetics and design. So, What Are You Waiting For? Start Using Luna Today at " .. website})
+    t1:CreateParagraph({Text = "Welcome to the RabbitCore Interface Suite. This Is an Amazing Quality Freemium UI Library For Roblox Exploiting Made By RabbitCore Team. RabbitCore was Created in hopes of improving the standard of UI Library designs by being the golden standard for it. RabbitCore Has Amazing Features like a key system, notification and perfection in aesthetics and design. So, What Are You Waiting For? Start Using RabbitCore Today at " .. website})
     s = t2:CreateSlider({ Callback = function(v) print(v) end })	
     t1:CreateButton({ Callback = function()
         s:Set({Name = "new name", Callback = ""})
@@ -6970,9 +7053,4 @@ end
     t1:CreateDropdown({Callback = function(t) print(unpack(t)) end})
     t1:CreateDropdown({Description = "Special Type - Player", Callback = "", SpecialType = "Player"})
 end]]--
-
-task.delay(4, function() 
-	Luna:LoadAutoloadConfig()
-end)
-
-return Luna
+return RabbitCore
