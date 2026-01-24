@@ -287,9 +287,46 @@ function System.predict_start()
         if target then
             System.__properties.__predicted_target = target.Name
             pcall(function() ball:SetAttribute('PredictedTarget', target.Name) end)
+
+            if System.__properties.__predict_visual_enabled then
+                if not System.__properties.__predict_billboards then
+                    System.__properties.__predict_billboards = {}
+                end
+                if not System.__properties.__predict_billboards[target] then
+                    -- create a simple billboard on the target
+                    if target.Character and target.Character:FindFirstChild('Head') then
+                        local head = target.Character.Head
+                        local gui = Instance.new('BillboardGui')
+                        gui.Name = 'PredictedTargetGui'
+                        gui.Adornee = head
+                        gui.Size = UDim2.new(0, 160, 0, 36)
+                        gui.StudsOffset = Vector3.new(0, 2.5, 0)
+                        gui.AlwaysOnTop = true
+                        local label = Instance.new('TextLabel')
+                        label.Size = UDim2.new(1, 0, 1, 0)
+                        label.BackgroundTransparency = 0.3
+                        label.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+                        label.TextColor3 = Color3.fromRGB(255, 200, 50)
+                        label.Font = Enum.Font.GothamBold
+                        label.TextSize = 16
+                        label.Text = 'PREDICTED'
+                        label.Parent = gui
+                        gui.Parent = head
+                        System.__properties.__predict_billboards[target] = gui
+                    end
+                end
+            end
         else
             System.__properties.__predicted_target = nil
             pcall(function() ball:SetAttribute('PredictedTarget', nil) end)
+            if System.__properties.__predict_visual_enabled and System.__properties.__predict_billboards then
+                for pl, gui in pairs(System.__properties.__predict_billboards) do
+                    pcall(function()
+                        if gui and gui.Destroy then gui:Destroy() end
+                    end)
+                    System.__properties.__predict_billboards[pl] = nil
+                end
+            end
         end
     end)
 end
@@ -305,6 +342,8 @@ end
 -- default flags
 System.__properties.__predict_enabled = false
 System.__properties.__predicted_target = nil
+System.__properties.__predict_visual_enabled = false
+System.__properties.__predict_billboards = {}
 
 System.player = {}
 
@@ -4579,6 +4618,22 @@ CheatSection:Toggle({
             end
         end
     })
+
+CheatSection:Toggle({
+    Title = "Prediction Visual",
+    Default = false,
+    Callback = function(value)
+        System.__properties.__predict_visual_enabled = value
+        if not value and System.__properties.__predict_billboards then
+            for pl, gui in pairs(System.__properties.__predict_billboards) do
+                pcall(function()
+                    if gui and gui.Destroy then gui:Destroy() end
+                end)
+                System.__properties.__predict_billboards[pl] = nil
+            end
+        end
+    end
+})
 
 CheatSection:Toggle({
     Title = "Continuity Zero Exploit",
