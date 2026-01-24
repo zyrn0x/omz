@@ -220,6 +220,92 @@ function System.ball.get_all()
     return balls_table
 end
 
+-- Predict next target for a ball based on linear extrapolation of ball velocity
+function System.ball.predict_next_target(ball)
+    if not ball then return nil end
+    local zoomies = ball:FindFirstChild('zoomies')
+    local velocity = (zoomies and zoomies.VectorVelocity) or ball.AssemblyLinearVelocity
+    if not velocity then return nil end
+
+    local pos = ball.Position
+    local speed = velocity.Magnitude
+    if speed < 0.5 then return nil end
+
+    local dir = velocity.Unit
+    local bestScore = 0
+    local bestTarget = nil
+
+    local maxTime = 6 -- seconds to look ahead
+    for _, entity in pairs((Alive and Alive:GetChildren()) or {}) do
+        if entity ~= LocalPlayer.Character and entity.PrimaryPart then
+            local pPos = entity.PrimaryPart.Position
+            local pVel = entity.PrimaryPart.Velocity or Vector3.new(0,0,0)
+
+            local rel = pPos - pos
+            local along = rel:Dot(dir)
+            if along < -5 then continue end
+
+            local timeToReach = math.max(along / speed, 0)
+            if timeToReach > maxTime then continue end
+
+            local predictedPos = pPos + (pVel * timeToReach)
+            local projected = math.max((predictedPos - pos):Dot(dir), 0)
+            local closestPoint = pos + dir * projected
+            local dist = (closestPoint - predictedPos).Magnitude
+
+            local distScore = 1 / (1 + dist)
+            local timeScore = 1 / (1 + timeToReach)
+            local speedBonus = 1 + math.clamp(speed / 50, 0, 3)
+
+            local score = distScore * timeScore * speedBonus
+            if score > bestScore then
+                bestScore = score
+                bestTarget = entity
+            end
+        end
+    end
+
+    return bestTarget, bestScore
+end
+
+-- Simple toggle runner for prediction
+function System.predict_start()
+    if System.__properties.__connections.__predict then
+        System.__properties.__connections.__predict:Disconnect()
+        System.__properties.__connections.__predict = nil
+    end
+
+    System.__properties.__connections.__predict = RunService.Heartbeat:Connect(function()
+        if not System.__properties.__predict_enabled then return end
+        local ball = System.ball.get()
+        if not ball then
+            System.__properties.__predicted_target = nil
+            return
+        end
+
+        local target = System.ball.predict_next_target(ball)
+        if target then
+            System.__properties.__predicted_target = target.Name
+            pcall(function() ball:SetAttribute('PredictedTarget', target.Name) end)
+        else
+            System.__properties.__predicted_target = nil
+            pcall(function() ball:SetAttribute('PredictedTarget', nil) end)
+        end
+    end)
+end
+
+function System.predict_stop()
+    if System.__properties.__connections.__predict then
+        System.__properties.__connections.__predict:Disconnect()
+        System.__properties.__connections.__predict = nil
+    end
+    System.__properties.__predicted_target = nil
+end
+
+-- default flags
+System.__properties.__predict_enabled = false
+System.__properties.__predicted_target = nil
+
 System.player = {}
 
 local Closest_Entity = nil
@@ -4515,6 +4601,27 @@ CheatSection:Toggle({
 
                     return oldNamecall(self, ...)
                 end))
+            end
+        end
+    })
+
+    CheatSection:Toggle({
+        Title = "Predict Next Ball Target",
+        Default = false,
+        Callback = function(value)
+            System.__properties.__predict_enabled = value
+            if value then
+                System.predict_start()
+            else
+                System.predict_stop()
+            end
+
+            if getgenv().PredictNotify then
+                Library.SendNotification({
+                    title = "Predict",
+                    text = value and "ON" or "OFF",
+                    duration = 2
+                })
             end
         end
     })
