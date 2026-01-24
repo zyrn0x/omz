@@ -2961,6 +2961,13 @@ local CombatTab = Window:Tab({
     Icon = "solar:sword-bold", 
     IconColor = Color3.fromHex("#FF3B30") })
 
+CombatTab:Paragraph({
+    Title = "Combat Features",
+    Desc = "Configure your auto parry, spam, and detection systems for optimal gameplay.",
+    Image = "solar:sword-bold",
+    Color = "Blue"
+})
+
     local ParrySection = CombatTab:Section({
         Title = "Auto Parry",
     })
@@ -2992,6 +2999,8 @@ ParrySection:Toggle({
     end
 })
 
+ParrySection:Space()
+
 ParrySection:Dropdown({
     Title = "Parry Mode",
     Values = {"Remote", "Keypress"},
@@ -3000,6 +3009,8 @@ ParrySection:Dropdown({
         getgenv().AutoParryMode = value
     end
 })
+
+ParrySection:Space()
 
 ParrySection:Dropdown({
     Title = "AutoCurve",
@@ -3033,7 +3044,11 @@ ParrySection:Toggle({
     end
 })
 
-ParrySection:Toggle({ 
+ParrySection:Space()
+
+local ParryGroup = ParrySection:Group({})
+
+ParryGroup:Toggle({ 
     Title = "Notify",
     Default = false,
     Callback = function(value)
@@ -3041,7 +3056,9 @@ ParrySection:Toggle({
     end 
 })
 
-ParrySection:Toggle({ 
+ParryGroup:Space()
+
+ParryGroup:Toggle({ 
     Title = "Cooldown Protection", 
     Default = false, 
     Callback = function(value)
@@ -3049,7 +3066,9 @@ ParrySection:Toggle({
     end 
 })
 
-ParrySection:Toggle({ 
+ParryGroup:Space()
+
+ParryGroup:Toggle({ 
     Title = "Auto Ability", 
     Default = false, 
     Callback = function(value)
@@ -3437,6 +3456,11 @@ local VisualTab = Window:Tab({
     Icon = "solar:eye-bold", 
     IconColor = Color3.fromHex("#ECA201") })
 
+VisualTab:Paragraph({
+    Title = "Visual Enhancements",
+    Content = "Customize your visual experience with avatar changes, ESP options, and other display modifications to enhance gameplay visibility."
+})
+
 local AvatarChangerSection = VisualTab:Section({
     Title = "Avatar Changer",
 })
@@ -3511,6 +3535,8 @@ AvatarChangerSection:Input({
     end
 })
 
+VisualTab:Space()
+
 local OtherVisualsSection = VisualTab:Section({ 
     Title = "Other Visuals" 
 })
@@ -3544,6 +3570,8 @@ local No_Render = OtherVisualsSection:Toggle({
     end
 })
 
+VisualTab:Space()
+
 local SkinChangerSection = VisualTab:Section({
     Title = "Skin Changer"
 })
@@ -3557,6 +3585,10 @@ SkinChangerSection:Toggle({
             getgenv().updateSword()
         end
     end
+})
+
+local SkinGroup = SkinChangerSection:Group({
+    Title = "Sword Customization Options"
 })
 
 -- SkinChangerSection est déjà créé avant (ex: local SkinChangerSection = Tab:Section({ Title = "Skin Changer" }))
@@ -3656,6 +3688,11 @@ local PlayerTab = Window:Tab({
     Title = "Player",
     Icon = "solar:eye-bold",
     IconColor = Color3.fromHex("#257AF7") 
+})
+
+PlayerTab:Paragraph({
+    Title = "Player Enhancements",
+    Content = "Customize your player experience with FOV adjustments, speed modifications, and other enhancements to improve your gameplay."
 })
 
 local FOVSection = PlayerTab:Section({ 
@@ -3800,6 +3837,10 @@ CharacterModifierSection:Toggle({
             end
         end
     end
+})
+
+local ModifierGroup = CharacterModifierSection:Group({
+    Title = "Modifier Options"
 })
 
 CharacterModifierSection:Toggle({
@@ -3981,6 +4022,8 @@ CharacterModifierSection:Slider({
     end
 })
 
+CharacterModifierSection:Space()
+
 -- ────────────────────────────────────────────────────────────────
 --  AUTOFARM TAB
 -- ────────────────────────────────────────────────────────────────
@@ -3989,6 +4032,11 @@ local AutoFarmTab = Window:Tab({
     Title = "Auto Farm", 
     Icon = "solar:eye-bold", 
     IconColor = Color3.fromHex("#257AF7") 
+})
+
+AutoFarmTab:Paragraph({
+    Title = "Automated Farming",
+    Content = "Set up automated gameplay features including semi-immortal modes and AI-assisted play for hands-free farming and progression."
 })
 
 local WKISection = AutoFarmTab:Section({ 
@@ -4021,8 +4069,7 @@ WKISection:Slider({
     Callback = WalkableSemiImmortal.setHeight
 })
 
-
-
+AutoFarmTab:Space()
 
 local AISection = AutoFarmTab:Section({ 
     Title = "AI Play (Experimental)" 
@@ -4038,6 +4085,10 @@ AISection:Toggle({
             AutoPlayModule.finishThread()
         end
     end
+})
+
+local AIConfigGroup = AISection:Group({
+    Title = "AI Configuration Settings"
 })
 
 AISection:Toggle({
