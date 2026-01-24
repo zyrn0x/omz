@@ -2930,23 +2930,65 @@ task.defer(function()
 -- Then comment out the loadstring below and use the preloaded one.
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
+WindUI:AddTheme({
+    Name = "Sapphire",
+    
+    Accent = Color3.fromHex("#0066CC"),
+    Background = Color3.fromHex("#001122"),
+    BackgroundTransparency = 0,
+    Outline = Color3.fromHex("#0088FF"),
+    Text = Color3.fromHex("#FFFFFF"),
+    Placeholder = Color3.fromHex("#7a7a7a"),
+    Button = Color3.fromHex("#004477"),
+    Icon = Color3.fromHex("#66CCFF"),
+    
+    Hover = Color3.fromHex("#FFFFFF"),
+    BackgroundTransparency = 0,
+    
+    WindowBackground = Color3.fromHex("#001122"),
+    WindowShadow = Color3.fromHex("#000000"),
+    
+    DialogBackground = Color3.fromHex("#001122"),
+    DialogBackgroundTransparency = 0,
+    DialogTitle = Color3.fromHex("#FFFFFF"),
+    DialogContent = Color3.fromHex("#FFFFFF"),
+    DialogIcon = Color3.fromHex("#66CCFF"),
+    
+    WindowTopbarButtonIcon = Color3.fromHex("#66CCFF"),
+    WindowTopbarTitle = Color3.fromHex("#FFFFFF"),
+    WindowTopbarAuthor = Color3.fromHex("#FFFFFF"),
+    WindowTopbarIcon = Color3.fromHex("#FFFFFF"),
+    
+    TabBackground = Color3.fromHex("#002244"),
+    TabTitle = Color3.fromHex("#FFFFFF"),
+    TabIcon = Color3.fromHex("#66CCFF"),
+    
+    ElementBackground = Color3.fromHex("#002244"),
+    ElementTitle = Color3.fromHex("#FFFFFF"),
+    ElementDesc = Color3.fromHex("#FFFFFF"),
+    ElementIcon = Color3.fromHex("#66CCFF"),
+    
+    PopupBackground = Color3.fromHex("#001122"),
+    PopupBackgroundTransparency = 0,
+    PopupTitle = Color3.fromHex("#FFFFFF"),
+    PopupContent = Color3.fromHex("#FFFFFF"),
+    PopupIcon = Color3.fromHex("#66CCFF"),
+    
+    Toggle = Color3.fromHex("#004477"),
+    ToggleBar = Color3.fromHex("#0088FF"),
+    
+    Checkbox = Color3.fromHex("#004477"),
+    CheckboxIcon = Color3.fromHex("#FFFFFF"),
+    
+    Slider = Color3.fromHex("#004477"),
+    SliderThumb = Color3.fromHex("#0088FF"),
+})
+
 local Window = WindUI:CreateWindow({
-    Title = "OMZ Hub",
-    --Author = "zyrn0x",
-    Folder = "OMZ_Config",
-    Icon = "solar:folder-2-bold-duotone",
-    OpenButton = {
-        Title = "Ouvrir OMZ",
-        CornerRadius = UDim.new(1,0),
-        Enabled = true,
-        Draggable = true,
-        Scale = 0.55,
-        Color = ColorSequence.new(
-            Color3.fromHex("#00ffea"),
-            Color3.fromHex("#ff00aa")
-        )
-    },
-    Topbar = { Height = 44, ButtonsType = "Mac" },
+    Title = "Omz Hub",
+    Icon = "door-open", -- lucide icon. optional
+    Author = "by Omz", -- optional
+    Theme = "Sapphire",
 })
 
 -- Tags (optionnel)
