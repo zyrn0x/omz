@@ -10,12 +10,23 @@ local CoreGui = cloneref(game:GetService('CoreGui'))
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
+if not getgenv then
+    getgenv = function() return _G end
+end
+
+if not Library then
+    Library = {}
+end
+
 if not LocalPlayer.Character then
     LocalPlayer.CharacterAdded:Wait()
 end
 
 local Alive = workspace:FindFirstChild("Alive") or workspace:WaitForChild("Alive")
 local Runtime = workspace.Runtime
+
+local parryDelay = 0.05
+local maxParryCount = 34
 
 local System = {
     __properties = {
@@ -55,7 +66,9 @@ local System = {
             __deathslash = false,
             __timehole = false,
             __slashesoffury = false,
-            __phantom = false
+            __phantom = false,
+            __auto_ability = false,
+            __cooldown_protection = false
         }
     },
     
@@ -67,13 +80,54 @@ local System = {
         __parry_delay = 0.5
     }
 }
-local firstParryFired = false
-local revertedRemotes = {}
-local originalMetatables = {}
-local Parry_Key = nil
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local VirtualInputService = game:GetService("VirtualInputManager")
-local GuiService = game:GetService('GuiService')
+local playerGui = LocalPlayer.PlayerGui
+local ParryCD, AbilityCD
+local success1, result1 = pcall(function() return playerGui:WaitForChild("Hotbar"):WaitForChild("Block"):WaitForChild("UIGradient") end)
+if success1 then ParryCD = result1 else warn("ParryCD not found") end
+
+local success2, result2 = pcall(function() return playerGui:WaitForChild("Hotbar"):WaitForChild("Ability"):WaitForChild("UIGradient") end)
+if success2 then AbilityCD = result2 else warn("AbilityCD not found") end
+
+local function isCooldownInEffect1(uigradient)
+    if not uigradient then return false end
+    return uigradient.Offset.Y < 0.4
+end
+
+local function isCooldownInEffect2(uigradient)
+    if not uigradient then return false end
+    return uigradient.Offset.Y == 0.5
+end
+
+local function cooldownProtection()
+    if not ParryCD then return false end
+    if isCooldownInEffect1(ParryCD) then
+        ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
+        return true
+    end
+    return false
+end
+
+local function autoAbility()
+    if not AbilityCD then return false end
+    if isCooldownInEffect2(AbilityCD) then
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Abilities") then
+            local abilities = LocalPlayer.Character.Abilities
+            if (abilities:FindFirstChild("Raging Deflection") and abilities["Raging Deflection"].Enabled) or
+               (abilities:FindFirstChild("Rapture") and abilities["Rapture"].Enabled) or
+               (abilities:FindFirstChild("Calming Deflection") and abilities["Calming Deflection"].Enabled) or
+               (abilities:FindFirstChild("Aerodynamic Slash") and abilities["Aerodynamic Slash"].Enabled) or
+               (abilities:FindFirstChild("Fracture") and abilities["Fracture"].Enabled) or
+               (abilities:FindFirstChild("Death Slash") and abilities["Death Slash"].Enabled) then
+                System.__properties.__parried = true
+                ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
+                task.wait(2.432)
+                ReplicatedStorage.Remotes.DeathSlashShootActivation:FireServer(true)
+                return true
+            end
+        end
+    end
+    return false
+end
 
 local function updateNavigation(guiObject: GuiObject | nil)
     GuiService.SelectedObject = guiObject
@@ -585,6 +639,14 @@ ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent:Connect(function(_, root
     
     local curve_detected = System.detection.is_curved()
     
+    -- Skip if detections active
+    if (System.__config.__detections.__infinity and System.__properties.__infinity_active) or
+       (System.__config.__detections.__deathslash and System.__properties.__deathslash_active) or
+       (System.__config.__detections.__timehole and System.__properties.__timehole_active) or
+       (System.__config.__detections.__slashesoffury and ball:FindFirstChild('ComboCounter')) then
+        return
+    end
+    
     if target_distance < 15 and distance < 15 and dot > -0.25 then
         if curve_detected then
             System.parry.execute_action()
@@ -647,6 +709,40 @@ ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent:Connect(function(a, b)
     end
 end)
 
+-- Detection connections
+ReplicatedStorage.Remotes.InfinityBall.OnClientEvent:Connect(function(a, b)
+    System.__properties.__infinity_active = b or false
+end)
+
+ReplicatedStorage.Remotes.DeathBall.OnClientEvent:Connect(function(c, d)
+    System.__properties.__deathslash_active = d or false
+end)
+
+ReplicatedStorage.Remotes.TimeHoleHoldBall.OnClientEvent:Connect(function(e, f)
+    System.__properties.__timehole_active = f or false
+end)
+
+-- Slashes of Fury handling
+workspace:WaitForChild("Balls").ChildAdded:Connect(function(ball)
+    ball.ChildAdded:Connect(function(child)
+        if child.Name == 'ComboCounter' and System.__config.__detections.__slashesoffury then
+            local Sof_Label = child:FindFirstChildOfClass('TextLabel')
+            if Sof_Label then
+                task.spawn(function()
+                    local parry_count = 0
+                    while child.Parent and parry_count < maxParryCount do
+                        local Slashes_Counter = tonumber(Sof_Label.Text) or 0
+                        if Slashes_Counter >= 32 then break end
+                        System.parry.execute_action()
+                        parry_count = parry_count + 1
+                        task.wait(parryDelay)
+                    end
+                end)
+            end
+        end
+    end)
+end)
+
 System.triggerbot = {}
 
 function System.triggerbot.trigger(ball)
@@ -656,6 +752,23 @@ function System.triggerbot.trigger(ball)
     
     if LocalPlayer.Character and LocalPlayer.Character.PrimaryPart and 
        LocalPlayer.Character.PrimaryPart:FindFirstChild('SingularityCape') then
+        return
+    end
+    
+    -- Detection skips
+    if System.__config.__detections.__infinity and System.__properties.__infinity_active then
+        return
+    end
+    
+    if System.__config.__detections.__deathslash and System.__properties.__deathslash_active then
+        return
+    end
+    
+    if System.__config.__detections.__timehole and System.__properties.__timehole_active then
+        return
+    end
+    
+    if System.__config.__detections.__slashesoffury and ball:FindFirstChild('ComboCounter') then
         return
     end
     
@@ -770,7 +883,7 @@ System.auto_spam = {}
 function System.auto_spam:get_entity_properties()
     System.player.get_closest()
     
-    if not Closest_Entity then return false end
+    if not Closest_Entity or not Closest_Entity.PrimaryPart or not LocalPlayer.Character or not LocalPlayer.Character.PrimaryPart then return false end
     
     local entity_velocity = Closest_Entity.PrimaryPart.Velocity
     local entity_direction = (LocalPlayer.Character.PrimaryPart.Position - Closest_Entity.PrimaryPart.Position).Unit
@@ -785,7 +898,7 @@ end
 
 function System.auto_spam:get_ball_properties()
     local ball = System.ball.get()
-    if not ball then return false end
+    if not ball or not LocalPlayer.Character or not LocalPlayer.Character.PrimaryPart then return false end
     
     local ball_velocity = Vector3.zero
     local ball_origin = ball
@@ -855,6 +968,23 @@ function System.auto_spam.start()
         if not ball then return end
         
         if System.__properties.__slashesoffury_active then return end
+        
+        -- Detection skips
+        if System.__config.__detections.__infinity and System.__properties.__infinity_active then
+            return
+        end
+        
+        if System.__config.__detections.__deathslash and System.__properties.__deathslash_active then
+            return
+        end
+        
+        if System.__config.__detections.__timehole and System.__properties.__timehole_active then
+            return
+        end
+        
+        if System.__config.__detections.__slashesoffury and ball:FindFirstChild('ComboCounter') then
+            return
+        end
         
         local zoomies = ball:FindFirstChild('zoomies')
         if not zoomies then return end
@@ -942,18 +1072,19 @@ function System.autoparry.start()
         end
 
         for _, ball in pairs(balls) do
+            local skip = false
             if System.__triggerbot.__enabled then return end
             if getgenv().BallVelocityAbove800 then return end
-            if not ball then continue end
+            if not ball then skip = true end
             
             local zoomies = ball:FindFirstChild('zoomies')
-            if not zoomies then continue end
+            if not zoomies then skip = true end
             
             ball:GetAttributeChangedSignal('target'):Once(function()
                 System.__properties.__parried = false
             end)
             
-            if System.__properties.__parried then continue end
+            if System.__properties.__parried then skip = true end
             
             local ball_target = ball:GetAttribute('target')
             local velocity = zoomies.VectorVelocity
@@ -970,8 +1101,38 @@ function System.autoparry.start()
             local curved = System.detection.is_curved()
             
             if one_ball and one_ball:GetAttribute('target') == LocalPlayer.Name and curved then
-                continue
+                skip = true
             end
+            
+            -- Detection skips
+            if System.__config.__detections.__infinity and System.__properties.__infinity_active then
+                skip = true
+            end
+            
+            if System.__config.__detections.__deathslash and System.__properties.__deathslash_active then
+                skip = true
+            end
+            
+            if System.__config.__detections.__timehole and System.__properties.__timehole_active then
+                skip = true
+            end
+            
+            if System.__config.__detections.__slashesoffury and ball:FindFirstChild('ComboCounter') then
+                skip = true
+            end
+            end
+            
+            -- Cooldown Protection
+            if System.__config.__detections.__cooldown_protection and cooldownProtection() then
+                skip = true
+            end
+            
+            -- Auto Ability
+            if System.__config.__detections.__auto_ability and autoAbility() then
+                skip = true
+            end
+            
+            if not skip then
             
             if ball_target == LocalPlayer.Name and distance <= parry_accuracy then
                 if getgenv().AutoParryMode == "Keypress" then
@@ -987,6 +1148,7 @@ function System.autoparry.start()
                 RunService.Stepped:Wait()
             until (tick() - last_parrys) >= 1 or not System.__properties.__parried
             System.__properties.__parried = false
+            end
         end
 
         if training_ball then
@@ -1026,8 +1188,8 @@ function System.autoparry.start()
                 end
             end
         end
-    end)
-end
+    end
+
 
 function System.autoparry.stop()
     if System.__properties.__connections.__autoparry then
@@ -2928,7 +3090,11 @@ task.defer(function()
 -- Note: If loading is slow, you can preload WindUI by running this separately:
 -- local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 -- Then comment out the loadstring below and use the preloaded one.
-local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+local success, WindUI = pcall(function() return loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))() end)
+if not success or not WindUI then
+    warn("Failed to load WindUI library")
+    return
+end
 
 WindUI:AddTheme({
     Name = "Sapphire",
@@ -2943,7 +3109,6 @@ WindUI:AddTheme({
     Icon = Color3.fromHex("#66CCFF"),
     
     Hover = Color3.fromHex("#FFFFFF"),
-    BackgroundTransparency = 0,
     
     WindowBackground = Color3.fromHex("#001122"),
     WindowShadow = Color3.fromHex("#000000"),
@@ -3293,6 +3458,22 @@ DetectionSection:Toggle({
 })
 
 DetectionSection:Toggle({
+    Title = "Auto Ability",
+    Default = false,
+    Callback = function(value)
+        System.__config.__detections.__auto_ability = value
+    end
+})
+
+DetectionSection:Toggle({
+    Title = "Cooldown Protection",
+    Default = false,
+    Callback = function(value)
+        System.__config.__detections.__cooldown_protection = value
+    end
+})
+
+DetectionSection:Toggle({
     Title = "Slashes Of Fury Detection",
     Default = false,
     Callback = function(value)
@@ -3302,8 +3483,8 @@ DetectionSection:Toggle({
 
 DetectionSection:Slider({
     Title = "Parry Delay",
-    Value = { Min = 0.05, Max = 0.250, Default = 0.05 },
-    Step = 0.01,
+    Value = { Min = 0.001, Max = 0.25, Default = 0.05 },
+    Step = 0.001,
     Callback = function(value)
         parryDelay = value
     end
@@ -3311,8 +3492,8 @@ DetectionSection:Slider({
 
 DetectionSection:Slider({
     Title = "Max Parry Count",
-    Value = { Min = 0.05, Max = 0.250, Default = 0.05 },
-    Step = 0.01,
+    Value = { Min = 1, Max = 34, Default = 34 },
+    Step = 1,
     Callback = function(value)
         maxParryCount = value
     end
@@ -4327,207 +4508,88 @@ AISection:Slider({
     end
 })
 
--- Config Tab
+-- ────────────────────────────────────────────────────────────────
+--  CONFIG TAB
+-- ────────────────────────────────────────────────────────────────
+
 local ConfigTab = Window:Tab({ 
     Title = "Config", 
     Icon = "solar:settings-bold", 
-    IconColor = Blue,
+    IconColor = Color3.fromHex("#00FFFF"),
     IconShape = "Square",
     Border = true
 })
 
 ConfigTab:Paragraph({
-    Title = "Configuration Settings",
-    Desc = "Fine-tune your gameplay experience with advanced configuration options for parry, spam, detections, and more. Customize to perfection!",
+    Title = "Configuration Management",
+    Desc = "Save and load your toggle settings for different parties or sessions.",
     Image = "solar:settings-bold",
     Color = "Blue"
 })
 
-ConfigTab:Image({
-    Image = "https://repository-images.githubusercontent.com/880118829/22c020eb-d1b1-4b34-ac4d-e33fd88db38d",
-    AspectRatio = "16:9",
-    Radius = 9,
+local ConfigSection = ConfigTab:Section({
+    Title = "Save/Load Config"
 })
 
-local GeneralSection = ConfigTab:Section({
-    Title = "General Settings",
-    Desc = "Basic toggles and options."
-})
+local configName = "OMZ_Party_Config"
 
-GeneralSection:Toggle({
-    Title = "Auto Parry",
-    Desc = "Enable automatic parrying system.",
-    Default = System.__properties.__autoparry_enabled,
+ConfigSection:Input({
+    Title = "Config Name",
+    Default = "OMZ_Party_Config",
     Callback = function(value)
-        System.__properties.__autoparry_enabled = value
+        configName = value
     end
 })
 
-GeneralSection:Toggle({
-    Title = "Triggerbot",
-    Desc = "Enable triggerbot for automatic parries.",
-    Default = System.__triggerbot.__enabled,
-    Callback = function(value)
-        System.__triggerbot.__enabled = value
+ConfigSection:Button({
+    Title = "Save Current Config",
+    Callback = function()
+        local config = {
+            autoparry_enabled = System.__properties.__autoparry_enabled,
+            triggerbot_enabled = System.__properties.__triggerbot_enabled,
+            manual_spam_enabled = System.__properties.__manual_spam_enabled,
+            auto_spam_enabled = System.__properties.__auto_spam_enabled,
+            play_animation = System.__properties.__play_animation,
+            curve_mode = System.__properties.__curve_mode,
+            accuracy = System.__properties.__accuracy,
+            spam_threshold = System.__properties.__spam_threshold,
+            detections = System.__config.__detections,
+            triggerbot_enabled_tb = System.__triggerbot.__enabled,
+            max_parries = System.__triggerbot.__max_parries,
+            parry_delay = System.__triggerbot.__parry_delay
+        }
+        writefile(configName .. ".json", game:GetService("HttpService"):JSONEncode(config))
+        print("Config saved as " .. configName)
     end
 })
 
-GeneralSection:Toggle({
-    Title = "Manual Spam",
-    Desc = "Enable manual spamming.",
-    Default = System.__properties.__manual_spam_enabled,
-    Callback = function(value)
-        System.__properties.__manual_spam_enabled = value
-    end
-})
-
-GeneralSection:Toggle({
-    Title = "Auto Spam",
-    Desc = "Enable automatic spamming.",
-    Default = System.__properties.__auto_spam_enabled,
-    Callback = function(value)
-        System.__properties.__auto_spam_enabled = value
-    end
-})
-
-GeneralSection:Toggle({
-    Title = "Play Animation",
-    Desc = "Play parry animation.",
-    Default = System.__properties.__play_animation,
-    Callback = function(value)
-        System.__properties.__play_animation = value
-    end
-})
-
-ConfigTab:Space()
-
-local ParrySection = ConfigTab:Section({
-    Title = "Parry Configuration",
-    Desc = "Adjust parry accuracy and modes."
-})
-
-ParrySection:Dropdown({
-    Title = "Curve Mode",
-    Desc = "Select the parry curve mode.",
-    Values = System.__config.__curve_names,
-    Default = System.__config.__curve_names[System.__properties.__curve_mode] or "Camera",
-    Callback = function(value)
-        for i, name in ipairs(System.__config.__curve_names) do
-            if name == value then
-                System.__properties.__curve_mode = i
-                break
-            end
+ConfigSection:Button({
+    Title = "Load Saved Config",
+    Callback = function()
+        if isfile(configName .. ".json") then
+            local config = game:GetService("HttpService"):JSONDecode(readfile(configName .. ".json"))
+            System.__properties.__autoparry_enabled = config.autoparry_enabled or false
+            System.__properties.__triggerbot_enabled = config.triggerbot_enabled or false
+            System.__properties.__manual_spam_enabled = config.manual_spam_enabled or false
+            System.__properties.__auto_spam_enabled = config.auto_spam_enabled or false
+            System.__properties.__play_animation = config.play_animation or false
+            System.__properties.__curve_mode = config.curve_mode or 1
+            System.__properties.__accuracy = config.accuracy or 1
+            System.__properties.__spam_threshold = config.spam_threshold or 1.5
+            System.__config.__detections = config.detections or {
+                __infinity = false,
+                __deathslash = false,
+                __timehole = false,
+                __slashesoffury = false,
+                __phantom = false
+            }
+            System.__triggerbot.__enabled = config.triggerbot_enabled_tb or false
+            System.__triggerbot.__max_parries = config.max_parries or 10000
+            System.__triggerbot.__parry_delay = config.parry_delay or 0.5
+            print("Config loaded from " .. configName)
+        else
+            print("No saved config found for " .. configName)
         end
-    end
-})
-
-ParrySection:Slider({
-    Title = "Accuracy",
-    Desc = "Set parry accuracy level.",
-    Value = { Min = 1, Max = 100, Default = System.__properties.__accuracy },
-    Step = 1,
-    Callback = function(value)
-        System.__properties.__accuracy = value
-        update_divisor()
-    end
-})
-
-ParrySection:Slider({
-    Title = "Spam Threshold",
-    Desc = "Threshold for spam detection.",
-    Value = { Min = 0.1, Max = 5, Default = System.__properties.__spam_threshold },
-    Step = 0.1,
-    Callback = function(value)
-        System.__properties.__spam_threshold = value
-    end
-})
-
-ParrySection:Slider({
-    Title = "Spam Rate",
-    Desc = "Rate of spamming.",
-    Value = { Min = 100, Max = 500, Default = System.__properties.__spam_rate },
-    Step = 10,
-    Callback = function(value)
-        System.__properties.__spam_rate = value
-    end
-})
-
-ConfigTab:Space()
-
-local DetectionSection = ConfigTab:Section({
-    Title = "Detection Settings",
-    Desc = "Configure special move detections."
-})
-
-DetectionSection:Toggle({
-    Title = "Infinity Detection",
-    Desc = "Detect infinity moves.",
-    Default = System.__config.__detections.__infinity,
-    Callback = function(value)
-        System.__config.__detections.__infinity = value
-    end
-})
-
-DetectionSection:Toggle({
-    Title = "Deathslash Detection",
-    Desc = "Detect deathslash moves.",
-    Default = System.__config.__detections.__deathslash,
-    Callback = function(value)
-        System.__config.__detections.__deathslash = value
-    end
-})
-
-DetectionSection:Toggle({
-    Title = "Timehole Detection",
-    Desc = "Detect timehole moves.",
-    Default = System.__config.__detections.__timehole,
-    Callback = function(value)
-        System.__config.__detections.__timehole = value
-    end
-})
-
-DetectionSection:Toggle({
-    Title = "Slashes of Fury Detection",
-    Desc = "Detect slashes of fury.",
-    Default = System.__config.__detections.__slashesoffury,
-    Callback = function(value)
-        System.__config.__detections.__slashesoffury = value
-    end
-})
-
-DetectionSection:Toggle({
-    Title = "Phantom Detection",
-    Desc = "Detect phantom moves.",
-    Default = System.__config.__detections.__phantom,
-    Callback = function(value)
-        System.__config.__detections.__phantom = value
-    end
-})
-
-ConfigTab:Space()
-
-local TriggerbotSection = ConfigTab:Section({
-    Title = "Triggerbot Settings",
-    Desc = "Configure triggerbot parameters."
-})
-
-TriggerbotSection:Slider({
-    Title = "Max Parries",
-    Desc = "Maximum parries for triggerbot.",
-    Value = { Min = 1, Max = 10000, Default = System.__triggerbot.__max_parries },
-    Step = 100,
-    Callback = function(value)
-        System.__triggerbot.__max_parries = value
-    end
-})
-
-TriggerbotSection:Slider({
-    Title = "Parry Delay",
-    Desc = "Delay between parries.",
-    Value = { Min = 0, Max = 2, Default = System.__triggerbot.__parry_delay },
-    Step = 0.1,
-    Callback = function(value)
-        System.__triggerbot.__parry_delay = value
     end
 })
 
