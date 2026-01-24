@@ -2966,14 +2966,17 @@ local Red = Color3.fromHex("#EF4F1D")
 
 local CombatTab = Window:Tab({ 
     Title = "Combat", 
-    Icon = "solar:sword-bold", 
-    IconColor = Red })
+    Icon = "solar:shield-bold", 
+    IconColor = Red,
+    IconShape = "Square",
+    Border = true
+})
 
 CombatTab:Paragraph({
     Title = "Combat Features",
     Desc = "Configure your auto parry, spam, and detection systems for optimal gameplay.",
-    Image = "solar:sword-bold",
-    Color = "Blue"
+    Image = "solar:shield-bold",
+    Color = "Red"
 })
 
     local ParrySection = CombatTab:Section({
@@ -3462,7 +3465,10 @@ ManualSpamSection:Slider({
 local VisualTab = Window:Tab({ 
     Title = "Visual", 
     Icon = "solar:eye-bold", 
-    IconColor = Yellow })
+    IconColor = Yellow,
+    IconShape = "Square",
+    Border = true
+})
 
 VisualTab:Paragraph({
     Title = "Visual Enhancements",
@@ -3696,7 +3702,9 @@ SkinChangerSection:Input({
 local PlayerTab = Window:Tab({ 
     Title = "Player",
     Icon = "solar:user-bold",
-    IconColor = Blue 
+    IconColor = Blue,
+    IconShape = "Square",
+    Border = true
 })
 
 PlayerTab:Paragraph({
@@ -4040,14 +4048,16 @@ CharacterModifierSection:Space()
 
 local AutoFarmTab = Window:Tab({ 
     Title = "Auto Farm", 
-    Icon = "solar:robot-bold", 
-    IconColor = Green 
+    Icon = "solar:play-bold", 
+    IconColor = Green,
+    IconShape = "Square",
+    Border = true
 })
 
 AutoFarmTab:Paragraph({
     Title = "Automated Farming",
     Content = "Set up automated gameplay features including semi-immortal modes and AI-assisted play for hands-free farming and progression.",
-    Image = "solar:robot-bold"
+    Image = "solar:play-bold"
 })
 
 local WKISection = AutoFarmTab:Section({ 
