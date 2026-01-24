@@ -135,16 +135,19 @@ function hookRemote(remote)
     end
 end
 
-for _, remote in pairs(ReplicatedStorage:GetChildren()) do
-    if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
-        hookRemote(remote)
+-- Defer remote hooking to avoid blocking load
+task.defer(function()
+    for _, remote in pairs(ReplicatedStorage:GetChildren()) do
+        if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+            hookRemote(remote)
+        end
     end
-end
 
-ReplicatedStorage.ChildAdded:Connect(function(child)
-    if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
-        hookRemote(child)
-    end
+    ReplicatedStorage.ChildAdded:Connect(function(child)
+        if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
+            hookRemote(child)
+        end
+    end)
 end)
 
 System.animation = {}
@@ -1080,53 +1083,6 @@ local function create_mobile_button(name, position_y, color)
     return {gui = gui, button = button, text = text, bg = bg}
 end
 
-local function create_mobile_button(name, position_y, color)
-    local gui = Instance.new('ScreenGui')
-    gui.Name = 'Sigma' .. name .. 'Mobile'
-    gui.ResetOnSpawn = false
-    gui.IgnoreGuiInset = true
-    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    
-    local button = Instance.new('TextButton')
-    button.Size = UDim2.new(0, 140, 0, 50)
-    button.Position = UDim2.new(0.5, -70, position_y, 0)
-    button.BackgroundTransparency = 1
-    button.AnchorPoint = Vector2.new(0.5, 0)
-    button.Draggable = true
-    button.AutoButtonColor = false
-    button.ZIndex = 2
-    
-    local bg = Instance.new('Frame')
-    bg.Size = UDim2.new(1, 0, 1, 0)
-    bg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    bg.Parent = button
-    
-    local corner = Instance.new('UICorner')
-    corner.CornerRadius = UDim.new(0, 10)
-    corner.Parent = bg
-    
-    local stroke = Instance.new('UIStroke')
-    stroke.Color = color
-    stroke.Thickness = 1
-    stroke.Transparency = 0.3
-    stroke.Parent = bg
-    
-    local text = Instance.new('TextLabel')
-    text.Size = UDim2.new(1, 0, 1, 0)
-    text.BackgroundTransparency = 1
-    text.Text = name
-    text.Font = Enum.Font.GothamBold
-    text.TextSize = 16
-    text.TextColor3 = Color3.fromRGB(255, 255, 255)
-    text.ZIndex = 3
-    text.Parent = button
-    
-    button.Parent = gui
-    gui.Parent = CoreGui
-    
-    return {gui = gui, button = button, text = text, bg = bg}
-end
-
 local function destroy_mobile_gui(gui_data)
     if gui_data and gui_data.gui then
         gui_data.gui:Destroy()
@@ -1672,97 +1628,6 @@ local animation_system = {
     track = nil
 }
 
-function animation_system.load_animations()
-    local emotes_folder = game:GetService("ReplicatedStorage").Misc.Emotes
-    
-    for _, animation in pairs(emotes_folder:GetChildren()) do
-        if animation:IsA("Animation") and animation:GetAttribute("EmoteName") then
-            local emote_name = animation:GetAttribute("EmoteName")
-            animation_system.storage[emote_name] = animation
-        end
-    end
-end
-
-function animation_system.get_emotes_list()
-    local emotes_list = {}
-    
-    for emote_name in pairs(animation_system.storage) do
-        table.insert(emotes_list, emote_name)
-    end
-    
-    table.sort(emotes_list)
-    return emotes_list
-end
-
-function animation_system.play(emote_name)
-    local animation_data = animation_system.storage[emote_name]
-    
-    if not animation_data or not LocalPlayer.Character then
-        return false
-    end
-    
-    local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
-    if not humanoid then
-        return false
-    end
-    
-    local animator = humanoid:FindFirstChild("Animator")
-    if not animator then
-        return false
-    end
-    
-    if animation_system.track then
-        animation_system.track:Stop()
-        animation_system.track:Destroy()
-    end
-    
-    animation_system.track = animator:LoadAnimation(animation_data)
-    animation_system.track:Play()
-    animation_system.current = emote_name
-    
-    return true
-end
-
-function animation_system.stop()
-    if animation_system.track then
-        animation_system.track:Stop()
-        animation_system.track:Destroy()
-        animation_system.track = nil
-    end
-    animation_system.current = nil
-end
-
-function animation_system.start()
-    if not System.__properties.__connections.animations then
-        System.__properties.__connections.animations = RunService.Heartbeat:Connect(function()
-            if not LocalPlayer.Character or not LocalPlayer.Character.PrimaryPart then
-                return
-            end
-            
-            local speed = LocalPlayer.Character.PrimaryPart.AssemblyLinearVelocity.Magnitude
-            
-            if speed > 30 and getgenv().AutoStop then
-                if animation_system.track and animation_system.track.IsPlaying then
-                    animation_system.track:Stop()
-                end
-            else
-                if animation_system.current and (not animation_system.track or not animation_system.track.IsPlaying) then
-                    animation_system.play(animation_system.current)
-                end
-            end
-        end)
-    end
-end
-
-function animation_system.cleanup()
-    animation_system.stop()
-    
-    if System.__properties.__connections.animations then
-        System.__properties.__connections.animations:Disconnect()
-        System.__properties.__connections.animations = nil
-    end
-end
-
 animation_system.load_animations()
 local emotes_data = animation_system.get_emotes_list()
 local selected_animation = emotes_data[1]
@@ -2242,17 +2107,19 @@ local swordInstances = require(swordInstancesInstance)
 
 local swordsController
 
-while task.wait() and (not swordsController) do
-    for i,v in getconnections(ReplicatedStorage.Remotes.FireSwordInfo.OnClientEvent) do
-        if v.Function and islclosure(v.Function) then
-            local upvalues = getupvalues(v.Function)
-            if #upvalues == 1 and type(upvalues[1]) == "table" then
-                swordsController = upvalues[1]
-                break
+task.defer(function()
+    while task.wait() and (not swordsController) do
+        for i,v in getconnections(ReplicatedStorage.Remotes.FireSwordInfo.OnClientEvent) do
+            if v.Function and islclosure(v.Function) then
+                local upvalues = getupvalues(v.Function)
+                if #upvalues == 1 and type(upvalues[1]) == "table" then
+                    swordsController = upvalues[1]
+                    break
+                end
             end
         end
     end
-end
+end)
 
 function getSlashName(swordName)
     local slashName = swordInstances:GetSword(swordName)
@@ -2276,25 +2143,29 @@ end
 local playParryFunc
 local parrySuccessAllConnection
 
-while task.wait() and not parrySuccessAllConnection do
-    for i,v in getconnections(ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent) do
-        if v.Function and getinfo(v.Function).name == "parrySuccessAll" then
-            parrySuccessAllConnection = v
-            playParryFunc = v.Function
-            v:Disable()
+task.defer(function()
+    while task.wait() and not parrySuccessAllConnection do
+        for i,v in getconnections(ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent) do
+            if v.Function and getinfo(v.Function).name == "parrySuccessAll" then
+                parrySuccessAllConnection = v
+                playParryFunc = v.Function
+                v:Disable()
+            end
         end
     end
-end
+end)
 
 local parrySuccessClientConnection
-while task.wait() and not parrySuccessClientConnection do
-    for i,v in getconnections(ReplicatedStorage.Remotes.ParrySuccessClient.Event) do
-        if v.Function and getinfo(v.Function).name == "parrySuccessAll" then
-            parrySuccessClientConnection = v
-            v:Disable()
+task.defer(function()
+    while task.wait() and not parrySuccessClientConnection do
+        for i,v in getconnections(ReplicatedStorage.Remotes.ParrySuccessClient.Event) do
+            if v.Function and getinfo(v.Function).name == "parrySuccessAll" then
+                parrySuccessClientConnection = v
+                v:Disable()
+            end
         end
     end
-end
+end)
 
 getgenv().slashName = getSlashName(getgenv().swordFX)
 
