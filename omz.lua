@@ -15,7 +15,15 @@ if not getgenv then
 end
 
 if not Library then
-    Library = {}
+    Library = {
+        SendNotification = function(settings)
+            -- Dummy notification function
+        end
+    }
+end
+
+local PF = function()
+    -- Dummy parry function
 end
 
 if not LocalPlayer.Character then
