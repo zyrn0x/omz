@@ -3140,14 +3140,6 @@ local Window = WindUI:CreateWindow({
 -- Tags (optionnel)
 Window:Tag({ Title = "v1.0 • OMZ • Nebula", Icon = "sparkles", Color = Color3.fromHex("#1c1c1c"), Border = true })
 
--- Hero / Intro paragraph for a stylish look
-Window:Paragraph({
-    Title = "Bienvenue — Omz Nebula",
-    Desc = "Une interface retravaillée : dégradés néon, icônes raffinées, et descriptions détaillées pour une expérience 10/10.\n\nExplore les onglets pour personnaliser ton gameplay, visuel et automatisation.",
-    Image = "sparkles",
-    Color = "Purple"
-})
-
 -- Icon Colors
 local Purple = Color3.fromHex("#7775F2")
 local Yellow = Color3.fromHex("#ECA201")
