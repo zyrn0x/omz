@@ -2989,6 +2989,12 @@ local Window = WindUI:CreateWindow({
     Icon = "door-open", -- lucide icon. optional
     Author = "by Omz", -- optional
     Theme = "Sapphire",
+    Background = WindUI:Gradient({                                                      
+        ["0"] = { Color = Color3.fromHex("#0066CC"), Transparency = 0 },            
+        ["100"]   = { Color = Color3.fromHex("#001122"), Transparency = 0 },      
+    }, {                                                                            
+        Rotation = 0,                                                               
+    }),
 })
 
 -- Tags (optionnel)
