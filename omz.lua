@@ -2952,6 +2952,14 @@ local Window = WindUI:CreateWindow({
 -- Tags (optionnel)
 Window:Tag({ Title = "v1.0 • OMZ", Icon = "github", Color = Color3.fromHex("#1c1c1c"), Border = true })
 
+-- Icon Colors
+local Purple = Color3.fromHex("#7775F2")
+local Yellow = Color3.fromHex("#ECA201")
+local Green = Color3.fromHex("#10C550")
+local Grey = Color3.fromHex("#83889E")
+local Blue = Color3.fromHex("#257AF7")
+local Red = Color3.fromHex("#EF4F1D")
+
 -- ────────────────────────────────────────────────────────────────
 --  COMBAT / AUTOPARRY / SPAM TAB
 -- ────────────────────────────────────────────────────────────────
@@ -2959,7 +2967,7 @@ Window:Tag({ Title = "v1.0 • OMZ", Icon = "github", Color = Color3.fromHex("#1
 local CombatTab = Window:Tab({ 
     Title = "Combat", 
     Icon = "solar:sword-bold", 
-    IconColor = Color3.fromHex("#FF3B30") })
+    IconColor = Red })
 
 CombatTab:Paragraph({
     Title = "Combat Features",
@@ -3454,11 +3462,12 @@ ManualSpamSection:Slider({
 local VisualTab = Window:Tab({ 
     Title = "Visual", 
     Icon = "solar:eye-bold", 
-    IconColor = Color3.fromHex("#ECA201") })
+    IconColor = Yellow })
 
 VisualTab:Paragraph({
     Title = "Visual Enhancements",
-    Content = "Customize your visual experience with avatar changes, ESP options, and other display modifications to enhance gameplay visibility."
+    Content = "Customize your visual experience with avatar changes, ESP options, and other display modifications to enhance gameplay visibility.",
+    Image = "solar:eye-bold"
 })
 
 local AvatarChangerSection = VisualTab:Section({
@@ -3686,13 +3695,14 @@ SkinChangerSection:Input({
 
 local PlayerTab = Window:Tab({ 
     Title = "Player",
-    Icon = "solar:eye-bold",
-    IconColor = Color3.fromHex("#257AF7") 
+    Icon = "solar:user-bold",
+    IconColor = Blue 
 })
 
 PlayerTab:Paragraph({
     Title = "Player Enhancements",
-    Content = "Customize your player experience with FOV adjustments, speed modifications, and other enhancements to improve your gameplay."
+    Content = "Customize your player experience with FOV adjustments, speed modifications, and other enhancements to improve your gameplay.",
+    Image = "solar:user-bold"
 })
 
 local FOVSection = PlayerTab:Section({ 
@@ -4030,13 +4040,14 @@ CharacterModifierSection:Space()
 
 local AutoFarmTab = Window:Tab({ 
     Title = "Auto Farm", 
-    Icon = "solar:eye-bold", 
-    IconColor = Color3.fromHex("#257AF7") 
+    Icon = "solar:robot-bold", 
+    IconColor = Green 
 })
 
 AutoFarmTab:Paragraph({
     Title = "Automated Farming",
-    Content = "Set up automated gameplay features including semi-immortal modes and AI-assisted play for hands-free farming and progression."
+    Content = "Set up automated gameplay features including semi-immortal modes and AI-assisted play for hands-free farming and progression.",
+    Image = "solar:robot-bold"
 })
 
 local WKISection = AutoFarmTab:Section({ 
