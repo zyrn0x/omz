@@ -10,31 +10,12 @@ local CoreGui = cloneref(game:GetService('CoreGui'))
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
-if not getgenv then
-    getgenv = function() return _G end
-end
-
-if not Library then
-    Library = {
-        SendNotification = function(settings)
-            -- Dummy notification function
-        end
-    }
-end
-
-local PF = function()
-    -- Dummy parry function
-end
-
 if not LocalPlayer.Character then
     LocalPlayer.CharacterAdded:Wait()
 end
 
 local Alive = workspace:FindFirstChild("Alive") or workspace:WaitForChild("Alive")
 local Runtime = workspace.Runtime
-
-local parryDelay = 0.05
-local maxParryCount = 34
 
 local System = {
     __properties = {
@@ -74,9 +55,7 @@ local System = {
             __deathslash = false,
             __timehole = false,
             __slashesoffury = false,
-            __phantom = false,
-            __auto_ability = false,
-            __cooldown_protection = false
+            __phantom = false
         }
     },
     
@@ -88,71 +67,27 @@ local System = {
         __parry_delay = 0.5
     }
 }
-local playerGui = LocalPlayer.PlayerGui
-local ParryCD, AbilityCD
-local success1, result1 = pcall(function() return playerGui:WaitForChild("Hotbar"):WaitForChild("Block"):WaitForChild("UIGradient") end)
-if success1 then ParryCD = result1 else warn("ParryCD not found") end
 
-local success2, result2 = pcall(function() return playerGui:WaitForChild("Hotbar"):WaitForChild("Ability"):WaitForChild("UIGradient") end)
-if success2 then AbilityCD = result2 else warn("AbilityCD not found") end
+local revertedRemotes = {}
+local originalMetatables = {}
+local Parry_Key = nil
+local PF = nil
+local SC = nil
 
-local function isCooldownInEffect1(uigradient)
-    if not uigradient then return false end
-    return uigradient.Offset.Y < 0.4
-end
-
-local function isCooldownInEffect2(uigradient)
-    if not uigradient then return false end
-    return uigradient.Offset.Y == 0.5
-end
-
-local function cooldownProtection()
-    if not ParryCD then return false end
-    if isCooldownInEffect1(ParryCD) then
-        ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
-        return true
-    end
-    return false
-end
-
-local function autoAbility()
-    if not AbilityCD then return false end
-    if isCooldownInEffect2(AbilityCD) then
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Abilities") then
-            local abilities = LocalPlayer.Character.Abilities
-            if (abilities:FindFirstChild("Raging Deflection") and abilities["Raging Deflection"].Enabled) or
-               (abilities:FindFirstChild("Rapture") and abilities["Rapture"].Enabled) or
-               (abilities:FindFirstChild("Calming Deflection") and abilities["Calming Deflection"].Enabled) or
-               (abilities:FindFirstChild("Aerodynamic Slash") and abilities["Aerodynamic Slash"].Enabled) or
-               (abilities:FindFirstChild("Fracture") and abilities["Fracture"].Enabled) or
-               (abilities:FindFirstChild("Death Slash") and abilities["Death Slash"].Enabled) then
-                System.__properties.__parried = true
-                ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
-                task.wait(2.432)
-                ReplicatedStorage.Remotes.DeathSlashShootActivation:FireServer(true)
-                return true
-            end
+if ReplicatedStorage:FindFirstChild("Controllers") then
+    for _, child in ipairs(ReplicatedStorage.Controllers:GetChildren()) do
+        if child.Name:match("^SwordsController%s*$") then
+            SC = child
         end
     end
-    return false
 end
 
-local function updateNavigation(guiObject: GuiObject | nil)
-    GuiService.SelectedObject = guiObject
-end
-
-local function performFirstPress(parryType)
-    if parryType == 'F_Key' then
-        VirtualInputService:SendKeyEvent(true, Enum.KeyCode.F, false, nil)
-    elseif parryType == 'Left_Click' then
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-    elseif parryType == 'Navigation' then
-        local button = Players.LocalPlayer.PlayerGui.Hotbar.Block
-        updateNavigation(button)
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
-        task.wait(0.01)
-        updateNavigation(nil)
+if LocalPlayer.PlayerGui:FindFirstChild("Hotbar") and LocalPlayer.PlayerGui.Hotbar:FindFirstChild("Block") then
+    for _, v in next, getconnections(LocalPlayer.PlayerGui.Hotbar.Block.Activated) do
+        if SC and getfenv(v.Function).script == SC then
+            PF = v.Function
+            break
+        end
     end
 end
 
@@ -197,19 +132,16 @@ function hookRemote(remote)
     end
 end
 
--- Defer remote hooking to avoid blocking load
-task.defer(function()
-    for _, remote in pairs(ReplicatedStorage:GetChildren()) do
-        if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
-            hookRemote(remote)
-        end
+for _, remote in pairs(ReplicatedStorage:GetChildren()) do
+    if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+        hookRemote(remote)
     end
+end
 
-    ReplicatedStorage.ChildAdded:Connect(function(child)
-        if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
-            hookRemote(child)
-        end
-    end)
+ReplicatedStorage.ChildAdded:Connect(function(child)
+    if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
+        hookRemote(child)
+    end
 end)
 
 System.animation = {}
@@ -455,32 +387,25 @@ function System.parry.execute()
     else
         final_aim_target = vec2_mouse
     end
-
-    if not firstParryFired then
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0.001)
-        task.wait(0.1)
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0.001)
-        firstParryFired = true
-    else
-        for remote, original_args in pairs(revertedRemotes) do
-            local modified_args = {
-                original_args[1],
-                original_args[2],
-                original_args[3],
-                curve_cframe,
-                event_data,
-                final_aim_target,
-                original_args[7]
-            }
+    
+    for remote, original_args in pairs(revertedRemotes) do
+        local modified_args = {
+            original_args[1],
+            original_args[2],
+            original_args[3],
+            curve_cframe,
+            event_data,
+            final_aim_target,
+            original_args[7]
+        }
         
-            pcall(function()
-                if remote:IsA('RemoteEvent') then
-                    remote:FireServer(unpack(modified_args))
-                elseif remote:IsA('RemoteFunction') then
-                    remote:InvokeServer(unpack(modified_args))
-                end
-            end)
-        end
+        pcall(function()
+            if remote:IsA('RemoteEvent') then
+                remote:FireServer(unpack(modified_args))
+            elseif remote:IsA('RemoteFunction') then
+                remote:InvokeServer(unpack(modified_args))
+            end
+        end)
     end
     
     if System.__properties.__parries > 10000 then return end
@@ -588,6 +513,62 @@ function System.detection.is_curved()
     return dot < dot_threshold
 end
 
+ReplicatedStorage.Remotes.DeathBall.OnClientEvent:Connect(function(c, d)
+    System.__properties.__deathslash_active = d or false
+end)
+
+ReplicatedStorage.Remotes.InfinityBall.OnClientEvent:Connect(function(a, b)
+    System.__properties.__infinity_active = b or false
+end)
+
+ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/TimeHoleActivate"].OnClientEvent:Connect(function(...)
+    local args = {...}
+    local player = args[1]
+    
+    if player == LocalPlayer or player == LocalPlayer.Name or (player and player.Name == LocalPlayer.Name) then
+        System.__properties.__timehole_active = true
+    end
+end)
+
+ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/TimeHoleDeactivate"].OnClientEvent:Connect(function()
+    System.__properties.__timehole_active = false
+end)
+
+local maxParryCount = 36
+local parryDelay = 0.05
+
+ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/SlashesOfFuryActivate"].OnClientEvent:Connect(function(...)
+    local args = {...}
+    local player = args[1]
+    
+    if player == LocalPlayer or player == LocalPlayer.Name or (player and player.Name == LocalPlayer.Name) then
+        System.__properties.__slashesoffury_active = true
+        System.__properties.__slashesoffury_count = 0
+    end
+end)
+
+ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/SlashesOfFuryEnd"].OnClientEvent:Connect(function()
+    System.__properties.__slashesoffury_active = false
+    System.__properties.__slashesoffury_count = 0
+end)
+
+ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/SlashesOfFuryParry"].OnClientEvent:Connect(function()
+    System.__properties.__slashesoffury_count = System.__properties.__slashesoffury_count + 1
+end)
+
+ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/SlashesOfFuryCatch"].OnClientEvent:Connect(function()
+    spawn(function()
+        while System.__properties.__slashesoffury_active and System.__properties.__slashesoffury_count < maxParryCount do
+            if System.__config.__detections.__slashesoffury then
+                System.parry.execute()
+                task.wait(parryDelay)
+            else
+                break
+            end
+        end
+    end)
+end)
+
 Runtime.ChildAdded:Connect(function(Object)
     if System.__config.__detections.__phantom then
         if Object.Name == "maxTransmission" or Object.Name == "transmissionpart" then
@@ -646,14 +627,6 @@ ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent:Connect(function(_, root
     local dot = direction:Dot(ball.AssemblyLinearVelocity.Unit)
     
     local curve_detected = System.detection.is_curved()
-    
-    -- Skip if detections active
-    if (System.__config.__detections.__infinity and System.__properties.__infinity_active) or
-       (System.__config.__detections.__deathslash and System.__properties.__deathslash_active) or
-       (System.__config.__detections.__timehole and System.__properties.__timehole_active) or
-       (System.__config.__detections.__slashesoffury and ball:FindFirstChild('ComboCounter')) then
-        return
-    end
     
     if target_distance < 15 and distance < 15 and dot > -0.25 then
         if curve_detected then
@@ -717,40 +690,6 @@ ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent:Connect(function(a, b)
     end
 end)
 
--- Detection connections
-ReplicatedStorage.Remotes.InfinityBall.OnClientEvent:Connect(function(a, b)
-    System.__properties.__infinity_active = b or false
-end)
-
-ReplicatedStorage.Remotes.DeathBall.OnClientEvent:Connect(function(c, d)
-    System.__properties.__deathslash_active = d or false
-end)
-
-ReplicatedStorage.Remotes.TimeHoleHoldBall.OnClientEvent:Connect(function(e, f)
-    System.__properties.__timehole_active = f or false
-end)
-
--- Slashes of Fury handling
-workspace:WaitForChild("Balls").ChildAdded:Connect(function(ball)
-    ball.ChildAdded:Connect(function(child)
-        if child.Name == 'ComboCounter' and System.__config.__detections.__slashesoffury then
-            local Sof_Label = child:FindFirstChildOfClass('TextLabel')
-            if Sof_Label then
-                task.spawn(function()
-                    local parry_count = 0
-                    while child.Parent and parry_count < maxParryCount do
-                        local Slashes_Counter = tonumber(Sof_Label.Text) or 0
-                        if Slashes_Counter >= 32 then break end
-                        System.parry.execute_action()
-                        parry_count = parry_count + 1
-                        task.wait(parryDelay)
-                    end
-                end)
-            end
-        end
-    end)
-end)
-
 System.triggerbot = {}
 
 function System.triggerbot.trigger(ball)
@@ -760,23 +699,6 @@ function System.triggerbot.trigger(ball)
     
     if LocalPlayer.Character and LocalPlayer.Character.PrimaryPart and 
        LocalPlayer.Character.PrimaryPart:FindFirstChild('SingularityCape') then
-        return
-    end
-    
-    -- Detection skips
-    if System.__config.__detections.__infinity and System.__properties.__infinity_active then
-        return
-    end
-    
-    if System.__config.__detections.__deathslash and System.__properties.__deathslash_active then
-        return
-    end
-    
-    if System.__config.__detections.__timehole and System.__properties.__timehole_active then
-        return
-    end
-    
-    if System.__config.__detections.__slashesoffury and ball:FindFirstChild('ComboCounter') then
         return
     end
     
@@ -891,7 +813,7 @@ System.auto_spam = {}
 function System.auto_spam:get_entity_properties()
     System.player.get_closest()
     
-    if not Closest_Entity or not Closest_Entity.PrimaryPart or not LocalPlayer.Character or not LocalPlayer.Character.PrimaryPart then return false end
+    if not Closest_Entity then return false end
     
     local entity_velocity = Closest_Entity.PrimaryPart.Velocity
     local entity_direction = (LocalPlayer.Character.PrimaryPart.Position - Closest_Entity.PrimaryPart.Position).Unit
@@ -906,7 +828,7 @@ end
 
 function System.auto_spam:get_ball_properties()
     local ball = System.ball.get()
-    if not ball or not LocalPlayer.Character or not LocalPlayer.Character.PrimaryPart then return false end
+    if not ball then return false end
     
     local ball_velocity = Vector3.zero
     local ball_origin = ball
@@ -976,23 +898,6 @@ function System.auto_spam.start()
         if not ball then return end
         
         if System.__properties.__slashesoffury_active then return end
-        
-        -- Detection skips
-        if System.__config.__detections.__infinity and System.__properties.__infinity_active then
-            return
-        end
-        
-        if System.__config.__detections.__deathslash and System.__properties.__deathslash_active then
-            return
-        end
-        
-        if System.__config.__detections.__timehole and System.__properties.__timehole_active then
-            return
-        end
-        
-        if System.__config.__detections.__slashesoffury and ball:FindFirstChild('ComboCounter') then
-            return
-        end
         
         local zoomies = ball:FindFirstChild('zoomies')
         if not zoomies then return end
@@ -1080,19 +985,18 @@ function System.autoparry.start()
         end
 
         for _, ball in pairs(balls) do
-            local skip = false
             if System.__triggerbot.__enabled then return end
             if getgenv().BallVelocityAbove800 then return end
-            if not ball then skip = true end
+            if not ball then continue end
             
             local zoomies = ball:FindFirstChild('zoomies')
-            if not zoomies then skip = true end
+            if not zoomies then continue end
             
             ball:GetAttributeChangedSignal('target'):Once(function()
                 System.__properties.__parried = false
             end)
             
-            if System.__properties.__parried then skip = true end
+            if System.__properties.__parried then continue end
             
             local ball_target = ball:GetAttribute('target')
             local velocity = zoomies.VectorVelocity
@@ -1108,39 +1012,58 @@ function System.autoparry.start()
             
             local curved = System.detection.is_curved()
             
+            if ball:FindFirstChild('AeroDynamicSlashVFX') then
+                ball.AeroDynamicSlashVFX:Destroy()
+                System.__properties.__tornado_time = tick()
+            end
+            
+            if Runtime:FindFirstChild('Tornado') then
+                if (tick() - System.__properties.__tornado_time) < 
+                   (Runtime.Tornado:GetAttribute('TornadoTime') or 1) + 0.314159 then
+                    continue
+                end
+            end
+            
             if one_ball and one_ball:GetAttribute('target') == LocalPlayer.Name and curved then
-                skip = true
+                continue
             end
             
-            -- Detection skips
-            if System.__config.__detections.__infinity and System.__properties.__infinity_active then
-                skip = true
-            end
+            if ball:FindFirstChild('ComboCounter') then continue end
             
-            if System.__config.__detections.__deathslash and System.__properties.__deathslash_active then
-                skip = true
-            end
+            if LocalPlayer.Character.PrimaryPart:FindFirstChild('SingularityCape') then continue end
             
-            if System.__config.__detections.__timehole and System.__properties.__timehole_active then
-                skip = true
-            end
+            if System.__config.__detections.__infinity and System.__properties.__infinity_active then continue end
+            if System.__config.__detections.__deathslash and System.__properties.__deathslash_active then continue end
+            if System.__config.__detections.__timehole and System.__properties.__timehole_active then continue end
+            if System.__config.__detections.__slashesoffury and System.__properties.__slashesoffury_active then continue end
             
-            if System.__config.__detections.__slashesoffury and ball:FindFirstChild('ComboCounter') then
-                skip = true
+            if ball_target == LocalPlayer.Name and distance <= parry_accuracy then
+                if getgenv().CooldownProtection then
+                    local ParryCD = LocalPlayer.PlayerGui.Hotbar.Block.UIGradient
+                    if ParryCD.Offset.Y < 0.4 then
+                        ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
+                        continue
+                    end
+                end
+                
+                if getgenv().AutoAbility then
+                    local AbilityCD = LocalPlayer.PlayerGui.Hotbar.Ability.UIGradient
+                    if AbilityCD.Offset.Y == 0.5 then
+                        if LocalPlayer.Character.Abilities:FindFirstChild("Raging Deflection") and LocalPlayer.Character.Abilities["Raging Deflection"].Enabled or
+                           LocalPlayer.Character.Abilities:FindFirstChild("Rapture") and LocalPlayer.Character.Abilities["Rapture"].Enabled or
+                           LocalPlayer.Character.Abilities:FindFirstChild("Calming Deflection") and LocalPlayer.Character.Abilities["Calming Deflection"].Enabled or
+                           LocalPlayer.Character.Abilities:FindFirstChild("Aerodynamic Slash") and LocalPlayer.Character.Abilities["Aerodynamic Slash"].Enabled or
+                           LocalPlayer.Character.Abilities:FindFirstChild("Fracture") and LocalPlayer.Character.Abilities["Fracture"].Enabled or
+                           LocalPlayer.Character.Abilities:FindFirstChild("Death Slash") and LocalPlayer.Character.Abilities["Death Slash"].Enabled then
+                            System.__properties.__parried = true
+                            ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
+                            task.wait(2.432)
+                            ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DeathSlashShootActivation"):FireServer(true)
+                            continue
+                        end
+                    end
+                end
             end
-            end
-            
-            -- Cooldown Protection
-            if System.__config.__detections.__cooldown_protection and cooldownProtection() then
-                skip = true
-            end
-            
-            -- Auto Ability
-            if System.__config.__detections.__auto_ability and autoAbility() then
-                skip = true
-            end
-            
-            if not skip then
             
             if ball_target == LocalPlayer.Name and distance <= parry_accuracy then
                 if getgenv().AutoParryMode == "Keypress" then
@@ -1156,7 +1079,6 @@ function System.autoparry.start()
                 RunService.Stepped:Wait()
             until (tick() - last_parrys) >= 1 or not System.__properties.__parried
             System.__properties.__parried = false
-            end
         end
 
         if training_ball then
@@ -1196,14 +1118,61 @@ function System.autoparry.start()
                 end
             end
         end
-    end
-
+    end)
+end
 
 function System.autoparry.stop()
     if System.__properties.__connections.__autoparry then
         System.__properties.__connections.__autoparry:Disconnect()
         System.__properties.__connections.__autoparry = nil
     end
+end
+
+local function create_mobile_button(name, position_y, color)
+    local gui = Instance.new('ScreenGui')
+    gui.Name = 'Sigma' .. name .. 'Mobile'
+    gui.ResetOnSpawn = false
+    gui.IgnoreGuiInset = true
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    
+    local button = Instance.new('TextButton')
+    button.Size = UDim2.new(0, 140, 0, 50)
+    button.Position = UDim2.new(0.5, -70, position_y, 0)
+    button.BackgroundTransparency = 1
+    button.AnchorPoint = Vector2.new(0.5, 0)
+    button.Draggable = true
+    button.AutoButtonColor = false
+    button.ZIndex = 2
+    
+    local bg = Instance.new('Frame')
+    bg.Size = UDim2.new(1, 0, 1, 0)
+    bg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    bg.Parent = button
+    
+    local corner = Instance.new('UICorner')
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = bg
+    
+    local stroke = Instance.new('UIStroke')
+    stroke.Color = color
+    stroke.Thickness = 1
+    stroke.Transparency = 0.3
+    stroke.Parent = bg
+    
+    local text = Instance.new('TextLabel')
+    text.Size = UDim2.new(1, 0, 1, 0)
+    text.BackgroundTransparency = 1
+    text.Text = name
+    text.Font = Enum.Font.GothamBold
+    text.TextSize = 16
+    text.TextColor3 = Color3.fromRGB(255, 255, 255)
+    text.ZIndex = 3
+    text.Parent = button
+    
+    button.Parent = gui
+    gui.Parent = CoreGui
+    
+    return {gui = gui, button = button, text = text, bg = bg}
 end
 
 local function create_mobile_button(name, position_y, color)
@@ -3098,11 +3067,7 @@ task.defer(function()
 -- Note: If loading is slow, you can preload WindUI by running this separately:
 -- local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 -- Then comment out the loadstring below and use the preloaded one.
-local success, WindUI = pcall(function() return loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))() end)
-if not success or not WindUI then
-    warn("Failed to load WindUI library")
-    return
-end
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
 WindUI:AddTheme({
     Name = "Sapphire",
@@ -3117,6 +3082,7 @@ WindUI:AddTheme({
     Icon = Color3.fromHex("#66CCFF"),
     
     Hover = Color3.fromHex("#FFFFFF"),
+    BackgroundTransparency = 0,
     
     WindowBackground = Color3.fromHex("#001122"),
     WindowShadow = Color3.fromHex("#000000"),
@@ -3466,22 +3432,6 @@ DetectionSection:Toggle({
 })
 
 DetectionSection:Toggle({
-    Title = "Auto Ability",
-    Default = false,
-    Callback = function(value)
-        System.__config.__detections.__auto_ability = value
-    end
-})
-
-DetectionSection:Toggle({
-    Title = "Cooldown Protection",
-    Default = false,
-    Callback = function(value)
-        System.__config.__detections.__cooldown_protection = value
-    end
-})
-
-DetectionSection:Toggle({
     Title = "Slashes Of Fury Detection",
     Default = false,
     Callback = function(value)
@@ -3491,8 +3441,8 @@ DetectionSection:Toggle({
 
 DetectionSection:Slider({
     Title = "Parry Delay",
-    Value = { Min = 0.001, Max = 0.25, Default = 0.05 },
-    Step = 0.001,
+    Value = { Min = 0.05, Max = 0.250, Default = 0.05 },
+    Step = 0.01,
     Callback = function(value)
         parryDelay = value
     end
@@ -3500,8 +3450,8 @@ DetectionSection:Slider({
 
 DetectionSection:Slider({
     Title = "Max Parry Count",
-    Value = { Min = 1, Max = 34, Default = 34 },
-    Step = 1,
+    Value = { Min = 0.05, Max = 0.250, Default = 0.05 },
+    Step = 0.01,
     Callback = function(value)
         maxParryCount = value
     end
