@@ -4497,7 +4497,8 @@ CheatSection:Toggle({
 
 -- ────────────────────────────────────────────────────────────────
 --  CONFIG TAB
--- ───────────────────────────────────────────────────────────────
+-- ────────────────────────────────────────────────────────────────
+
 local ConfigTab = Window:Tab({ 
     Title = "Config", 
     Icon = "solar:settings-bold", 
@@ -4506,211 +4507,89 @@ local ConfigTab = Window:Tab({
     Border = true
 })
 
-        local ConfigElementsSection = ConfigTab:Section({
-            Title = "Config Elements",
-        })
+local ConfigSection = ConfigTab:Section({
+    Title = "Save/Load Config"
+})
 
-        -- Exemples d'éléments (tirés de la doc WindUI)
-        ConfigElementsSection:Colorpicker({
-            Flag = "ColorpickerTest",
-            Title = "Colorpicker",
-            Desc = "Colorpicker Description",
-            Default = Color3.fromRGB(0, 255, 0),
-            Transparency = 0,
-            Locked = false,
-            Callback = function(color)
-                print("Background color: " .. tostring(color))
-            end
-        })
+local configName = "OMZ_Party_Config"
 
-        ConfigElementsSection:Space()
-
-        ConfigElementsSection:Dropdown({
-            Flag = "DropdownTest",
-            Title = "Advanced Dropdown",
-            Values = {
-                { Title = "Category A", Icon = "bird" },
-                { Title = "Category B", Icon = "house" },
-                { Title = "Category C", Icon = "droplet" },
-            },
-            Value = "Category A",
-            Callback = function(option)
-                print("Category selected: " .. option.Title .. " with icon " .. option.Icon)
-            end
-        })
-
-        ConfigElementsSection:Dropdown({
-            Flag = "DropdownTest2",
-            Title = "Advanced Dropdown 2",
-            Values = {
-                { Title = "Category A", Icon = "bird" },
-                { Title = "Category B", Icon = "house" },
-                { Title = "Category C", Icon = "droplet", Locked = true },
-            },
-            Value = "Category A",
-            Multi = true,
-            Callback = function(options)
-                local titles = {}
-                for _, v in ipairs(options) do
-                    table.insert(titles, v.Title)
-                end
-                print("Selected: " .. table.concat(titles, ", "))
-            end
-        })
-
-        ConfigElementsSection:Space()
-
-        ConfigElementsSection:Input({
-            Flag = "InputTest",
-            Title = "Input",
-            Desc = "Input Description",
-            Value = "Default value",
-            InputIcon = "bird",
-            Type = "Input",
-            Placeholder = "Enter text...",
-            Callback = function(input)
-                print("Text entered: " .. input)
-            end
-        })
-
-        ConfigElementsSection:Space()
-
-        ConfigElementsSection:Keybind({
-            Flag = "KeybindTest",
-            Title = "Keybind",
-            Desc = "Keybind to open ui",
-            Value = "G",
-            Callback = function(v)
-                Window:SetToggleKey(Enum.KeyCode[v])
-            end
-        })
-
-        ConfigElementsSection:Space()
-
-        ConfigElementsSection:Slider({
-            Flag = "SliderTest",
-            Title = "Slider",
-            Step = 1,
-            Value = { Min = 20, Max = 120, Default = 70 },
-            Callback = function(value)
-                print(value)
-            end
-        })
-
-        ConfigElementsSection:Slider({
-            Flag = "SliderTest2",
-            Icons = { From = "sfsymbols:sunMinFill", To = "sfsymbols:sunMaxFill" },
-            Step = 1,
-            IsTooltip = true,
-            Value = { Min = 0, Max = 100, Default = 50 },
-            Callback = function(value)
-                print(value)
-            end
-        })
-
-        ConfigElementsSection:Space()
-
-        ConfigElementsSection:Toggle({
-            Flag = "ToggleTest",
-            Title = "Toggle Panel Background",
-            Value = not Window.HidePanelBackground,
-            Callback = function(state)
-                Window:SetPanelBackground(state)
-            end
-        })
-
-        ConfigElementsSection:Toggle({
-            Flag = "ToggleTest2",
-            Title = "Toggle",
-            Desc = "Toggle Description",
-            Value = false,
-            Callback = function(state)
-                print("Toggle Activated" .. tostring(state))
-            end
-        })
+ConfigSection:Input({
+    Title = "Config Name",
+    Default = "OMZ_Party_Config",
+    Callback = function(value)
+        configName = value
     end
+})
 
-    do -- config manager panel
-        local ConfigPanelSection = ConfigTab:Section({
-            Title = "Config Manager",
-        })
-
-        local ConfigManager = Window.ConfigManager
-        local ConfigName = "default"
-
-        local ConfigNameInput = ConfigPanelSection:Input({
-            Title = "Config Name",
-            Icon = "file-cog",
-            Callback = function(value)
-                ConfigName = value
-            end
-        })
-
-        ConfigPanelSection:Space()
-
-        local AllConfigs = ConfigManager:AllConfigs()
-        local DefaultValue = table.find(AllConfigs, ConfigName) and ConfigName or nil
-
-        local AllConfigsDropdown = ConfigPanelSection:Dropdown({
-            Title = "All Configs",
-            Desc = "Select existing configs",
-            Values = AllConfigs,
-            Value = DefaultValue,
-            Callback = function(value)
-                ConfigName = value
-                ConfigNameInput:Set(value)
-            end
-        })
-
-        ConfigPanelSection:Space()
-
-        ConfigPanelSection:Button({
-            Title = "Save Config",
-            Icon = "",
-            Justify = "Center",
-            Callback = function()
-                Window.CurrentConfig = ConfigManager:Config(ConfigName)
-                if Window.CurrentConfig:Save() then
-                    WindUI:Notify({ Title = "Config Saved", Desc = "Config '" .. ConfigName .. "' saved", Icon = "check" })
-                end
-                AllConfigsDropdown:Refresh(ConfigManager:AllConfigs())
-            end
-        })
-
-        ConfigPanelSection:Space()
-
-        ConfigPanelSection:Button({
-            Title = "Load Config",
-            Icon = "",
-            Justify = "Center",
-            Callback = function()
-                Window.CurrentConfig = ConfigManager:CreateConfig(ConfigName)
-                if Window.CurrentConfig:Load() then
-                    WindUI:Notify({ Title = "Config Loaded", Desc = "Config '" .. ConfigName .. "' loaded", Icon = "refresh-cw" })
-                end
-            end
-        })
-
-        ConfigPanelSection:Space()
-
-        ConfigPanelSection:Button({
-            Title = "Print AutoLoad Configs",
-            Icon = "",
-            Justify = "Center",
-            Callback = function()
-                local ok, data = pcall(function()
-                    return HttpService:JSONDecode(ConfigManager:GetAutoLoadConfigs())
-                end)
-                if ok then
-                    print(data)
-                else
-                    print("Failed to decode AutoLoad configs")
-                end
-            end
-        })
+ConfigSection:Button({
+    Title = "Save Current Config",
+    Callback = function()
+        local config = {
+            autoparry_enabled = System.__properties.__autoparry_enabled,
+            triggerbot_enabled = System.__properties.__triggerbot_enabled,
+            manual_spam_enabled = System.__properties.__manual_spam_enabled,
+            auto_spam_enabled = System.__properties.__auto_spam_enabled,
+            play_animation = System.__properties.__play_animation,
+            curve_mode = System.__properties.__curve_mode,
+            accuracy = System.__properties.__accuracy,
+            spam_threshold = System.__properties.__spam_threshold,
+            detections = System.__config.__detections,
+            triggerbot_enabled_tb = System.__triggerbot.__enabled,
+            max_parries = System.__triggerbot.__max_parries,
+            parry_delay = System.__triggerbot.__parry_delay
+        }
+        local HttpService = game:GetService("HttpService")
+        local ok, encoded = pcall(function() return HttpService:JSONEncode(config) end)
+        if ok and writefile then
+            pcall(function()
+                writefile(configName .. ".json", encoded)
+            end)
+            print("Config saved as " .. configName)
+        else
+            print("Failed to save config: writefile or JSONEncode unavailable")
+        end
     end
-end
-end)
+})
+
+ConfigSection:Button({
+    Title = "Load Saved Config",
+    Callback = function()
+        local HttpService = game:GetService("HttpService")
+        if isfile and isfile(configName .. ".json") then
+            local okRead, content = pcall(function() return readfile(configName .. ".json") end)
+            if not okRead or not content then
+                print("Failed to read config file")
+                return
+            end
+            local okDecode, config = pcall(function() return HttpService:JSONDecode(content) end)
+            if not okDecode or type(config) ~= "table" then
+                print("Failed to parse config JSON")
+                return
+            end
+            System.__properties.__autoparry_enabled = config.autoparry_enabled or false
+            System.__properties.__triggerbot_enabled = config.triggerbot_enabled or false
+            System.__properties.__manual_spam_enabled = config.manual_spam_enabled or false
+            System.__properties.__auto_spam_enabled = config.auto_spam_enabled or false
+            System.__properties.__play_animation = config.play_animation or false
+            System.__properties.__curve_mode = config.curve_mode or 1
+            System.__properties.__accuracy = config.accuracy or 1
+            System.__properties.__spam_threshold = config.spam_threshold or 1.5
+            System.__config.__detections = config.detections or {
+                __infinity = false,
+                __deathslash = false,
+                __timehole = false,
+                __slashesoffury = false,
+                __phantom = false
+            }
+            System.__triggerbot.__enabled = config.triggerbot_enabled_tb or false
+            System.__triggerbot.__max_parries = config.max_parries or 10000
+            System.__triggerbot.__parry_delay = config.parry_delay or 0.5
+            print("Config loaded from " .. configName)
+        else
+            print("No saved config found for " .. configName .. " or isfile unavailable")
+        end
+    end
+})
 
     if child and child.Name == 'Balls' then
         System.__properties.__cached_balls = nil
@@ -4727,3 +4606,4 @@ if balls then
         System.__properties.__parried = false
     end)
 end
+end)
