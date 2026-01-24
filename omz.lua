@@ -220,131 +220,6 @@ function System.ball.get_all()
     return balls_table
 end
 
--- Predict next target for a ball based on linear extrapolation of ball velocity
-function System.ball.predict_next_target(ball)
-    if not ball then return nil end
-    local zoomies = ball:FindFirstChild('zoomies')
-    local velocity = (zoomies and zoomies.VectorVelocity) or ball.AssemblyLinearVelocity
-    if not velocity then return nil end
-
-    local pos = ball.Position
-    local speed = velocity.Magnitude
-    if speed < 0.5 then return nil end
-
-    local dir = velocity.Unit
-    local bestScore = 0
-    local bestTarget = nil
-
-    local maxTime = 6 -- seconds to look ahead
-    for _, entity in pairs((Alive and Alive:GetChildren()) or {}) do
-        if entity ~= LocalPlayer.Character and entity.PrimaryPart then
-            local pPos = entity.PrimaryPart.Position
-            local pVel = entity.PrimaryPart.Velocity or Vector3.new(0,0,0)
-
-            local rel = pPos - pos
-            local along = rel:Dot(dir)
-            if along < -5 then continue end
-
-            local timeToReach = math.max(along / speed, 0)
-            if timeToReach > maxTime then continue end
-
-            local predictedPos = pPos + (pVel * timeToReach)
-            local projected = math.max((predictedPos - pos):Dot(dir), 0)
-            local closestPoint = pos + dir * projected
-            local dist = (closestPoint - predictedPos).Magnitude
-
-            local distScore = 1 / (1 + dist)
-            local timeScore = 1 / (1 + timeToReach)
-            local speedBonus = 1 + math.clamp(speed / 50, 0, 3)
-
-            local score = distScore * timeScore * speedBonus
-            if score > bestScore then
-                bestScore = score
-                bestTarget = entity
-            end
-        end
-    end
-
-    return bestTarget, bestScore
-end
-
--- Simple toggle runner for prediction
-function System.predict_start()
-    if System.__properties.__connections.__predict then
-        System.__properties.__connections.__predict:Disconnect()
-        System.__properties.__connections.__predict = nil
-    end
-
-    System.__properties.__connections.__predict = RunService.Heartbeat:Connect(function()
-        if not System.__properties.__predict_enabled then return end
-        local ball = System.ball.get()
-        if not ball then
-            System.__properties.__predicted_target = nil
-            return
-        end
-
-        local target = System.ball.predict_next_target(ball)
-        if target then
-            System.__properties.__predicted_target = target.Name
-            pcall(function() ball:SetAttribute('PredictedTarget', target.Name) end)
-
-            if System.__properties.__predict_visual_enabled then
-                if not System.__properties.__predict_billboards then
-                    System.__properties.__predict_billboards = {}
-                end
-                if not System.__properties.__predict_billboards[target] then
-                    -- create a simple billboard on the target
-                    if target.Character and target.Character:FindFirstChild('Head') then
-                        local head = target.Character.Head
-                        local gui = Instance.new('BillboardGui')
-                        gui.Name = 'PredictedTargetGui'
-                        gui.Adornee = head
-                        gui.Size = UDim2.new(0, 160, 0, 36)
-                        gui.StudsOffset = Vector3.new(0, 2.5, 0)
-                        gui.AlwaysOnTop = true
-                        local label = Instance.new('TextLabel')
-                        label.Size = UDim2.new(1, 0, 1, 0)
-                        label.BackgroundTransparency = 0.3
-                        label.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-                        label.TextColor3 = Color3.fromRGB(255, 200, 50)
-                        label.Font = Enum.Font.GothamBold
-                        label.TextSize = 16
-                        label.Text = 'PREDICTED'
-                        label.Parent = gui
-                        gui.Parent = head
-                        System.__properties.__predict_billboards[target] = gui
-                    end
-                end
-            end
-        else
-            System.__properties.__predicted_target = nil
-            pcall(function() ball:SetAttribute('PredictedTarget', nil) end)
-            if System.__properties.__predict_visual_enabled and System.__properties.__predict_billboards then
-                for pl, gui in pairs(System.__properties.__predict_billboards) do
-                    pcall(function()
-                        if gui and gui.Destroy then gui:Destroy() end
-                    end)
-                    System.__properties.__predict_billboards[pl] = nil
-                end
-            end
-        end
-    end)
-end
-
-function System.predict_stop()
-    if System.__properties.__connections.__predict then
-        System.__properties.__connections.__predict:Disconnect()
-        System.__properties.__connections.__predict = nil
-    end
-    System.__properties.__predicted_target = nil
-end
-
--- default flags
-System.__properties.__predict_enabled = false
-System.__properties.__predicted_target = nil
-System.__properties.__predict_visual_enabled = false
-System.__properties.__predict_billboards = {}
-
 System.player = {}
 
 local Closest_Entity = nil
@@ -3195,74 +3070,83 @@ task.defer(function()
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
 WindUI:AddTheme({
-    Name = "Sapphire",
-    
-    Accent = Color3.fromHex("#0066CC"),
-    Background = Color3.fromHex("#001122"),
+    Name = "Nebula",
+
+    Accent = Color3.fromHex("#7B61FF"),
+    Background = Color3.fromHex("#070217"),
     BackgroundTransparency = 0,
-    Outline = Color3.fromHex("#0088FF"),
-    Text = Color3.fromHex("#FFFFFF"),
-    Placeholder = Color3.fromHex("#7a7a7a"),
-    Button = Color3.fromHex("#004477"),
-    Icon = Color3.fromHex("#66CCFF"),
-    
+    Outline = Color3.fromHex("#3DEFD1"),
+    Text = Color3.fromHex("#EAF2FF"),
+    Placeholder = Color3.fromHex("#9AA4B2"),
+    Button = Color3.fromHex("#4B2BFF"),
+    Icon = Color3.fromHex("#7BE7FF"),
+
     Hover = Color3.fromHex("#FFFFFF"),
     BackgroundTransparency = 0,
-    
-    WindowBackground = Color3.fromHex("#001122"),
+
+    WindowBackground = Color3.fromHex("#070217"),
     WindowShadow = Color3.fromHex("#000000"),
-    
-    DialogBackground = Color3.fromHex("#001122"),
+
+    DialogBackground = Color3.fromHex("#09021A"),
     DialogBackgroundTransparency = 0,
     DialogTitle = Color3.fromHex("#FFFFFF"),
-    DialogContent = Color3.fromHex("#FFFFFF"),
-    DialogIcon = Color3.fromHex("#66CCFF"),
-    
-    WindowTopbarButtonIcon = Color3.fromHex("#66CCFF"),
+    DialogContent = Color3.fromHex("#DDEBFF"),
+    DialogIcon = Color3.fromHex("#7BE7FF"),
+
+    WindowTopbarButtonIcon = Color3.fromHex("#7BE7FF"),
     WindowTopbarTitle = Color3.fromHex("#FFFFFF"),
-    WindowTopbarAuthor = Color3.fromHex("#FFFFFF"),
+    WindowTopbarAuthor = Color3.fromHex("#BFD8FF"),
     WindowTopbarIcon = Color3.fromHex("#FFFFFF"),
-    
-    TabBackground = Color3.fromHex("#002244"),
-    TabTitle = Color3.fromHex("#FFFFFF"),
-    TabIcon = Color3.fromHex("#66CCFF"),
-    
-    ElementBackground = Color3.fromHex("#002244"),
-    ElementTitle = Color3.fromHex("#FFFFFF"),
-    ElementDesc = Color3.fromHex("#FFFFFF"),
-    ElementIcon = Color3.fromHex("#66CCFF"),
-    
-    PopupBackground = Color3.fromHex("#001122"),
+
+    TabBackground = Color3.fromHex("#0B1230"),
+    TabTitle = Color3.fromHex("#EAF2FF"),
+    TabIcon = Color3.fromHex("#7B61FF"),
+
+    ElementBackground = Color3.fromHex("#0E1428"),
+    ElementTitle = Color3.fromHex("#EAF2FF"),
+    ElementDesc = Color3.fromHex("#B7C6E6"),
+    ElementIcon = Color3.fromHex("#7BE7FF"),
+
+    PopupBackground = Color3.fromHex("#070217"),
     PopupBackgroundTransparency = 0,
     PopupTitle = Color3.fromHex("#FFFFFF"),
-    PopupContent = Color3.fromHex("#FFFFFF"),
-    PopupIcon = Color3.fromHex("#66CCFF"),
-    
-    Toggle = Color3.fromHex("#004477"),
-    ToggleBar = Color3.fromHex("#0088FF"),
-    
-    Checkbox = Color3.fromHex("#004477"),
+    PopupContent = Color3.fromHex("#DDEBFF"),
+    PopupIcon = Color3.fromHex("#7BE7FF"),
+
+    Toggle = Color3.fromHex("#5A3BFF"),
+    ToggleBar = Color3.fromHex("#3DEFD1"),
+
+    Checkbox = Color3.fromHex("#5A3BFF"),
     CheckboxIcon = Color3.fromHex("#FFFFFF"),
-    
-    Slider = Color3.fromHex("#004477"),
-    SliderThumb = Color3.fromHex("#0088FF"),
+
+    Slider = Color3.fromHex("#5A3BFF"),
+    SliderThumb = Color3.fromHex("#3DEFD1"),
 })
 
 local Window = WindUI:CreateWindow({
-    Title = "Omz Hub",
-    Icon = "door-open", -- lucide icon. optional
+    Title = "Omz Hub — Nebula",
+    Icon = "star", -- lucide icon. optional
     Author = "by Omz", -- optional
-    Theme = "Sapphire",
+    Theme = "Nebula",
     Background = WindUI:Gradient({                                                      
-        ["0"] = { Color = Color3.fromHex("#0066CC"), Transparency = 0 },            
-        ["100"]   = { Color = Color3.fromHex("#001122"), Transparency = 0 },      
+        ["0"] = { Color = Color3.fromHex("#7B61FF"), Transparency = 0 },            
+        ["50"] = { Color = Color3.fromHex("#3DEFD1"), Transparency = 0 },
+        ["100"]   = { Color = Color3.fromHex("#070217"), Transparency = 0 },      
     }, {                                                                            
-        Rotation = 0,                                                               
+        Rotation = 45,                                                               
     }),
 })
 
 -- Tags (optionnel)
-Window:Tag({ Title = "v1.0 • OMZ", Icon = "github", Color = Color3.fromHex("#1c1c1c"), Border = true })
+Window:Tag({ Title = "v1.0 • OMZ • Nebula", Icon = "sparkles", Color = Color3.fromHex("#1c1c1c"), Border = true })
+
+-- Hero / Intro paragraph for a stylish look
+Window:Paragraph({
+    Title = "Bienvenue — Omz Nebula",
+    Desc = "Une interface retravaillée : dégradés néon, icônes raffinées, et descriptions détaillées pour une expérience 10/10.\n\nExplore les onglets pour personnaliser ton gameplay, visuel et automatisation.",
+    Image = "sparkles",
+    Color = "Purple"
+})
 
 -- Icon Colors
 local Purple = Color3.fromHex("#7775F2")
@@ -3286,7 +3170,7 @@ local CombatTab = Window:Tab({
 
 CombatTab:Paragraph({
     Title = "Combat Features",
-    Desc = "Configure your auto parry, spam, and detection systems for optimal gameplay.",
+    Desc = "Optimise ton combat avec des réglages précis : auto-parry intelligent, spam contrôlé, et détections avancées.\n\nChoisis ton style de parry, règle l'accuracy, et active les notifications pour rester maître du duel.",
     Image = "solar:shield-bold",
     Color = "Red"
 })
@@ -3566,8 +3450,8 @@ DetectionSection:Toggle({
 
 DetectionSection:Slider({
     Title = "Parry Delay",
-    Value = { Min = 0.005, Max = 0.050, Default = 0.005 },
-    Step = 0.001,
+    Value = { Min = 0.05, Max = 0.250, Default = 0.05 },
+    Step = 0.01,
     Callback = function(value)
         parryDelay = value
     end
@@ -3575,8 +3459,8 @@ DetectionSection:Slider({
 
 DetectionSection:Slider({
     Title = "Max Parry Count",
-    Value = { Min = 0, Max = 36, Default = 36 },
-    Step = 1,
+    Value = { Min = 0.05, Max = 0.250, Default = 0.05 },
+    Step = 0.01,
     Callback = function(value)
         maxParryCount = value
     end
@@ -3784,8 +3668,9 @@ local VisualTab = Window:Tab({
 
 VisualTab:Paragraph({
     Title = "Visual Enhancements",
-    Content = "Customize your visual experience with avatar changes, ESP options, and other display modifications to enhance gameplay visibility.",
-    Image = "solar:eye-bold"
+    Content = "Habille ton jeu : change d'avatar, active des ESP élégants, et règle les effets pour une lisibilité maximale.\n\nAnimations subtiles, icônes et palette Nebula rendent l'interface immersive.",
+    Image = "solar:eye-bold",
+    Color = "Yellow"
 })
 
 local AvatarChangerSection = VisualTab:Section({
@@ -4021,8 +3906,9 @@ local PlayerTab = Window:Tab({
 
 PlayerTab:Paragraph({
     Title = "Player Enhancements",
-    Content = "Customize your player experience with FOV adjustments, speed modifications, and other enhancements to improve your gameplay.",
-    Image = "solar:user-bold"
+    Content = "Prends le contrôle total du personnage : FOV, vitesse, saut infini et tweaks de mouvement.\n\nParamètres pensés pour l'équilibre entre puissance et confort de jeu.",
+    Image = "solar:user-bold",
+    Color = "Blue"
 })
 
 local FOVSection = PlayerTab:Section({ 
@@ -4368,8 +4254,9 @@ local AutoFarmTab = Window:Tab({
 
 AutoFarmTab:Paragraph({
     Title = "Automated Farming",
-    Content = "Set up automated gameplay features including semi-immortal modes and AI-assisted play for hands-free farming and progression.",
-    Image = "solar:play-bold"
+    Content = "Automatise les routines : modes semi-immortels, AI assistée et pathfinding optimisé pour farmer sans effort.\n\nSécurité et options configurables pour éviter les interruptions indésirables.",
+    Image = "solar:play-bold",
+    Color = "Green"
 })
 
 local WKISection = AutoFarmTab:Section({ 
@@ -4620,22 +4507,6 @@ CheatSection:Toggle({
     })
 
 CheatSection:Toggle({
-    Title = "Prediction Visual",
-    Default = false,
-    Callback = function(value)
-        System.__properties.__predict_visual_enabled = value
-        if not value and System.__properties.__predict_billboards then
-            for pl, gui in pairs(System.__properties.__predict_billboards) do
-                pcall(function()
-                    if gui and gui.Destroy then gui:Destroy() end
-                end)
-                System.__properties.__predict_billboards[pl] = nil
-            end
-        end
-    end
-})
-
-CheatSection:Toggle({
     Title = "Continuity Zero Exploit",
     Default = false,
     Callback = function(value)
@@ -4660,27 +4531,6 @@ CheatSection:Toggle({
         end
     })
 
-    CheatSection:Toggle({
-        Title = "Predict Next Ball Target",
-        Default = false,
-        Callback = function(value)
-            System.__properties.__predict_enabled = value
-            if value then
-                System.predict_start()
-            else
-                System.predict_stop()
-            end
-
-            if getgenv().PredictNotify then
-                Library.SendNotification({
-                    title = "Predict",
-                    text = value and "ON" or "OFF",
-                    duration = 2
-                })
-            end
-        end
-    })
-
 -- ────────────────────────────────────────────────────────────────
 --  CONFIG TAB
 -- ────────────────────────────────────────────────────────────────
@@ -4695,7 +4545,7 @@ local ConfigTab = Window:Tab({
 
 ConfigTab:Paragraph({
     Title = "Configuration Management",
-    Desc = "Save and load your toggle settings for different parties or sessions.",
+    Desc = "Sauvegarde et charge tes configurations rapidement — profils prêts pour chaque session ou party.\n\nExport/Import simple, nomme tes presets et partage-les si tu veux.",
     Image = "solar:settings-bold",
     Color = "Blue"
 })
