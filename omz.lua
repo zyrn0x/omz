@@ -3566,8 +3566,8 @@ DetectionSection:Toggle({
 
 DetectionSection:Slider({
     Title = "Parry Delay",
-    Value = { Min = 0.05, Max = 0.250, Default = 0.05 },
-    Step = 0.01,
+    Value = { Min = 0.005, Max = 0.050, Default = 0.005 },
+    Step = 0.001,
     Callback = function(value)
         parryDelay = value
     end
@@ -3575,8 +3575,8 @@ DetectionSection:Slider({
 
 DetectionSection:Slider({
     Title = "Max Parry Count",
-    Value = { Min = 0.05, Max = 0.250, Default = 0.05 },
-    Step = 0.01,
+    Value = { Min = 0, Max = 36, Default = 36 },
+    Step = 1,
     Callback = function(value)
         maxParryCount = value
     end
