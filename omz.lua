@@ -4503,18 +4503,18 @@ CheatSection:Toggle({
             if getgenv().AbilityExploit and getgenv().ContinuityZeroExploit then
                 local ContinuityZeroRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("UseContinuityPortal")
                 local oldNamecall
-                oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+                oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
                     local method = getnamecallmethod()
-    
+
                     if self == ContinuityZeroRemote and method == "FireServer" then
                         return oldNamecall(self,
                             CFrame.new(9e17, 9e16, 9e15, 9e14, 9e13, 9e12, 9e11, 9e10, 9e9, 9e8, 9e7, 9e6),
-                            player.Name
+                            LocalPlayer.Name
                         )
                     end
-    
+
                     return oldNamecall(self, ...)
-                end)
+                end))
             end
         end
     })
