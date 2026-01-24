@@ -1,30 +1,3 @@
-task.spawn(function()
-local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
-
-local Window = WindUI:CreateWindow({
-    Title = "OMZ Hub",
-    --Author = "zyrn0x",
-    Folder = "OMZ_Config",
-    Icon = "solar:folder-2-bold-duotone",
-    OpenButton = {
-        Title = "Ouvrir OMZ",
-        CornerRadius = UDim.new(1,0),
-        Enabled = true,
-        Draggable = true,
-        Scale = 0.55,
-        Color = ColorSequence.new(
-            Color3.fromHex("#00ffea"),
-            Color3.fromHex("#ff00aa")
-        )
-    },
-    Topbar = { Height = 44, ButtonsType = "Mac" },
-})
-
--- Tags (optionnel)
-Window:Tag({ Title = "v1.0 • OMZ", Icon = "github", Color = Color3.fromHex("#1c1c1c"), Border = true })
-
-end)
-
 local Players = cloneref(game:GetService('Players'))
 local ReplicatedStorage = cloneref(game:GetService('ReplicatedStorage'))
 local UserInputService = cloneref(game:GetService('UserInputService'))
@@ -1159,6 +1132,1452 @@ local function destroy_mobile_gui(gui_data)
         gui_data.gui:Destroy()
     end
 end
+
+task.spawn(function()
+local WindUI = loadstring([[--[=[
+     _      ___         ____  ______
+    | | /| / (_)__  ___/ / / / /  _/
+ 
+  | |/ |/ / / _ \/ _  / /_/ // /  
+    |__/|__/_/_//_/\_,_/\____/___/
+    
+   
+v1.6.64  |  2026-01-23  |  Roblox UI Library for scripts
+    
+    To view the
+source code, see the `src/` folder on the official GitHub repository.
+    
+   
+Author: Footagesus (Footages, .ftgs, oftgs)
+    Github:
+https://github.com/Footagesus/WindUI
+    Discord:
+https://discord.gg/ftgs-development-hub-1300692552005189632
+    License: MIT
+]=]
+
+local a a={cache={}, load=function(b)if not
+a.cache[b]then a.cache[b]={c=a[b]()}end return a.cache[b].c end}do function a.a()local
+...
+...
+end
+end
+
+function d.SetIconsType(e)
+d.IconsType=e
+end
+
+local e
+function
+d.Init(f,g)
+d.New=f
+d.IconThemeTag=g
+
+e=f
+return d
+end
+
+function d.Icon(f,g,h)
+h=h~=false
+local
+i,j=parseIconString(f)
+
+local l=i or g or d.IconsType
+local m=j
+
+local p=d.Icons[l]
+
+if
+p and p.Icons and
+p.Icons[m]then
+return{
+p.Spritesheets[tostring(p.Icons[m].Image)],
+p.Icons[m],
+}
+elseif p and p[m]and
+string.find(p[m],"rbxassetid://")then
+return h
+and{
+p[m],
+{ImageRectSize=Vector2.new(0,0),ImageRectPosition=Vector2.new(0,0)}
+}or p[m]
+end
+return nil
+end
+
+function d.GetIcon(f,g)
+return
+d.Icon(f,g,false)
+end
+
+
+function d.Icon2(f,g,h)
+return d.Icon(f,g,true)
+end
+...
+...
+function
+d.Image(f)
+local g={
+Icon=f.Icon or nil,
+Type=f.Type,
+Colors=f.Colors or{(d.IconThemeTag
+or Color3.new(1,1,1)),Color3.new(1,1,1)},
+Transparency=f.Transparency
+or{0,0},
+Size=f.Size or UDim2.new(0,24,0,24),
+
+IconFrame=nil,
+}
+
+local h={}
+local
+i={}
+
+for j,l in next,g.Colors do
+h[j]={
+ThemeTag=typeof(l)=="string"and
+l,
+Color=typeof(l)=="Color3"and l,
+}
+end
+
+for j,l in next,g.Transparency
+do
+i[j]={
+ThemeTag=typeof(l)=="string"and l,
+Value=typeof(l)=="number"and l,
+}
+end
+
+
+local
+j=d.Icon2(g.Icon,g.Type)
+local l=typeof(j)=="string"and string.find(j,'rbxassetid://')
+
+if
+d.New then
+local m=e or d.New
+
+
+
+local
+p=m("ImageLabel",{
+...
+...
+v.ImageRec
+Size=u[2].ImageRectSize
+v.ImageRectOffset=u[2].ImageRectPosition
+v.Parent=m
+end
+end
+
+g.IconFrame=m
+end
+
+
+return g
+end
+
+return d end function
+a.b()
+
+return{
+
+
+P
+rimary="Icon",
+
+White=Color3.new(1,1,1),
+Black=Color3.new(0,0,0),
+
+Dialog="Accen
+",
+
+Background="Accent",
+BackgroundTransparency=0,
+Hover="Text",
+
+PanelBackgrou
+d="White",
+PanelBackgroundTransparency=.95,
+
+WindowBackground="Background",
+
+Wi
+dowShadow="Black",
+
+
+WindowTopbarTitle="Text",
+WindowTopbarAuthor="Text",
+Windo
+TopbarIcon="Icon",
+WindowTopbarButtonIcon="Icon",
+
+WindowSearchBarBackground="B
+ckground",
+
+TabBackground="Hover",
+TabBackgroundHover="Hover",
+TabBackgroundHov
+rTransparency=.97,
+TabBackgroundActive="Hover",
+TabBackgroundActiveTransparency
+0.93,
+TabText="Text",
+TabTextTransparency=0.3,
+...
+...
+TabTextTransparencyActive=0,
+Tab
+itle="Text",
+TabIcon="Icon",
+TabIconTransparency=0.4,
+TabIconTransparencyActive
+0.1,
+TabBorderTransparency=1,
+TabBorderTransparencyActive=0.75,
+TabBorder="Whit
+",
+
+
+ElementBackground="Text",
+ElementTitle="Text",
+ElementDesc="Text",
+Element
+con="Icon",
+
+PopupBackground="Background",
+PopupBackgroundTransparency="Backgro
+ndTransparency",
+PopupTitle="Text",
+PopupContent="Text",
+PopupIcon="Icon",
+
+Dia
+ogBackground="Background",
+DialogBackgroundTransparency="BackgroundTransparency
+,
+DialogTitle="Text",
+DialogContent="Text",
+DialogIcon="Icon",
+
+Toggle="Button"
+
+ToggleBar="White",
+
+Checkbox="Primary",
+CheckboxIcon="White",
+CheckboxBorder="
+hite",
+CheckboxBorderTransparency=.75,
+
+SliderIcon="Icon",
+
+Slider="Primary",
+S
+iderThumb="White",
+SliderIconFrom="SliderIcon",
+SliderIconTo="SliderIcon",
+
+Too
+tip=Color3.fromHex"4C4C4C",
+TooltipText="White",
+...
+...
+TooltipSecondary="Primary",
+To
+ltipSecondaryText="White",
+
+SectionExpandIcon="White",
+SectionExpandIconTranspa
+ency=.4,
+SectionBox="White",
+SectionBoxTransparency=.95,
+SectionBoxBorder="Whit
+",
+SectionBoxBorderTransparency=.75,
+SectionBoxBackground="White",
+SectionBoxBa
+kgroundTransparency=.95,
+
+SearchBarBorder="White",
+SearchBarBorderTransparency=
+75,
+
+Notification="Background",
+NotificationTitle="Text",
+NotificationTitleTran
+parency=0,
+NotificationContent="Text",
+NotificationContentTransparency=.4,
+Noti
+icationDuration="White",
+NotificationDurationTransparency=.95,
+NotificationBord
+r="White",
+NotificationBorderTransparency=.75,
+
+DropdownTabBorder="White",
+
+LabelBackground="White",
+LabelBackgroundTransparency=.95,
+}end function
+a.c()
+
+
+local b=(cloneref or clonereference or function(b)return b end)
+
+local
+d=b(game:GetService"RunService")
+local e=b(game:GetService"UserInputService")
+local
+f=b(game:GetService"TweenService")
+...
+...
+local g=b(game:GetService"LocalizationService")
+local
+h=b(game:GetService"HttpService")local i=
+
+d.Heartbeat
+
+local
+j="https://raw.githubusercontent.com/Footagesus/Icons/main/Main-v2.lua"
+
+local l
+if
+d:IsStudio()or not writefile then
+l=a.load'a'
+else
+l=loadstring(
+game.HttpGetAsync and
+game:HttpGetAsync(j)
+or h:GetAsync(j)
+)()
+end
+
+l.SetIconsType"lucide"
+
+local m
+
+local
+
+={
+Font="rbxassetid://12187365364",
+Localization=nil,
+CanDraggable=true,
+Theme=
+il,
+Themes=nil,
+Icons=l,
+Signals={},
+Objects={},
+LocalizationObjects={},
+FontOb
+ects={},
+Language=string.match(g.SystemLocaleId,"^[a-z]+"),
+Request=http_request or(syn and syn.request)or
+request,
+DefaultProperties={
+ScreenGui={
+ResetOnSpaw
+=false,
+ZIndexBehavior="Sibling",
+},
+CanvasGroup={
+BorderSizePixel=0,
+Backgroun
+...
+...
+://117817408534198",
+
+["Shadow-sm"]="rbxassetid://84825982946844",
+
+["Squircle-
+L-TR"]="rbxassetid://73569156276236",
+["Squircle-BL-BR"]="rbxassetid://93853842
+12264",
+["Squircle-TL-TR-Outline"]="rbxassetid://136702870075563",
+["Squircle-B
+-BR-Outline"]="rbxassetid://75035847706564",
+
+["Glass-0.7"]="rbxassetid://79047
+52995006",
+["Glass-1"]="rbxassetid://97324581055162",
+["Glass-1.4"]="rbxassetid://95071123641270",
+}
+}
+
+function p.Init(r)
+m=r
+end
+
+function
+p.AddSignal(r,u)
+local v=r:Connect(u)
+table.insert(p.Signals,v)
+return v
+end
+
+function
+p.DisconnectAll()
+for r,u in next,p.Signals do
+local
+v=table.remove(p.Signals,r)
+v:Disconnect()
+end
+end
+
+function p.SafeCallback(r,...)
+if not r then
+return
+end
+
+local
+u,v=pcall(r,...)
+if not u then
+if m and m.Window and m.Window.Debug then local
+x,
+z=v:find":%d+: "
+
+warn("[ WindUI: DEBUG Mode ] "..v)
+
+return
+m:Notify{
+Title="DEBUG Mode: Error",
+Content=not z and v or
+v:sub(z+1),
+Duration=8,
+}
+end
+end
+end
+
+function p.Gradient(r,u)
+if m and m.Gradient then
+return
+m:Gradient(r,u)
+end
+
+local v={}
+local x={}
+
+for z,A in next,r do
+local B=tonumber(z)
+if B
+then
+B=math.cl
+mp(B/100,0,1)
+table.insert(v,ColorSequenceKeypoint.new(B,A.Color))
+table.insert(x,NumberSequenceKeypoint.new(B,A.Transparency or
+0))
+end
+end
+...
+...
+string.sub(z,1,1)=="#"then
+return Color3.fromHex(z)
+end
+
+if typeof(z)=="Color3"then
+return
+z
+end
+
+if typeof(z)=="table"and z.Color
+and z.Transparency then
+return z
+end
+
+if typeof(z)=="function"then
+return
+z()
+end
+
+return z
+end
+
+local v=getValue(r,u)
+if v~=nil then
+if typeof(v)=="string"and
+string.sub(v,1,1)~="#"then
+local x=p.GetThemeProperty(v,u)
+if x~=nil
+then
+return x
+end
+else
+return v
+end
+end
+
+local x=p.ThemeFallbacks[r]
+if x~=nil then
+if
+typeof(x)=="string"and string.sub(x,1,1)~="#"then
+return
+p.GetThemeProperty(x,u)
+else
+return getValue(r,{[r]=x})
+end
+end
+
+v=getValue(r,p.Themes.Dark)
+if v~=nil
+...
+...
+local function ApplyTheme(B)
+for
+C,F in pairs(B.Properties or{})do
+local G=p.GetThemeProperty(F,p.Theme)
+if G~=nil
+then
+if typeof(G)=="Color3"then
+local
+H=B.Object:FindFirstChild"LibraryGradient"
+if H then
+H:Destroy()
+end
+
+if v then
+p.Tween(
+B.Object,
+x or 0.2,
+{[C]=G},
+z
+or Enum.EasingStyle.Quint,
+A or Enum.EasingDirection.Out
+):Play()
+elseif u
+then
+p.Tween(B.Object,0.08,{[C]=G}):Play()
+else
+B.Object[C]=G
+end
+elseif
+typeof(G)=="table"and G.Color and G.Transparency then
+B.Object[C]=Color3.new(1,1,1)
+
+local
+H=B.Object:FindFirstChild"LibraryGradient"
+if not H
+then
+H=Instance.new"UIGradient
+
+H.Name="LibraryGradient"
+H.Parent=B.Object
+end
+
+H.Color=G.Color
+H.Transparency=G.Transparency
+...
+...
+for J,L in pairs(G)do
+if J~="Color"and J~="Transparency"and
+H[J]~=nil then
+H[J]=L
+end
+end
+elseif typeof(G)=="number"then
+if v
+then
+p.Tween(
+B.Object,
+x or 0.2,
+{[C]=G},
+z or Enum.EasingStyle.Quint,
+A or
+Enum.EasingDirection.Out
+):Play()
+elseif u
+then
+p.Tween(B.Object,0.08,{[C]=G}):Play()
+else
+B.Object[C]=G
+end
+end
+else
+
+local H=B.Object:FindFirstChild"LibraryGradient"
+if H
+then
+H:Destroy()
+end
+end
+end
+end
+
+if r then
+local B=p.Objects[r]
+if B
+then
+ApplyTheme(B)
+end
+else
+for B,C in pairs(p.Objects)do
+ApplyTheme(C)
+end
+end
+end
+
+
+function
+p.
+etThemeTag(r,u,v,x,z)
+p.AddThemeObject(r,u)
+p.UpdateTheme(r,false,true,v,x,z)
+...
+...
+C=#p.LocalizationObjects+1
+p.LocalizationObjects[C]={TranslationId=B,Object=x}
+
+p.SetLangForObject(C)
+end
+end
+end
+
+for z,A in next,v
+or{}do
+A.Parent=x
+end
+
+if u and u.ThemeTag then
+p.AddThemeObject(x,u.ThemeTag)
+end
+if u and
+u.FontFace then
+p.AddFontObject(x)
+end
+return x
+end
+
+function
+p.Tween(r,u,v,...)
+return f:Create(r,TweenInfo.new(u,...),v)
+end
+
+function
+p.NewRoundFrame(r,u,v,x,z,A)
+local function getImageForType(B)
+return p.Shapes[B]
+end
+
+local function
+getSliceCenterForType(B)
+return not
+table.find({"Shadow-sm","Glass-0.7","Glass-1","Glass-1.4"},B)and Rect.new(256
+,256
+,256
+,256
+
+)or
+Rect.new(512,512,512,512)
+end
+
+local B=p.New(z
+and"ImageButton"or"ImageLabel",{
+...
+...
+end
+end
+end)
+
+function
+G.Set(H,J)
+G.CanDraggable=J
+end
+
+return G
+end
+
+
+l.Init(r,"Icon")
+
+
+function p.SanitizeFilename(v)
+local
+x=v:match"([^/]+)$"or
+v
+
+x=x:gsub("%.[^%w%-_]","_")
+
+if#x>50 then
+x=x:sub(1,50)
+end
+
+return x
+end
+
+function p.Image(v,x,z,A,B,C,F,G)
+A=A
+or"Temp"
+x=p.SanitizeFilename(x)
+
+local
+H=r("Frame",{
+Size=UDim2.new(0,0,0,0),
+
+ackgroundTransparency=1,
+},{
+r("ImageLabel",{
+Size=UDim2.new(1,0,1,0),
+BackgroundTransparency=1,
+ScaleType="Crop",
+ThemeTag=(p.Icon(v)or F)and{
+ImageColor3=C
+and(G or"Icon")or nil
+}or
+nil,
+},{
+...
+...
+if not L
+then
+warn("[ WindUI.Creator ]  '"..identifyexecutor()or"Studio".."' doesnt support the
+URL Images. Error: "..M)
+
+H:Destroy()
+end
+elseif
+v==""then
+H.Visible=false
+else
+H.ImageLabel.Image=v
+end
+
+return H
+end
+
+
+
+function p.Color3ToHSB(v)
+local
+x,z,A=v.R,v.G,v.B
+local B=math.max(x,z,A)
+local C=math.min(x,z,A)
+local F=B-C
+
+local
+G=0
+if F~=0 then
+if B==x then
+G=(z-A)/F%6
+elseif B==z
+then
+G=(A-x)/F+2
+else
+G=(x-z)/F+4
+end
+G=G*60
+else
+G=0
+end
+
+local H=(B==0)and 0 or(F/B)
+local
+J=B
+
+return{
+h=math.floor(G+0.5),
+s=H,
+b=J
+}
+end
+...
+...
+return p end function a.d()
+
+local b={}
+
+
+
+
+
+
+
+function b.New(d,e,f)
+local g={
+Enabled=e.Enabled or
+false,
+Translations=e.Translations or{},
+Prefix=e.Prefix
+or"loc:",
+DefaultLanguage=e.DefaultLanguage or"en"
+}
+
+f.Localization=g
+
+return g
+end
+
+
+
+return b end function a.e()
+local b=a.load'c'
+local d=b.New
+local e=b.Tween
+
+local
+f={
+Size=UD
+m2.new(0,300,1,-156),
+SizeLower=UDim2.new(0,300,1,-56),
+UICorner=18,
+UIPadding=14,
+
+Holder=nil,
+NotificationIndex=0,
+Notifications={}
+}
+
+function
+f.Init(g)
+local h={
+Lower=false
+}
+
+function h.SetLower(j)
+h.Lower=j
+h.Frame.Size=j and
+f.SizeLower or
+f.Size
+end
+
+h.Frame=d("Frame",{
+Position=UDim2.new(1,-29,0,56),
+AnchorP
+int=Vector2.new(1,0),
+Size=f.Size,
+...
+...
+Size=UDim2.new(0,0,1,0),
+ThemeTag={
+ImageTransparency="NotificationDurationTransparency",
+ImageColor3="NotificationDuration",
+},
+
+})
+
+local
+p=d("Frame",{
+Size=UDim2.new(1,
+h.Icon and-28-f.UIPadding or
+0,
+1,0),
+Position=UDim
+.new(1,0,0,0),
+AnchorPoint=Vector2.new(1,0),
+BackgroundTransparency=1,
+Automati
+Size="Y",
+},{
+d("UIPadding",{
+PaddingTop=UDim.new(0,f.UIPadding),
+PaddingLeft=U
+im.new(0,f.UIPadding),
+PaddingRight=UDim.new(0,f.UIPadding),
+PaddingBottom=UDim
+new(0,f.UIPadding),
+})
+})
+})
+
+ah.UIElements.Title=am("TextLabel",{
+Text=H.Title,
+TextSize=20,
+FontFace=Fo
+t.new(al.Font,Enum.FontWeight.SemiBold),
+TextXAlignment="Left",
+TextWrapped=true,
+RichText=true,
+Size=UDim2.new(1,M and-26-J.UIPadding or
+0,0,0),
+AutomaticSize="Y",
+ThemeTag={
+TextColor3="Text"
+},
+BackgroundTransparency=1,
+Parent=L
+})
+if
+H.Content
+then
+am("TextLabel",{
+Text=H.Content,
+TextSize=18,
+TextTransparency=.4,
+TextWrapped=true,
+RichText=true,
+FontFace=Font.new(al.Font,Enum.FontWeight.Medi
+m),
+TextXAlignment="Left",
+...
+...
+Size=UDim2.new(1,0,0,0),
+AutomaticSize="Y",
+LayoutOr
+er=2,
+ThemeTag={
+TextColor3="Text"
+},
+BackgroundTransparency=1,
+Parent=J.UIElem
+nts.Main
+},{
+am("UIPadding",{
+PaddingLeft=UDim.new(0,H.TextPadding/2),
+PaddingR
+ght=UDim.new(0,H.TextPadding/2),
+PaddingBottom=UDim.new(0,H.TextPadding/2),
+})
+})
+end
+
+local
+N=am("UIListLayout",{
+Padding=UDim.new(0,6),
+FillDirection="Horizontal",
+HorizontalAlignment="Right",
+})
+
+local
+O=am("Frame",{
+Size=UDim2.new(1,0,
+,40),
+AutomaticSize="None",
+BackgroundTransparency=1,
+Parent=J.UIElements.Main,
+LayoutOrder=4,
+},{
+N,
+
+
+
+
+
+
+})
+
+
+local P={}
+
+for Q,R in next,H.Buttons do
+local
+S=ap(R.Title,R.Icon,R.Callback,R.Variant,O,J,true)
+table.insert(P,S)
+end
+
+local
+...
+...
+function
+CheckButtonsOverflow()
+N.FillDirection=Enum.FillDirection.Horizontal
+N
+HorizontalAlignment=Enum.HorizontalAlignment.Right
+N.VerticalAlignment=Enum.VerticalAlignment.Center
+O.AutomaticSize=Enum.AutomaticSize.None
+
+for Q,R in
+ipairs
+P)do
+R.Size=UDim2.new(0,0,1,0)
+R.AutomaticSize=Enum.AutomaticSize.X
+end
+
+wait()
+
+local Q=N.AbsoluteContentSize.X/at.WindUI.UIScale
+local
+R=O.AbsoluteSize.X/at.WindUI.UIScale
+
+if Q>R
+then
+N.FillDirection=Enum.FillDirection.Vertical
+N.Horizo
+talAlignment=Enum.HorizontalAlignment.Right
+N.VerticalAlignment=Enum.VerticalAlignment.Bottom
+O.AutomaticSize=Enum.AutomaticSize.Y
+
+for S,T in
+ipairs(P)do
+T.Size=UDim2.new(1,0,0,40)
+T.AutomaticSize=Enum.AutomaticSize.None
+end
+else
+local
+S=R-Q
+if S>0 then
+local T
+...
+...
+local U=math.huge
+
+for V,W in ipairs(P)do
+local
+X=W.AbsoluteSize.X/at.WindUI.UIScale
+if X<U then
+U=X
+T=W
+end
+end
+
+if T
+then
+T.Size=UDim2
+new(0,U+S,1,0)
+T.AutomaticSize=Enum.AutomaticSize.None
+end
+end
+end
+end
+
+al.AddS
+gnal(J.UIElements.Main:GetPropertyChangedSignal"AbsoluteSize",CheckButtonsOverflow)
+CheckButtonsOverflow()
+
+wait()
+J:Open()
+
+return J
+end
+
+local
+F=false
+
+au:CreateTopbarButton("Close","x",function()
+if not F then
+if not au.IgnoreAlerts
+then
+F=true
+au:SetToTheCenter()
+au:Dialog{
+
+Title="Close Window",
+Content="Do you
+want to close this window? You will not be able to open it
+again.",
+Buttons={
+{
+Title="Cancel",
+
+Callback=function()F=false
+end,
+Variant="Secondary",
+},
+{
+Title="Close
+Window",
+
+Callback=function()
+...
+...
+al.AddSignal(O.MouseButton1Click,function()
+if N then return
+end
+
+M.new(au.TabModule,au.UIElements.Main,function()
+
+N=false
+if au.Resizable
+th
+n
+au.CanResize=true
+end
+
+an(az,0.1,{ImageTransparency=1}):Play()
+az.Active=fals
+
+end)
+an(az,0.1,{ImageTransparency=.65}):Play()
+az.Active=true
+
+N=true
+au.CanResize=false
+end)
+end
+
+
+
+
+function au.DisableTopbarButtons(M,N)
+for O,P in next,N
+do
+for Q,R in next,au.TopBarButtons do
+if R.Name==P
+then
+R.Object.Visible=false
+end
+end
+end
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+return au
+end end end
+
+local
+aa=game:GetService"RunService"
+local
+ae={
+Window=nil,
+Theme=nil,
+Creator=a.load'c',
+Loc
+lizationModule=a.load'd',
+NotificationModule=a.load'e',
+Themes=nil,
+Transparent
+false,
+
+TransparencyValue=.15,
+
+UIScale=1,
+
+ConfigManager=nil,
+...
+...
+Version="0.0.0",
+
+Services=a.load'j',
+
+OnThemeChangeFunction=nil,
+
+cloneref=nil,
+UIScaleObj=nil,
+}
+
+
+local af=(cloneref or clonereference or function(af)return af
+end)
+
+ae.cloneref=af
+
+local ah=af(game:GetService"HttpService")
+local
+aj=af(game:GetService"Players")
+local ak=af(game:GetService"CoreGui")local al=
+
+aj.LocalPlayer or
+nil
+
+local am=ah:JSONDecode(a.load'k')
+if am then
+ae.Version=am.version
+end
+
+local
+an=a.load'o'local ao=
+
+ae.Services
+
+
+local ap=ae.Creator
+
+local aq=ap.New local
+ar=
+ap.Tween
+
+
+local as=a.load's'
+
+
+local at=protectgui or(syn and
+syn.protect_gui)or function()end
+
+local au=gethui and gethui()or(ak or
+game.Players.LocalPlayer:WaitForChild"PlayerGui")
+
+local
+av=aq("UIScale",{
+Scale=ae.Scale,
+})
+...
+...
+ae.UIScal
+Obj=av
+
+ae.ScreenGui=aq("ScreenGui",{
+Name="WindUI",
+Parent=au,
+IgnoreGuiInset=
+rue,
+ScreenInsets="None",
+},{
+
+aq("Folder",{
+Name="Window"
+}),
+
+
+
+
+
+
+aq("Folder
+,{
+Name="KeySystem"
+}),
+aq("Folder",{
+Name="Popups"
+}),
+aq("Folder",{
+Name="Too
+Tips"
+})
+})
+
+ae.NotificationGui=aq("ScreenGui",{
+Name="WindUI/Notifications",
+P
+rent=au,
+IgnoreGuiInset=true,
+})
+ae.DropdownGui=aq("ScreenGui",{
+Name="WindUI/D
+opdowns",
+Parent=au,
+IgnoreGuiInset=true,
+})
+ae.TooltipGui=aq("ScreenGui",{
+Nam
+="WindUI/Tooltips",
+Parent=au,
+IgnoreGuiInset=true,
+})
+at(ae.ScreenGui)
+at(ae.NotificationGui)
+at(ae.DropdownGui)
+at(ae.TooltipGui)
+
+ap.Init(ae)
+
+
+function
+ae.
+etParent(aw,ax)
+ae.ScreenGui.Parent=ax
+...
+...
+ae.Themes
+end
+function ae.GetCurrentTheme(ax)
+return ae.Theme.Name
+end
+function
+ae.GetTransparency(ax)
+return ae.Transparent or false
+end
+function ae.GetWindowSize(ax)
+return
+Window.UIElements.Main.Size
+end
+function ae.Localization(ax,ay)
+return
+ae.LocalizationModule:New(ay,ap)
+end
+
+function ae.SetLanguage(ax,ay)
+if ap.Localization
+then
+return ap.SetLanguage(ay)
+end
+return false
+end
+
+function
+ae.ToggleAcrylic(ax,ay)
+if ae.Window and ae.Window.AcrylicPaint and ae.Window.AcrylicPaint.Model
+then
+ae.Window.Acrylic=ay
+ae.Window.AcrylicPaint.Model.Transparency=ay and 0.98 or
+1
+if ay then
+as.Enable()
+else
+as.Disable()
+end
+end
+end
+
+
+function
+ae.Gradient(ax,ay,az)
+local aA={}
+local aB={}
+
+for b,d in next,ay do
+local f=tonumber(b)
+if f
+then
+f=math.clamp(f/100,0,1)
+...
+...
+a.load't'.new(ay)
+end
+
+
+ae.The
+es=a.load'u'(ae)
+
+ap.Themes=ae.Themes
+
+
+ae:SetTheme"Dark"
+ae:SetLanguage(ap.Language)
+
+
+function ae.CreateWindow(ax,ay)
+local az=a.load'_'
+
+if not
+aa:IsStudio()and writefile then
+if not isfolder"WindUI"then
+makefolder"WindUI"
+end
+if
+ay.Folder
+then
+makefolder(ay.Folder)
+else
+makefolder(ay.Title)
+end
+end
+
+ay.WindUI=ae
+ay.Parent=ae.ScreenGui.Window
+
+if ae.Window then
+warn"You cannot create more than
+one window"
+return
+end
+
+local aA=true
+
+local aB=ae.Themes[ay.Theme
+or"Dark"]
+
+
+ap.SetTheme(aB)
+
+
+local b=gethwid or function()
+return
+aj.LocalPlayer.UserId
+end
+
+local d=b()
+
+if ay.KeySystem then
+aA=false
+
+local function
+loadKeysystem()
+an.new(ay,d,function(f)aA=f end)
+end
+...
+...
+next,m.Args do
+table.insert(p,l[u])
+end
+
+local r=m.New(table.unpack(p))
+local
+u=r.Verify(g)
+if u then
+h=true
+break
+end
+end
+end
+
+aA=h
+if not h then
+loadKeysystem()end
+else
+loadKeysystem()
+end
+end
+
+repeat task.wait()until aA
+end
+
+local
+f=az(ay)
+
+ae.Transparent=ay.Transparent
+ae.Window=f
+
+if ay.Acrylic
+then
+as.init()
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+return f
+end
+
+return ae]])()
+
+local Window = WindUI:CreateWindow({
+    Title = "OMZ Hub",
+    --Author = "zyrn0x",
+    Folder = "OMZ_Config",
+    Icon = "solar:folder-2-bold-duotone",
+    OpenButton = {
+        Title = "Ouvrir OMZ",
+        CornerRadius = UDim.new(1,0),
+        Enabled = true,
+        Draggable = true,
+        Scale = 0.55,
+        Color = ColorSequence.new(
+            Color3.fromHex("#00ffea"),
+            Color3.fromHex("#ff00aa")
+        )
+    },
+    Topbar = { Height = 44, ButtonsType = "Mac" },
+})
+
+-- Tags (optionnel)
+Window:Tag({ Title = "v1.0 • OMZ", Icon = "github", Color = Color3.fromHex("#1c1c1c"), Border = true })
 
 -- ────────────────────────────────────────────────────────────────
 --  COMBAT / AUTOPARRY / SPAM TAB
@@ -4688,11 +6107,10 @@ AISection:Slider({
     end
 })
 
-workspace.ChildRemoved:Connect(function(child)
+end)
     if child.Name == 'Balls' then
         System.__properties.__cached_balls = nil
     end
-end)
 
 local balls = workspace:FindFirstChild('Balls')
 if balls then
