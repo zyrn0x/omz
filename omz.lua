@@ -44,6 +44,10 @@ local System = {
         __timehole_active = false,
         __slashesoffury_active = false,
         __slashesoffury_count = 0,
+        __prediction_buffer = 0.06,
+        __retry_delay = 0.02,
+        __ping_multiplier = 1,
+        __debug = false,
         __is_mobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled,
         __mobile_guis = {}
     },
@@ -220,131 +224,6 @@ function System.ball.get_all()
     return balls_table
 end
 
--- Predict next target for a ball based on linear extrapolation of ball velocity
-function System.ball.predict_next_target(ball)
-    if not ball then return nil end
-    local zoomies = ball:FindFirstChild('zoomies')
-    local velocity = (zoomies and zoomies.VectorVelocity) or ball.AssemblyLinearVelocity
-    if not velocity then return nil end
-
-    local pos = ball.Position
-    local speed = velocity.Magnitude
-    if speed < 0.5 then return nil end
-
-    local dir = velocity.Unit
-    local bestScore = 0
-    local bestTarget = nil
-
-    local maxTime = 6 -- seconds to look ahead
-    for _, entity in pairs((Alive and Alive:GetChildren()) or {}) do
-        if entity ~= LocalPlayer.Character and entity.PrimaryPart then
-            local pPos = entity.PrimaryPart.Position
-            local pVel = entity.PrimaryPart.Velocity or Vector3.new(0,0,0)
-
-            local rel = pPos - pos
-            local along = rel:Dot(dir)
-            if along < -5 then continue end
-
-            local timeToReach = math.max(along / speed, 0)
-            if timeToReach > maxTime then continue end
-
-            local predictedPos = pPos + (pVel * timeToReach)
-            local projected = math.max((predictedPos - pos):Dot(dir), 0)
-            local closestPoint = pos + dir * projected
-            local dist = (closestPoint - predictedPos).Magnitude
-
-            local distScore = 1 / (1 + dist)
-            local timeScore = 1 / (1 + timeToReach)
-            local speedBonus = 1 + math.clamp(speed / 50, 0, 3)
-
-            local score = distScore * timeScore * speedBonus
-            if score > bestScore then
-                bestScore = score
-                bestTarget = entity
-            end
-        end
-    end
-
-    return bestTarget, bestScore
-end
-
--- Simple toggle runner for prediction
-function System.predict_start()
-    if System.__properties.__connections.__predict then
-        System.__properties.__connections.__predict:Disconnect()
-        System.__properties.__connections.__predict = nil
-    end
-
-    System.__properties.__connections.__predict = RunService.Heartbeat:Connect(function()
-        if not System.__properties.__predict_enabled then return end
-        local ball = System.ball.get()
-        if not ball then
-            System.__properties.__predicted_target = nil
-            return
-        end
-
-        local target = System.ball.predict_next_target(ball)
-        if target then
-            System.__properties.__predicted_target = target.Name
-            pcall(function() ball:SetAttribute('PredictedTarget', target.Name) end)
-
-            if System.__properties.__predict_visual_enabled then
-                if not System.__properties.__predict_billboards then
-                    System.__properties.__predict_billboards = {}
-                end
-                if not System.__properties.__predict_billboards[target] then
-                    -- create a simple billboard on the target
-                    if target.Character and target.Character:FindFirstChild('Head') then
-                        local head = target.Character.Head
-                        local gui = Instance.new('BillboardGui')
-                        gui.Name = 'PredictedTargetGui'
-                        gui.Adornee = head
-                        gui.Size = UDim2.new(0, 160, 0, 36)
-                        gui.StudsOffset = Vector3.new(0, 2.5, 0)
-                        gui.AlwaysOnTop = true
-                        local label = Instance.new('TextLabel')
-                        label.Size = UDim2.new(1, 0, 1, 0)
-                        label.BackgroundTransparency = 0.3
-                        label.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-                        label.TextColor3 = Color3.fromRGB(255, 200, 50)
-                        label.Font = Enum.Font.GothamBold
-                        label.TextSize = 16
-                        label.Text = 'PREDICTED'
-                        label.Parent = gui
-                        gui.Parent = head
-                        System.__properties.__predict_billboards[target] = gui
-                    end
-                end
-            end
-        else
-            System.__properties.__predicted_target = nil
-            pcall(function() ball:SetAttribute('PredictedTarget', nil) end)
-            if System.__properties.__predict_visual_enabled and System.__properties.__predict_billboards then
-                for pl, gui in pairs(System.__properties.__predict_billboards) do
-                    pcall(function()
-                        if gui and gui.Destroy then gui:Destroy() end
-                    end)
-                    System.__properties.__predict_billboards[pl] = nil
-                end
-            end
-        end
-    end)
-end
-
-function System.predict_stop()
-    if System.__properties.__connections.__predict then
-        System.__properties.__connections.__predict:Disconnect()
-        System.__properties.__connections.__predict = nil
-    end
-    System.__properties.__predicted_target = nil
-end
-
--- default flags
-System.__properties.__predict_enabled = false
-System.__properties.__predicted_target = nil
-System.__properties.__predict_visual_enabled = false
-System.__properties.__predict_billboards = {}
-
 System.player = {}
 
 local Closest_Entity = nil
@@ -495,7 +374,27 @@ function System.parry.execute()
         end
     end
     
-    local curve_cframe = System.curve.get_cframe()
+    local curve_cframe
+    do
+        local camera = workspace.CurrentCamera
+        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild('HumanoidRootPart')
+        -- try to predict target movement using server ping and target velocity
+        local closest_target = System.player.get_closest_to_cursor()
+        if closest_target and closest_target:FindFirstChild('HumanoidRootPart') and root then
+                local tp = closest_target.HumanoidRootPart
+                local target_pos = tp.Position
+                local vel = Vector3.new()
+                pcall(function()
+                    vel = tp.AssemblyLinearVelocity or tp.Velocity or Vector3.new()
+                end)
+                local ping_s = (Stats.Network.ServerStatsItem['Data Ping']:GetValue() or 0) / 1000
+                local safety = System.__properties.__prediction_buffer or 0.06
+                local predicted_pos = target_pos + vel * (ping_s + safety)
+                curve_cframe = CFrame.new(root.Position, predicted_pos)
+        else
+            curve_cframe = System.curve.get_cframe()
+        end
+    end
     
     if not System.__properties.__first_parry_done then
         for _, connection in pairs(getconnections(LocalPlayer.PlayerGui.Hotbar.Block.Activated)) do
@@ -526,9 +425,23 @@ function System.parry.execute()
         
         pcall(function()
             if remote:IsA('RemoteEvent') then
-                remote:FireServer(unpack(modified_args))
+                -- fire twice (small delayed burst) to mitigate packet loss/lag
+                local ok1, err1 = pcall(function() remote:FireServer(unpack(modified_args)) end)
+                if System.__properties.__debug then
+                    print("[AutoParry] FireServer first attempt:", ok1, err1)
+                end
+                task.spawn(function()
+                    task.wait(System.__properties.__retry_delay or 0.02)
+                    local ok2, err2 = pcall(function() remote:FireServer(unpack(modified_args)) end)
+                    if System.__properties.__debug then
+                        print("[AutoParry] FireServer retry:", ok2, err2)
+                    end
+                end)
             elseif remote:IsA('RemoteFunction') then
-                remote:InvokeServer(unpack(modified_args))
+                local ok, err = pcall(function() remote:InvokeServer(unpack(modified_args)) end)
+                if System.__properties.__debug then
+                    print("[AutoParry] InvokeServer:", ok, err)
+                end
             end
         end)
     end
@@ -954,14 +867,20 @@ end
 function System.auto_spam:get_ball_properties()
     local ball = System.ball.get()
     if not ball then return false end
-    
-    local ball_velocity = Vector3.zero
     local ball_origin = ball
-    
+    local zoomies = ball:FindFirstChild('zoomies')
+    local ball_velocity = Vector3.new()
+    pcall(function()
+        ball_velocity = (zoomies and zoomies.VectorVelocity) or ball.AssemblyLinearVelocity or Vector3.new()
+    end)
+
     local ball_direction = (LocalPlayer.Character.PrimaryPart.Position - ball_origin.Position).Unit
     local ball_distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
-    local ball_dot = ball_direction:Dot(ball_velocity.Unit)
-    
+    local ball_dot = 0
+    if ball_velocity.Magnitude > 0 then
+        ball_dot = ball_direction:Dot(ball_velocity.Unit)
+    end
+
     return {
         Velocity = ball_velocity,
         Direction = ball_direction,
@@ -1008,6 +927,9 @@ function System.auto_spam.spam_service(self)
     
     spam_accuracy = maximum_spam_distance - maximum_dot
     
+    if System.__properties.__debug then
+        print(('[AutoSpam] spam_accuracy=%.2f max_dist=%.2f speed=%.2f dot=%.2f'):format(spam_accuracy, maximum_spam_distance, speed, dot))
+    end
     return spam_accuracy
 end
 
@@ -1127,13 +1049,17 @@ function System.autoparry.start()
             local velocity = zoomies.VectorVelocity
             local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
             
-            local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue() / 10
-            local ping_threshold = math.clamp(ping / 10, 5, 17)
+            local ping_ms = Stats.Network.ServerStatsItem['Data Ping']:GetValue() or 0
+            -- make threshold scale with actual ping to be more tolerant under high latency
+            local ping_threshold = math.clamp(ping_ms / 50, 5, 25)
             local speed = velocity.Magnitude
             
             local capped_speed_diff = math.min(math.max(speed - 9.5, 0), 650)
             local speed_divisor = (2.4 + capped_speed_diff * 0.002) * System.__properties.__divisor_multiplier
-            local parry_accuracy = ping_threshold + math.max(speed / speed_divisor, 9.5)
+            local parry_accuracy = ping_threshold + math.max(speed / speed_divisor, 9.5) + math.clamp((ping_ms / 100) * (System.__properties.__ping_multiplier or 1), 0, 10)
+            if System.__properties.__debug then
+                print(('[AutoParry] distance=%.2f speed=%.2f ping=%d parry_accuracy=%.2f'):format(distance, speed, ping_ms, parry_accuracy))
+            end
             
             local curved = System.detection.is_curved()
             
@@ -3322,6 +3248,33 @@ ParrySection:Toggle({
     end
 })
 
+ParrySection:Slider({
+    Title = "Prediction Buffer (s)",
+    Value = { Min = 0, Max = 0.2, Default = 0.06 },
+    Step = 0.01,
+    Callback = function(value)
+        System.__properties.__prediction_buffer = value
+    end
+})
+
+ParrySection:Slider({
+    Title = "Retry Delay (s)",
+    Value = { Min = 0.01, Max = 0.2, Default = 0.02 },
+    Step = 0.01,
+    Callback = function(value)
+        System.__properties.__retry_delay = value
+    end
+})
+
+ParrySection:Slider({
+    Title = "Ping Multiplier",
+    Value = { Min = 0.5, Max = 5, Default = 1 },
+    Step = 0.1,
+    Callback = function(value)
+        System.__properties.__ping_multiplier = value
+    end
+})
+
 ParrySection:Space()
 
 ParrySection:Dropdown({
@@ -3397,6 +3350,16 @@ ParryGroup:Toggle({
     Callback = function(value)
         getgenv().AutoAbility = value
     end 
+})
+
+ParryGroup:Space()
+
+ParryGroup:Toggle({
+    Title = "Debug Logs",
+    Default = false,
+    Callback = function(value)
+        System.__properties.__debug = value
+    end
 })
 
 local TriggerSection = CombatTab:Section({
@@ -4620,22 +4583,6 @@ CheatSection:Toggle({
     })
 
 CheatSection:Toggle({
-    Title = "Prediction Visual",
-    Default = false,
-    Callback = function(value)
-        System.__properties.__predict_visual_enabled = value
-        if not value and System.__properties.__predict_billboards then
-            for pl, gui in pairs(System.__properties.__predict_billboards) do
-                pcall(function()
-                    if gui and gui.Destroy then gui:Destroy() end
-                end)
-                System.__properties.__predict_billboards[pl] = nil
-            end
-        end
-    end
-})
-
-CheatSection:Toggle({
     Title = "Continuity Zero Exploit",
     Default = false,
     Callback = function(value)
@@ -4656,27 +4603,6 @@ CheatSection:Toggle({
 
                     return oldNamecall(self, ...)
                 end))
-            end
-        end
-    })
-
-    CheatSection:Toggle({
-        Title = "Predict Next Ball Target",
-        Default = false,
-        Callback = function(value)
-            System.__properties.__predict_enabled = value
-            if value then
-                System.predict_start()
-            else
-                System.predict_stop()
-            end
-
-            if getgenv().PredictNotify then
-                Library.SendNotification({
-                    title = "Predict",
-                    text = value and "ON" or "OFF",
-                    duration = 2
-                })
             end
         end
     })
