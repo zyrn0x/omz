@@ -1622,107 +1622,6 @@ local function create_animation(object, info, value)
     animation:Destroy()
 end
 
-local animation_system = {
-    storage = {},
-    current = nil,
-    track = nil
-}
-
-function animation_system.load_animations()
-    local emotes_folder = game:GetService("ReplicatedStorage").Misc.Emotes
-    
-    for _, animation in pairs(emotes_folder:GetChildren()) do
-        if animation:IsA("Animation") and animation:GetAttribute("EmoteName") then
-            local emote_name = animation:GetAttribute("EmoteName")
-            animation_system.storage[emote_name] = animation
-        end
-    end
-end
-
-function animation_system.get_emotes_list()
-    local emotes_list = {}
-    
-    for emote_name in pairs(animation_system.storage) do
-        table.insert(emotes_list, emote_name)
-    end
-    
-    table.sort(emotes_list)
-    return emotes_list
-end
-
-function animation_system.play(emote_name)
-    local animation_data = animation_system.storage[emote_name]
-    
-    if not animation_data or not LocalPlayer.Character then
-        return false
-    end
-    
-    local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
-    if not humanoid then
-        return false
-    end
-    
-    local animator = humanoid:FindFirstChild("Animator")
-    if not animator then
-        return false
-    end
-    
-    if animation_system.track then
-        animation_system.track:Stop()
-        animation_system.track:Destroy()
-    end
-    
-    animation_system.track = animator:LoadAnimation(animation_data)
-    animation_system.track:Play()
-    animation_system.current = emote_name
-    
-    return true
-end
-
-function animation_system.stop()
-    if animation_system.track then
-        animation_system.track:Stop()
-        animation_system.track:Destroy()
-        animation_system.track = nil
-    end
-    animation_system.current = nil
-end
-
-function animation_system.start()
-    if not System.__properties.__connections.animations then
-        System.__properties.__connections.animations = RunService.Heartbeat:Connect(function()
-            if not LocalPlayer.Character or not LocalPlayer.Character.PrimaryPart then
-                return
-            end
-            
-            local speed = LocalPlayer.Character.PrimaryPart.AssemblyLinearVelocity.Magnitude
-            
-            if speed > 30 and getgenv().AutoStop then
-                if animation_system.track and animation_system.track.IsPlaying then
-                    animation_system.track:Stop()
-                end
-            else
-                if animation_system.current and (not animation_system.track or not animation_system.track.IsPlaying) then
-                    animation_system.play(animation_system.current)
-                end
-            end
-        end)
-    end
-end
-
-function animation_system.cleanup()
-    animation_system.stop()
-    
-    if System.__properties.__connections.animations then
-        System.__properties.__connections.animations:Disconnect()
-        System.__properties.__connections.animations = nil
-    end
-end
-
-animation_system.load_animations()
-local emotes_data = animation_system.get_emotes_list()
-local selected_animation = emotes_data[1]
-
 local ability_esp = {
     __config = {
         gui_name = "AbilityESPGui",
@@ -3025,7 +2924,10 @@ AutoPlayModule.runThread = function()
     AutoPlayModule.signal.connect("synchronize", AutoPlayModule.customService.RunService.PostSimulation, AutoPlayModule.ballUtils.getBall)
 end
 
-task.spawn(function()
+task.defer(function()
+-- Note: If loading is slow, you can preload WindUI by running this separately:
+-- local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+-- Then comment out the loadstring below and use the preloaded one.
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
 local Window = WindUI:CreateWindow({
@@ -3531,8 +3433,8 @@ ManualSpamSection:Slider({
 -- ────────────────────────────────────────────────────────────────
 
 local VisualTab = Window:Tab({ 
-    Title = "Emotes", 
-    Icon = "solar:emoji-funny-bold", 
+    Title = "Visual", 
+    Icon = "solar:eye-bold", 
     IconColor = Color3.fromHex("#ECA201") })
 
 local AvatarChangerSection = VisualTab:Section({
@@ -3608,51 +3510,6 @@ AvatarChangerSection:Input({
         end
     end
 })
-
-local EmotesSection = VisualTab:Section({
-    Title = "Emotes",
-})
-
-EmotesSection:Toggle({
-    Title = "Emotes",
-    Default = false,
-    Callback = function(value)
-        getgenv().Animations = value
-        
-        if value then
-            animation_system.start()
-            
-            if selected_animation then
-                animation_system.play(selected_animation)
-            end
-        else
-            animation_system.cleanup()
-        end
-    end
-})
-
-EmotesSection:Toggle({
-    Title = "Auto Stop",
-    Default = true,
-    Callback = function(value)
-        getgenv().AutoStop = value
-    end
-})
-
-local animation_dropdown = EmotesSection:Dropdown({
-    Title = "Emote Type",
-    Values = emotes_data,
-    Default = "None",
-    Callback = function(value)
-        selected_animation = value
-        
-        if getgenv().Animations then
-            animation_system.play(value)
-        end
-    end
-})
-
-animation_dropdown:Select(selected_animation)
 
 local OtherVisualsSection = VisualTab:Section({ 
     Title = "Other Visuals" 
