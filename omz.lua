@@ -1,4 +1,3 @@
-local cloneref = cloneref or function(o) return o end
 local Players = cloneref(game:GetService('Players'))
 local ReplicatedStorage = cloneref(game:GetService('ReplicatedStorage'))
 local UserInputService = cloneref(game:GetService('UserInputService'))
@@ -20,13 +19,13 @@ local Runtime = workspace.Runtime
 
 local System = {
     __properties = {
-        __autoparry_enabled = true,
+        __autoparry_enabled = false,
         __triggerbot_enabled = false,
         __manual_spam_enabled = false,
-        __auto_spam_enabled = true,
+        __auto_spam_enabled = false,
         __play_animation = false,
         __curve_mode = 1,
-        __accuracy = 100,
+        __accuracy = 1,
         __divisor_multiplier = 1.1,
         __parried = false,
         __training_parried = false,
@@ -39,7 +38,7 @@ local System = {
         __connections = {},
         __reverted_remotes = {},
         __spam_accumulator = 0,
-        __spam_rate = 60, -- OPTIMIZED: Reduced from 240 to 60 to prevent lag/crash on low-end devices
+        __spam_rate = 240,
         __infinity_active = false,
         __deathslash_active = false,
         __timehole_active = false,
@@ -429,28 +428,7 @@ function System.parry.keypress()
         return
     end
 
-    if PF then
-        pcall(PF)
-    else
-        -- Fallback: If PF is nil, try execute_action or just warn
-        -- For 'keypress' mode, we really need PF. 
-        -- Attempt to rescan?
-       if LocalPlayer.PlayerGui:FindFirstChild("Hotbar") and LocalPlayer.PlayerGui.Hotbar:FindFirstChild("Block") then
-            for _, v in next, getconnections(LocalPlayer.PlayerGui.Hotbar.Block.Activated) do
-                if v.Function then
-                    PF = v.Function
-                    pcall(PF)
-                    break
-                end
-            end
-       end
-       
-       if not PF then
-           -- Last ditch: Use VirtualInputManager to press F or click
-           -- For now, safe return to prevent crash
-           return
-       end
-    end
+    PF()
 
     if System.__properties.__parries > 10000 then return end
     
@@ -1039,60 +1017,43 @@ local function autoparry_process_ball(ball, one_ball, curved, ping_val, parry_ac
     autoparry_ensure_connection(ball)
     
     local ball_target = ball:GetAttribute('target')
-    local ball_target = ball:GetAttribute('target')
-    if ball_target ~= LocalPlayer.Name then return end
-
     local velocity = zoomies.VectorVelocity
-    local position = ball.Position
-    local root_part = LocalPlayer.Character.PrimaryPart
+    local speed = velocity.Magnitude
+    local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
     
-    -- ULTIMATE VECTOR MATH (The "God Mode" Calculation)
-    local direction_to_player = (root_part.Position - position).Unit
-    local distance = (root_part.Position - position).Magnitude
-    local forward_speed = velocity:Dot(direction_to_player) -- Positive = Towards us
-    
-    -- Lag/Desync Safety: If ball is moving away, ignore immediately
-    if forward_speed <= 0 then return end
-    
-    -- Side/Curve Velocity: How fast is it moving sideways?
-    -- We project velocity onto the direction vector, then subtract to get the rejection (side component)
-    local side_velocity_vector = velocity - (direction_to_player * forward_speed)
-    local side_speed = side_velocity_vector.Magnitude
-    
-    -- Time-To-Impact (TTI)
-    local tti = distance / forward_speed
-    
-    -- CONFIGURABLE SAFETY BUFFER (This replaces "Accuracy")
-    -- Accuracy 100 = Max Safety Buffer (0.15s) = Early Parry
-    -- Accuracy 1   = Min Safety Buffer (0.02s) = Late Parry (Riskier but good for clips)
-    local accuracy_clamped = math.clamp(System.__properties.__accuracy or 100, 1, 100)
-    local safety_buffer = (accuracy_clamped / 100) * 0.18 -- Up to 180ms extra safety
-    
-    -- Ping Lag Compensation
-    local ping_delay = math.clamp(ping_val / 1000, 0.05, 0.3) -- Minimum 50ms assumed lag
-    
-    -- REACTION THRESHOLD
-    local reaction_time = ping_delay + safety_buffer + 0.1 -- Base human reflex
-    
-    -- EMERGENCY REFLEX (Anti-Teleport/Snap)
-    if distance < 18 or tti < 0.25 then
-        reaction_time = 1.0 -- Force instant parry
+    local pred_ms = System.__properties.__parry_prediction_ms or 0
+    if pred_ms <= 0 then
+        pred_ms = math.min(math.max(ping_val * 0.4, 15), 85)
+    end
+    if curved and one_ball and ball == one_ball then
+        pred_ms = pred_ms + 28
+    end
+    local effective_distance = distance - speed * (pred_ms / 1000)
+    local parry_accuracy = parry_accuracy_func(speed) + 2
+    if curved and one_ball and ball == one_ball then
+        parry_accuracy = parry_accuracy + 4
     end
     
-    -- CURVE FILTER
-    -- If moving mostly sideways AND still far away -> It's a curve, ignore it.
-    -- If SideSpeed is 2x ForwardSpeed, it's definitely curving.
-    local is_curving = side_speed > (forward_speed * 1.6)
-    if is_curving and distance > 25 then
-        return -- Too much side movement, safe to ignore for now
+    if ball:FindFirstChild('AeroDynamicSlashVFX') then
+        ball.AeroDynamicSlashVFX:Destroy()
+        System.__properties.__tornado_time = tick()
     end
-
-    -- EXECUTE
-    if tti <= reaction_time then
-        -- Trigger Parry (Fallthrough to execution)
-    else
-        return -- Not time yet
+    
+    if Runtime:FindFirstChild('Tornado') then
+        if (tick() - System.__properties.__tornado_time) < (Runtime.Tornado:GetAttribute('TornadoTime') or 1) + 0.314159 then
+            return
+        end
     end
+    
+    if ball:FindFirstChild('ComboCounter') then return end
+    if LocalPlayer.Character.PrimaryPart:FindFirstChild('SingularityCape') then return end
+    if System.__config.__detections.__infinity and System.__properties.__infinity_active then return end
+    if System.__config.__detections.__deathslash and System.__properties.__deathslash_active then return end
+    if System.__config.__detections.__timehole and System.__properties.__timehole_active then return end
+    if System.__config.__detections.__slashesoffury and System.__properties.__slashesoffury_active then return end
+    
+    if ball_target ~= LocalPlayer.Name then return end
+    if effective_distance > parry_accuracy then return end
     
     if getgenv().CooldownProtection then
         local hotbar = LocalPlayer.PlayerGui:FindFirstChild("Hotbar")
@@ -1189,7 +1150,7 @@ function System.autoparry.start()
         local function parry_acc(speed)
             local capped = math.min(math.max(speed - 9.5, 0), 650)
             local div = (2.4 + capped * 0.002) * dm
-            return ping_threshold + math.max(speed / div, 11.5)
+            return ping_threshold + math.max(speed / div, 9.5)
         end
         
         for _, ball in pairs(balls) do
@@ -1203,12 +1164,25 @@ function System.autoparry.start()
                 autoparry_ensure_connection(training_ball)
                 local cooldown = System.__properties.__parried_balls[training_ball]
                 if not cooldown or tick() >= cooldown then
-                    -- Use the Ultimate Logic for Training Balls too!
-                    -- Passing 'false' for curved since training balls usually don't curve unpredictably,
-                    -- but the internal logic handles it anyway.
-                    autoparry_process_ball(training_ball, one_ball, false, ping_val, parry_acc)
-                end
-
+                    local ball_target = training_ball:GetAttribute('target')
+                    local velocity = zoomies.VectorVelocity
+                    local speed = velocity.Magnitude
+                    local distance = (LocalPlayer.Character.PrimaryPart.Position - training_ball.Position).Magnitude
+                    local pred_ms = System.__properties.__parry_prediction_ms or 0
+                    if pred_ms <= 0 then
+                        pred_ms = math.min(math.max(ping_val * 0.4, 15), 85)
+                    end
+                    local parry_accuracy = parry_acc(speed) + 2
+                    local effective_distance = distance - speed * (pred_ms / 1000)
+                    
+                    if ball_target == LocalPlayer.Name and effective_distance <= parry_accuracy then
+                        if getgenv().AutoParryMode == "Keypress" then
+                            System.parry.keypress()
+                        else
+                            System.parry.execute_action()
+                        end
+                        System.__properties.__parried_balls[training_ball] = tick() + 0.82
+                    end
                 end
             end
         end
@@ -2535,9 +2509,7 @@ task.defer(function()
             args[1] = getgenv().slashName
             args[3] = getgenv().swordFX
         end
-        if playParryFunc then
-            return playParryFunc(unpack(args))
-        end
+        return playParryFunc(unpack(args))
     end)
 
     table.insert(clashConnections, getconnections(ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent)[1])
@@ -3440,7 +3412,7 @@ ParrySection:Dropdown({
 
 ParrySection:Slider({
     Title = "Parry Accuracy",
-    Value = { Min = 1, Max = 100, Default = 100 },
+    Value = { Min = 1, Max = 100, Default = 50 },
     Step = 1,
     Callback = function(value)
         System.__properties.__accuracy = value
