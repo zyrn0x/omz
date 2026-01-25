@@ -1286,9 +1286,14 @@ local function destroy_mobile_gui(gui_data)
     end
 end
 
-local AutoparryGroup = AutoparryTab:Group({ Title = "Core Features" })
+local MainSection = AutoparryTab:Section({ 
+    Title = "Main Settings", 
+    Side = "Left",
+    Box = true, 
+    Opened = true 
+})
 
-AutoparryGroup:Toggle({
+MainSection:Toggle({
     Title = 'Auto Parry',
     Description = 'Automatically parries ball',
     Default = false,
@@ -1308,7 +1313,7 @@ AutoparryGroup:Toggle({
     end
 })
 
-AutoparryGroup:Dropdown({
+MainSection:Dropdown({
     Title = "Parry Mode",
     Options = {"Remote", "Keypress"},
     Default = "Remote",
@@ -1317,7 +1322,7 @@ AutoparryGroup:Dropdown({
     end
 })
 
-AutoparryGroup:Dropdown({
+MainSection:Dropdown({
     Title = "AutoCurve",
     Options = System.__config.__curve_names,
     Default = System.__config.__curve_names[1],
@@ -1331,7 +1336,7 @@ AutoparryGroup:Dropdown({
     end
 })
 
-AutoparryGroup:Slider({
+MainSection:Slider({
     Title = 'Parry Accuracy',
     Value = { Min = 1, Max = 100, Default = 50 },
     Callback = function(value)
@@ -1340,7 +1345,7 @@ AutoparryGroup:Slider({
     end
 })
 
-AutoparryGroup:Toggle({
+MainSection:Toggle({
     Title = "Play Animation",
     Default = false,
     Callback = function(value)
@@ -1348,9 +1353,9 @@ AutoparryGroup:Toggle({
     end
 })
 
-AutoparryGroup:Divider()
+MainSection:Divider()
 
-AutoparryGroup:Checkbox({
+MainSection:Checkbox({
     Title = "Notify",
     Default = false,
     Callback = function(value)
@@ -1358,7 +1363,7 @@ AutoparryGroup:Checkbox({
     end
 })
 
-AutoparryGroup:Checkbox({
+MainSection:Checkbox({
     Title = "Cooldown Protection",
     Default = false,
     Callback = function(value)
@@ -1366,7 +1371,7 @@ AutoparryGroup:Checkbox({
     end
 })
 
-AutoparryGroup:Checkbox({
+MainSection:Checkbox({
     Title = "Auto Ability",
     Default = false,
     Callback = function(value)
@@ -1374,9 +1379,14 @@ AutoparryGroup:Checkbox({
     end
 })
 
-local TriggerbotGroup = AutoparryTab:Group({ Title = "Triggerbot" })
+local BotSection = AutoparryTab:Section({ 
+    Title = "Triggerbot Settings", 
+    Side = "Right",
+    Box = true, 
+    Opened = true 
+})
 
-TriggerbotGroup:Toggle({
+BotSection:Toggle({
     Title = "Triggerbot",
     Description = "Parries instantly if targeted",
     Default = false,
@@ -1449,7 +1459,7 @@ TriggerbotGroup:Toggle({
     end
 })
 
-TriggerbotGroup:Checkbox({
+BotSection:Checkbox({
     Title = "Notify",
     Default = false,
     Callback = function(value)
@@ -1965,9 +1975,9 @@ function AimPlayer.getTargetPlayer()
     return Players:FindFirstChild(state.selectedTarget)
 end]]
 
-local DetectionGroup = DetectionTab:Group({ Title = "Special Detections" })
+local SpecSection = DetectionTab:Section({ Title = "Special Detections", Side = "Left", Box = true, Opened = true })
 
-DetectionGroup:Toggle({
+SpecSection:Toggle({
     Title = 'Infinity Detection',
     Default = false,
     Callback = function(value)
@@ -1975,7 +1985,7 @@ DetectionGroup:Toggle({
     end
 })
 
-DetectionGroup:Toggle({
+SpecSection:Toggle({
     Title = 'Death Slash Detection',
     Default = false,
     Callback = function(value)
@@ -1983,7 +1993,7 @@ DetectionGroup:Toggle({
     end
 })
 
-DetectionGroup:Toggle({
+SpecSection:Toggle({
     Title = 'Time Hole Detection',
     Default = false,
     Callback = function(value)
@@ -1991,9 +2001,9 @@ DetectionGroup:Toggle({
     end
 })
 
-local SlashesGroup = DetectionTab:Group({ Title = "Slashes Of Fury" })
+local SlashesSection = DetectionTab:Section({ Title = "Slashes Of Fury", Side = "Right", Box = true, Opened = true })
 
-SlashesGroup:Toggle({
+SlashesSection:Toggle({
     Title = 'Enable Slashes Detection',
     Default = false,
     Callback = function(value)
@@ -2001,7 +2011,7 @@ SlashesGroup:Toggle({
     end
 })
 
-SlashesGroup:Slider({
+SlashesSection:Slider({
     Title = "Parry Delay",
     Value = { Min = 0.05, Max = 0.250, Default = 0.05 },
     Callback = function(value)
@@ -2009,7 +2019,7 @@ SlashesGroup:Slider({
     end
 })
 
-SlashesGroup:Slider({
+SlashesSection:Slider({
     Title = "Max Parry Count",
     Value = { Min = 1, Max = 36, Default = 36 },
     Callback = function(value)
@@ -2017,9 +2027,9 @@ SlashesGroup:Slider({
     end
 })
 
-local PhantomGroup = DetectionTab:Group({ Title = "Advanced" })
+local PhantomSection = DetectionTab:Section({ Title = "Advanced", Side = "Left", Box = true, Opened = true })
 
-PhantomGroup:Toggle({
+PhantomSection:Toggle({
     Title = 'Anti-Phantom [BETA]',
     Default = false,
     Callback = function(value)
@@ -2027,9 +2037,9 @@ PhantomGroup:Toggle({
     end
 })
 
-local ManualSpamGroup = SpamTab:Group({ Title = "Manual Spam" })
+local ManualSection = SpamTab:Section({ Title = "Manual Spam", Side = "Left", Box = true, Opened = true })
 
-ManualSpamGroup:Toggle({
+ManualSection:Toggle({
     Title = "Manual Spam",
     Description = "High-frequency parry spam",
     Default = false,
@@ -2107,7 +2117,7 @@ ManualSpamGroup:Toggle({
     end
 })
 
-ManualSpamGroup:Checkbox({
+ManualSection:Checkbox({
     Title = "Notify",
     Default = false,
     Callback = function(value)
@@ -2115,7 +2125,7 @@ ManualSpamGroup:Checkbox({
     end
 })
 
-ManualSpamGroup:Dropdown({
+ManualSection:Dropdown({
     Title = "Mode",
     Options = {"Remote", "Keypress"},
     Default = "Remote",
@@ -2124,7 +2134,7 @@ ManualSpamGroup:Dropdown({
     end
 })
 
-ManualSpamGroup:Checkbox({
+ManualSection:Checkbox({
     Title = "Animation Fix",
     Default = false,
     Callback = function(value)
@@ -2132,7 +2142,7 @@ ManualSpamGroup:Checkbox({
     end
 })
 
-ManualSpamGroup:Slider({
+ManualSection:Slider({
     Title = 'Spam Rate',
     Value = { Min = 60, Max = 5000, Default = 240 },
     Callback = function(value)
@@ -2140,9 +2150,9 @@ ManualSpamGroup:Slider({
     end
 })
 
-local AutoSpamGroup = SpamTab:Group({ Title = "Auto Spam" })
+local AutoSpamSection = SpamTab:Section({ Title = "Auto Spam", Side = "Right", Box = true, Opened = true })
 
-AutoSpamGroup:Toggle({
+AutoSpamSection:Toggle({
     Title = 'Auto Spam',
     Description = 'Automatically spam parries ball',
     Default = false,
@@ -2162,7 +2172,7 @@ AutoSpamGroup:Toggle({
     end
 })
 
-AutoSpamGroup:Checkbox({
+AutoSpamSection:Checkbox({
     Title = "Notify",
     Default = false,
     Callback = function(value)
@@ -2170,7 +2180,7 @@ AutoSpamGroup:Checkbox({
     end
 })
 
-AutoSpamGroup:Dropdown({
+AutoSpamSection:Dropdown({
     Title = "Mode",
     Options = {"Remote", "Keypress"},
     Default = "Remote",
@@ -2179,7 +2189,7 @@ AutoSpamGroup:Dropdown({
     end
 })
 
-AutoSpamGroup:Checkbox({
+AutoSpamSection:Checkbox({
     Title = "Animation Fix",
     Default = false,
     Callback = function(value)
@@ -2187,7 +2197,7 @@ AutoSpamGroup:Checkbox({
     end
 })
 
-AutoSpamGroup:Slider({
+AutoSpamSection:Slider({
     Title = "Parry Threshold",
     Value = { Min = 1, Max = 5, Default = 2.5 },
     Callback = function(value)
@@ -2426,9 +2436,9 @@ local function __set(__name, __char)
     __start_persistent_reapply(__char, __desc)
 end
 
-local AvatarGroup = PlayerTab:Group({ Title = "Appearance" })
+local AppearanceSection = PlayerTab:Section({ Title = "Appearance", Side = "Left", Box = true, Opened = true })
 
-AvatarGroup:Toggle({
+AppearanceSection:Toggle({
     Title = 'Avatar Changer',
     Description = 'Change your avatar to another player',
     Default = false,
@@ -2461,7 +2471,7 @@ AvatarGroup:Toggle({
                 local __char = __localplayer.Character
 
                 if __char then
-                    -- Restaura a aparência original do próprio jogador
+                    -- Restaura a aparência original do proprio jogador
                     pcall(function()
                         __localplayer:ClearCharacterAppearance()
                         -- tenta reaplicar descrição padrão do usuário
@@ -2481,7 +2491,7 @@ AvatarGroup:Toggle({
     end
 })
 
-AvatarGroup:Input({
+AppearanceSection:Input({
     Title = "Target Username",
     Placeholder = "Enter Username...",
     Callback = function(val)
@@ -2496,9 +2506,9 @@ AvatarGroup:Input({
     end
 })
 
-local EmotesGroup = PlayerTab:Group({ Title = "Animations" })
+local EmotesSection = PlayerTab:Section({ Title = "Animations", Side = "Right", Box = true, Opened = true })
 
-EmotesGroup:Toggle({
+EmotesSection:Toggle({
     Title = 'Emotes',
     Description = 'Custom Emotes',
     Default = false,
@@ -2517,7 +2527,7 @@ EmotesGroup:Toggle({
     end
 })
 
-EmotesGroup:Checkbox({
+EmotesSection:Checkbox({
     Title = "Auto Stop",
     Default = false,
     Callback = function(value)
@@ -2525,7 +2535,7 @@ EmotesGroup:Checkbox({
     end
 })
 
-EmotesGroup:Dropdown({
+EmotesSection:Dropdown({
     Title = 'Emote Type',
     Options = emotes_data,
     Default = emotes_data[1],
@@ -2540,9 +2550,9 @@ EmotesGroup:Dropdown({
 
 animation_dropdown:update(selected_animation)
 
-local POVGroup = PlayerTab:Group({ Title = "Camera" })
+local POVSection = PlayerTab:Section({ Title = "Camera", Side = "Left", Box = true, Opened = true })
 
-POVGroup:Toggle({
+POVSection:Toggle({
     Title = 'FOV Change',
     Description = 'Changes Camera POV',
     Default = false,
@@ -2572,7 +2582,7 @@ POVGroup:Toggle({
     end
 })
 
-POVGroup:Slider({
+POVSection:Slider({
     Title = 'Camera FOV Value',
     Value = { Min = 50, Max = 120, Default = 70 },
     Callback = function(value)
@@ -2583,9 +2593,9 @@ POVGroup:Slider({
     end
 })
 
-local ModGroup = PlayerTab:Group({ Title = "Modifications" })
+local ModSection = PlayerTab:Section({ Title = "Modifications", Side = "Right", Box = true, Opened = true })
 
-ModGroup:Toggle({
+ModSection:Toggle({
     Title = 'Enable Character Mods',
     Description = 'Toggles various character properties',
     Default = false,
@@ -2680,7 +2690,7 @@ ModGroup:Toggle({
     end
 })
 
-ModGroup:Checkbox({
+ModSection:Checkbox({
     Title = "Infinite Jump",
     Default = false,
     Callback = function(value)
@@ -2706,9 +2716,9 @@ ModGroup:Checkbox({
     end
 })
 
-ModGroup:Divider()
+ModSection:Divider()
 
-ModGroup:Checkbox({
+ModSection:Checkbox({
     Title = "Spin",
     Default = false,
     Callback = function(value)
@@ -2723,7 +2733,7 @@ ModGroup:Checkbox({
     end
 })
 
-ModGroup:Slider({
+ModSection:Slider({
     Title = 'Spin Speed',
     Value = { Min = 1, Max = 50, Default = 5 },
     Callback = function(value)
@@ -2731,9 +2741,9 @@ ModGroup:Slider({
     end
 })
 
-ModGroup:Divider()
+ModSection:Divider()
 
-ModGroup:Checkbox({
+ModSection:Checkbox({
     Title = "Walk Speed",
     Default = false,
     Callback = function(value)
@@ -2748,7 +2758,7 @@ ModGroup:Checkbox({
     end
 })
 
-ModGroup:Slider({
+ModSection:Slider({
     Title = 'Walk Speed Value',
     Value = { Min = 16, Max = 500, Default = 36 },
     Callback = function(value)
@@ -2763,9 +2773,9 @@ ModGroup:Slider({
     end
 })
 
-ModGroup:Divider()
+ModSection:Divider()
 
-ModGroup:Checkbox({
+ModSection:Checkbox({
     Title = "Jump Power",
     Default = false,
     Callback = function(value)
@@ -2785,7 +2795,7 @@ ModGroup:Checkbox({
     end
 })
 
-ModGroup:Slider({
+ModSection:Slider({
     Title = 'Jump Power Value',
     Value = { Min = 50, Max = 200, Default = 50 },
     Callback = function(value)
@@ -2806,9 +2816,9 @@ ModGroup:Slider({
     end
 })
 
-ModGroup:Divider()
+ModSection:Divider()
 
-ModGroup:Checkbox({
+ModSection:Checkbox({
     Title = "Gravity",
     Default = false,
     Callback = function(value)
@@ -2820,7 +2830,7 @@ ModGroup:Checkbox({
     end
 })
 
-ModGroup:Slider({
+ModSection:Slider({
     Title = 'Gravity Value',
     Value = { Min = 0, Max = 400.0, Default = 196.2 },
     Callback = function(value)
@@ -2832,9 +2842,9 @@ ModGroup:Slider({
     end
 })
 
-ModGroup:Divider()
+ModSection:Divider()
 
-ModGroup:Checkbox({
+ModSection:Checkbox({
     Title = "Hip Height",
     Default = false,
     Callback = function(value)
@@ -2849,7 +2859,7 @@ ModGroup:Checkbox({
     end
 })
 
-ModGroup:Slider({
+ModSection:Slider({
     Title = 'Hip Height Value',
     Value = { Min = -5, Max = 20, Default = 0 },
     Callback = function(value)
@@ -3178,9 +3188,9 @@ function ability_esp.toggle(value)
     end
 end
 
-local ESPGroup = VisualsTab:Group({ Title = "ESP & Information" })
+local ESPSection = VisualsTab:Section({ Title = "ESP & Information", Side = "Left", Box = true, Opened = true })
 
-ESPGroup:Toggle({
+ESPSection:Toggle({
     Title = 'Ability ESP',
     Description = 'Displays Player Abilities',
     Default = false,
@@ -3189,7 +3199,7 @@ ESPGroup:Toggle({
     end
 })
 
-ESPGroup:Toggle({
+ESPSection:Toggle({
     Title = "Show Ball Velocity",
     Description = "Displays real-time ball speed stats",
     Default = false,
@@ -3202,9 +3212,9 @@ ESPGroup:Toggle({
     end
 })
 
-local EffectsGroup = VisualsTab:Group({ Title = "Special Effects" })
+local EffectsSection = VisualsTab:Section({ Title = "Special Effects", Side = "Right", Box = true, Opened = true })
 
-EffectsGroup:Toggle({
+EffectsSection:Toggle({
     Title = 'Rain',
     Description = 'Magical particle rain effect',
     Default = false,
@@ -3216,7 +3226,7 @@ EffectsGroup:Toggle({
     end,
 })
 
-EffectsGroup:Slider({
+EffectsSection:Slider({
     Title = 'Max Particles',
     Value = { Min = 100, Max = 20000, Default = 5000 },
     Callback = function(value)
@@ -3224,7 +3234,7 @@ EffectsGroup:Slider({
     end,
 })
 
-EffectsGroup:Slider({
+EffectsSection:Slider({
     Title = 'Spawn Rate',
     Value = { Min = 1, Max = 25, Default = 3 },
     Callback = function(value)
@@ -3232,7 +3242,7 @@ EffectsGroup:Slider({
     end,
 })
 
-EffectsGroup:Colorpicker({
+EffectsSection:Colorpicker({
     Title = 'Particle Color',
     Default = Color3.fromRGB(100, 200, 255),
     Callback = function(color)
@@ -3241,9 +3251,9 @@ EffectsGroup:Colorpicker({
     end,
 })
 
-EffectsGroup:Divider()
+EffectsSection:Divider()
 
-EffectsGroup:Toggle({
+EffectsSection:Toggle({
     Title = 'Ball Trail',
     Description = 'Advanced plasma trail for the ball',
     Default = false,
@@ -3256,7 +3266,7 @@ EffectsGroup:Toggle({
     end,
 })
 
-EffectsGroup:Slider({
+EffectsSection:Slider({
     Title = 'Number of Trails',
     Value = { Min = 2, Max = 16, Default = 8 },
     Callback = function(value)
@@ -3270,7 +3280,7 @@ EffectsGroup:Slider({
     end,
 })
 
-EffectsGroup:Colorpicker({
+EffectsSection:Colorpicker({
     Title = 'Trail Color',
     Default = Color3.fromRGB(0, 255, 255),
     Callback = function(color)
@@ -3562,9 +3572,9 @@ visuals:create_module({
 
 local Connections_Manager = {}
 
-local MiscGroup = MiscTab:Group({ Title = "Performance" })
+local PerformSection = MiscTab:Section({ Title = "Performance", Side = "Left", Box = true, Opened = true })
 
-MiscGroup:Toggle({
+PerformSection:Toggle({
     Title = 'No Render',
     Description = 'Disables rendering of effects',
     Default = false,
@@ -4202,9 +4212,9 @@ task.spawn(function()
     end
 end)
 
-local SkinGroup = MiscTab:Group({ Title = "Skins" })
+local SkinSection = MiscTab:Section({ Title = "Skins", Side = "Left", Box = true, Opened = true })
 
-SkinGroup:Toggle({
+SkinSection:Toggle({
     Title = 'Skin Changer',
     Description = 'Ported Skin Changer',
     Default = false,
@@ -4216,7 +4226,7 @@ SkinGroup:Toggle({
     end
 })
 
-SkinGroup:Checkbox({
+SkinSection:Checkbox({
     Title = "Change Sword Model",
     Default = true,
     Callback = function(value)
@@ -4227,7 +4237,7 @@ SkinGroup:Checkbox({
     end
 })
 
-SkinGroup:Input({
+SkinSection:Input({
     Title = "Sword Model Name",
     Placeholder = "Enter Sword Model Name...",
     Callback = function(text)
@@ -4238,7 +4248,7 @@ SkinGroup:Input({
     end
 })
 
-SkinGroup:Checkbox({
+SkinSection:Checkbox({
     Title = "Change Sword Animation",
     Default = true,
     Callback = function(value)
@@ -4249,7 +4259,7 @@ SkinGroup:Checkbox({
     end
 })
 
-SkinGroup:Input({
+SkinSection:Input({
     Title = "Sword Animation Name",
     Placeholder = "Enter Sword Animation Name...",
     Callback = function(text)
@@ -4260,7 +4270,7 @@ SkinGroup:Input({
     end
 })
 
-SkinGroup:Checkbox({
+SkinSection:Checkbox({
     Title = "Change Sword FX",
     Default = true,
     Callback = function(value)
@@ -4271,7 +4281,7 @@ SkinGroup:Checkbox({
     end
 })
 
-SkinGroup:Input({
+SkinSection:Input({
     Title = "Sword FX Name",
     Placeholder = "Enter Sword FX Name...",
     Callback = function(text)
@@ -4989,9 +4999,9 @@ AutoPlayModule.runThread = function()
     AutoPlayModule.signal.connect("synchronize", AutoPlayModule.customService.RunService.PostSimulation, AutoPlayModule.ballUtils.getBall)
 end
 
-local AIGroup = MiscTab:Group({ Title = "AI Autoplay" })
+local AISection = MiscTab:Section({ Title = "AI Autoplay", Side = "Right", Box = true, Opened = true })
 
-AIGroup:Toggle({
+AISection:Toggle({
     Title = 'AI Play',
     Description = 'Automatically Plays',
     Default = false,
@@ -5004,7 +5014,7 @@ AIGroup:Toggle({
     end
 })
 
-AIGroup:Checkbox({
+AISection:Checkbox({
     Title = "AI Enable Jumping",
     Default = false,
     Callback = function(value)
@@ -5012,7 +5022,7 @@ AIGroup:Checkbox({
     end
 })
 
-AIGroup:Checkbox({
+AISection:Checkbox({
     Title = "AI Auto Vote",
     Default = false,
     Callback = function(value)
@@ -5020,7 +5030,7 @@ AIGroup:Checkbox({
     end
 })
 
-AIGroup:Checkbox({
+AISection:Checkbox({
     Title = "AI Avoid Players",
     Default = false,
     Callback = function(value)
@@ -5028,9 +5038,9 @@ AIGroup:Checkbox({
     end
 })
 
-AIGroup:Divider()
+AISection:Divider()
 
-AIGroup:Slider({
+AISection:Slider({
     Title = 'AI Update Frequency',
     Value = { Min = 3, Max = 20, Default = AutoPlayModule.CONFIG.UPDATE_FREQUENCY },
     Callback = function(value)
@@ -5038,7 +5048,7 @@ AIGroup:Slider({
     end
 })
 
-AIGroup:Slider({
+AISection:Slider({
     Title = 'AI Distance From Ball',
     Value = { Min = 5, Max = 100, Default = AutoPlayModule.CONFIG.DEFAULT_DISTANCE },
     Callback = function(value)
@@ -5046,7 +5056,7 @@ AIGroup:Slider({
     end
 })
 
-AIGroup:Slider({
+AISection:Slider({
     Title = 'AI Distance From Players',
     Value = { Min = 10, Max = 150, Default = AutoPlayModule.CONFIG.MINIMUM_PLAYER_DISTANCE },
     Callback = function(value)
@@ -5054,7 +5064,7 @@ AIGroup:Slider({
     end
 })
 
-AIGroup:Slider({
+AISection:Slider({
     Title = 'AI Speed Multiplier',
     Value = { Min = 10, Max = 200, Default = AutoPlayModule.CONFIG.MULTIPLIER_THRESHOLD },
     Callback = function(value)
@@ -5062,7 +5072,7 @@ AIGroup:Slider({
     end
 })
 
-AIGroup:Slider({
+AISection:Slider({
     Title = 'AI Transversing',
     Value = { Min = 0, Max = 100, Default = AutoPlayModule.CONFIG.TRAVERSING },
     Callback = function(value)
@@ -5070,7 +5080,7 @@ AIGroup:Slider({
     end
 })
 
-AIGroup:Slider({
+AISection:Slider({
     Title = 'AI Direction',
     Value = { Min = -1, Max = 1, Default = AutoPlayModule.CONFIG.DIRECTION },
     Callback = function(value)
@@ -5078,7 +5088,7 @@ AIGroup:Slider({
     end
 })
 
-AIGroup:Slider({
+AISection:Slider({
     Title = 'AI Offset Factor',
     Value = { Min = 0.1, Max = 1, Default = AutoPlayModule.CONFIG.OFFSET_FACTOR },
     Callback = function(value)
@@ -5086,7 +5096,7 @@ AIGroup:Slider({
     end
 })
 
-AIGroup:Slider({
+AISection:Slider({
     Title = 'AI Movement Duration',
     Value = { Min = 0.1, Max = 1, Default = AutoPlayModule.CONFIG.MOVEMENT_DURATION },
     Callback = function(value)
@@ -5094,7 +5104,7 @@ AIGroup:Slider({
     end
 })
 
-AIGroup:Slider({
+AISection:Slider({
     Title = 'AI Generation Threshold',
     Value = { Min = 0.1, Max = 0.5, Default = AutoPlayModule.CONFIG.GENERATION_THRESHOLD },
     Callback = function(value)
@@ -5102,7 +5112,7 @@ AIGroup:Slider({
     end
 })
 
-AIGroup:Slider({
+AISection:Slider({
     Title = 'AI Jump Chance',
     Value = { Min = 0, Max = 100, Default = AutoPlayModule.CONFIG.JUMP_PERCENTAGE },
     Callback = function(value)
@@ -5110,7 +5120,7 @@ AIGroup:Slider({
     end
 })
 
-AIGroup:Slider({
+AISection:Slider({
     Title = 'AI Double Jump Chance',
     Value = { Min = 0, Max = 100, Default = AutoPlayModule.CONFIG.DOUBLE_JUMP_PERCENTAGE },
     Callback = function(value)
@@ -5274,27 +5284,27 @@ hooks.oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
     return hooks.oldIndex(self, key)
 end))
 
-local ExclusiveGroup = ExclusiveTab:Group({ Title = "Blatant Features" })
+local BlatantSection = ExclusiveTab:Section({ Title = "Blatant Features", Side = "Left", Box = true, Opened = true })
 
-ExclusiveGroup:Toggle({
+BlatantSection:Toggle({
     Title = "Walkable Semi-Immortal [BLATANT!]",
     Default = false,
     Callback = WalkableSemiImmortal.toggle
 })
 
-ExclusiveGroup:Checkbox({
+BlatantSection:Checkbox({
     Title = "Notify",
     Default = false,
     Callback = WalkableSemiImmortal.setNotify
 })
 
-ExclusiveGroup:Slider({
+BlatantSection:Slider({
     Title = 'Immortal Radius',
     Value = { Min = 0, Max = 100, Default = 25 },
     Callback = WalkableSemiImmortal.setRadius
 })
 
-ExclusiveGroup:Slider({
+BlatantSection:Slider({
     Title = 'Immortal Height',
     Value = { Min = 0, Max = 60, Default = 30 },
     Callback = WalkableSemiImmortal.setHeight
