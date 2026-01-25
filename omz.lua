@@ -19,13 +19,13 @@ local Runtime = workspace.Runtime
 
 local System = {
     __properties = {
-        __autoparry_enabled = false,
+        __autoparry_enabled = true,
         __triggerbot_enabled = false,
         __manual_spam_enabled = false,
-        __auto_spam_enabled = false,
+        __auto_spam_enabled = true,
         __play_animation = false,
         __curve_mode = 1,
-        __accuracy = 1,
+        __accuracy = 100,
         __divisor_multiplier = 1.1,
         __parried = false,
         __training_parried = false,
@@ -1023,10 +1023,10 @@ local function autoparry_process_ball(ball, one_ball, curved, ping_val, parry_ac
     
     local pred_ms = System.__properties.__parry_prediction_ms or 0
     if pred_ms <= 0 then
-        pred_ms = math.min(math.max(ping_val * 0.4, 15), 85)
+        pred_ms = math.min(math.max(ping_val * 0.6, 15), 85)
     end
     if curved and one_ball and ball == one_ball then
-        pred_ms = pred_ms + 28
+        -- Curve prediction offset removed to prevent early parry
     end
     local effective_distance = distance - speed * (pred_ms / 1000)
     local parry_accuracy = parry_accuracy_func(speed) + 2
@@ -1150,7 +1150,7 @@ function System.autoparry.start()
         local function parry_acc(speed)
             local capped = math.min(math.max(speed - 9.5, 0), 650)
             local div = (2.4 + capped * 0.002) * dm
-            return ping_threshold + math.max(speed / div, 9.5)
+            return ping_threshold + math.max(speed / div, 11.5)
         end
         
         for _, ball in pairs(balls) do
