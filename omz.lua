@@ -97,7 +97,9 @@ if LocalPlayer.PlayerGui:FindFirstChild("Hotbar") and LocalPlayer.PlayerGui.Hotb
 end
 
 local function update_divisor()
-    System.__properties.__divisor_multiplier = 0.75 + (System.__properties.__accuracy - 1) * (3 / 99)
+    local acc = System.__properties.__accuracy
+    local inv = 101 - math.clamp(acc, 1, 100)
+    System.__properties.__divisor_multiplier = 0.75 + (inv - 1) * (3 / 99)
 end
 
 function isValidRemoteArgs(args)
@@ -4799,6 +4801,7 @@ ConfigSection:Button({
             System.__properties.__play_animation = config.play_animation or false
             System.__properties.__curve_mode = config.curve_mode or 1
             System.__properties.__accuracy = config.accuracy or 1
+            update_divisor()
             System.__properties.__spam_threshold = config.spam_threshold or 1.5
             System.__properties.__spam_rate = config.spam_rate or 240
             System.__properties.__parry_prediction_ms = config.parry_prediction_ms or 0
