@@ -1,3 +1,4 @@
+local cloneref = cloneref or function(o) return o end
 local Players = cloneref(game:GetService('Players'))
 local ReplicatedStorage = cloneref(game:GetService('ReplicatedStorage'))
 local UserInputService = cloneref(game:GetService('UserInputService'))
@@ -2534,7 +2535,9 @@ task.defer(function()
             args[1] = getgenv().slashName
             args[3] = getgenv().swordFX
         end
-        return playParryFunc(unpack(args))
+        if playParryFunc then
+            return playParryFunc(unpack(args))
+        end
     end)
 
     table.insert(clashConnections, getconnections(ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent)[1])
