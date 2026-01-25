@@ -1049,7 +1049,6 @@ function System.autoparry.start()
                 if getgenv().AutoAbility then
                     local AbilityCD = LocalPlayer.PlayerGui.Hotbar.Ability.UIGradient
                     if AbilityCD.Offset.Y == 0.5 then
-                        -- Existing offensive / defensive abilities (when ball targets you)
                         if LocalPlayer.Character.Abilities:FindFirstChild("Raging Deflection") and LocalPlayer.Character.Abilities["Raging Deflection"].Enabled or
                            LocalPlayer.Character.Abilities:FindFirstChild("Rapture") and LocalPlayer.Character.Abilities["Rapture"].Enabled or
                            LocalPlayer.Character.Abilities:FindFirstChild("Calming Deflection") and LocalPlayer.Character.Abilities["Calming Deflection"].Enabled or
@@ -1061,35 +1060,6 @@ function System.autoparry.start()
                             task.wait(2.432)
                             ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DeathSlashShootActivation"):FireServer(true)
                             continue
-                        end
-
-                        -- Auto Pull (feint) logic: use Pull to disrupt an enemy's incoming ball
-                        if LocalPlayer.Character.Abilities:FindFirstChild("Pull") and LocalPlayer.Character.Abilities["Pull"].Enabled then
-                            local targetName = ball:GetAttribute('target')
-                            if targetName and targetName ~= LocalPlayer.Name then
-                                local targetChar = Alive and Alive:FindFirstChild(targetName)
-                                if targetChar and targetChar.PrimaryPart then
-                                    local distToTarget = (ball.Position - targetChar.PrimaryPart.Position).Magnitude
-                                    local velocity = zoomies.VectorVelocity
-                                    if velocity and velocity.Magnitude > 1 then
-                                        local dirToTarget = (targetChar.PrimaryPart.Position - ball.Position).Unit
-                                        local approachDot = dirToTarget:Dot(velocity.Unit)
-
-                                        -- Conditions: ball is fairly close to that player and is moving toward them
-                                        if distToTarget <= 25 and approachDot > 0.5 then
-                                            -- Small randomized delay for a natural 'feint' timing
-                                            System.__properties.__parried = true
-                                            local delayMs = math.random(60, 150) / 1000
-                                            task.delay(delayMs, function()
-                                                pcall(function()
-                                                    ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
-                                                end)
-                                            end)
-                                            continue
-                                        end
-                                    end
-                                end
-                            end
                         end
                     end
                 end
@@ -2238,6 +2208,133 @@ end
 
 function WalkableSemiImmortal.setHeight(value)
     constants.riseHeight = value
+end
+
+-- Fake Infinity Ability: garde la balle devant le joueur et permet de la frapper
+function WalkableSemiImmortal.activateInfinity()
+    if state.infinityCooldown then
+        if state.notify and Library then
+            Library.SendNotification({ title = "Infinity", text = "On cooldown", duration = 2 })
+        else
+            print("Infinity is on cooldown")
+        end
+        return
+    end
+
+    if state.enabled and not LocalPlayer.Character then return end
+
+    if state.infinityActive then return end
+    state.infinityActive = true
+    state.heldBall = nil
+    state.heldStart = nil
+    state.holdTime = 0
+
+    -- aura (particle emitter) attachée au HumanoidRootPart
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local pe = Instance.new("ParticleEmitter")
+        pe.Name = "FakeInfinityAura"
+        pe.Color = ColorSequence.new(Color3.fromRGB(100,170,255))
+        pe.LightEmission = 0.8
+        pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2), NumberSequenceKeypoint.new(1, 3) })
+        pe.Rate = 200
+        pe.Lifetime = NumberRange.new(0.4, 0.8)
+        pe.Speed = NumberRange.new(0)
+        pe.RotSpeed = NumberRange.new(10)
+        pe.VelocitySpread = 180
+        pe.Parent = hrp
+        state.aura = pe
+    end
+
+    -- connection qui ralentit/attrape la balle et la maintient en avant du joueur
+    state.infinityConnection = RunService.Heartbeat:Connect(function()
+        if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
+        local hrp = LocalPlayer.Character.HumanoidRootPart
+
+        local ball = System.ball.get()
+        if ball and not state.heldBall then
+            local ok, dist = pcall(function()
+                return (hrp.Position - ball.Position).Magnitude
+            end)
+            if ok and dist and dist < 12 then
+                -- commencer à tenir la balle
+                state.heldBall = ball
+                state.heldStart = tick()
+                state.holdTime = 0
+                pcall(function()
+                    ball.AssemblyLinearVelocity = Vector3.new(0,0,0)
+                    ball.CanCollide = false
+                end)
+            end
+        end
+
+        if state.heldBall then
+            -- garder la balle devant le joueur
+            local frontPos = hrp.Position + hrp.CFrame.LookVector * 3
+            pcall(function()
+                state.heldBall.CFrame = CFrame.new(frontPos)
+            end)
+            state.holdTime = tick() - (state.heldStart or tick())
+        end
+    end)
+
+    -- durée d'activation: 10 secondes
+    task.delay(10, function()
+        if state.infinityActive then
+            WalkableSemiImmortal.deactivateInfinity()
+        end
+    end)
+end
+
+function WalkableSemiImmortal.deactivateInfinity()
+    if not state.infinityActive then return end
+    state.infinityActive = false
+
+    if state.infinityConnection then
+        state.infinityConnection:Disconnect()
+        state.infinityConnection = nil
+    end
+
+    if state.heldBall then
+        pcall(function()
+            state.heldBall.AssemblyLinearVelocity = Vector3.new(0,0,0)
+            state.heldBall.CanCollide = true
+        end)
+        state.heldBall = nil
+    end
+
+    if state.aura then
+        pcall(function() state.aura:Destroy() end)
+        state.aura = nil
+    end
+
+    -- cooldown (30s)
+    state.infinityCooldown = true
+    task.delay(30, function()
+        state.infinityCooldown = false
+    end)
+end
+
+function WalkableSemiImmortal.strikeInfinity()
+    if not state.heldBall then return end
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local hold = math.clamp(state.holdTime or 0, 0, 5)
+    local power = hold / 5
+    local minSpeed = 80
+    local maxSpeed = 420
+    local speed = minSpeed + (maxSpeed - minSpeed) * power
+
+    local dir = hrp.CFrame.LookVector
+    pcall(function()
+        state.heldBall.AssemblyLinearVelocity = dir * speed
+        state.heldBall.CanCollide = true
+    end)
+
+    state.heldBall = nil
+    -- désactiver l'ability et lancer cooldown
+    WalkableSemiImmortal.deactivateInfinity()
 end
 
 LocalPlayer.CharacterRemoving:Connect(function()
@@ -4281,6 +4378,29 @@ WKISection:Slider({
     Value = { Min = 0, Max = 60, Default = 30 },
     Step = 1,
     Callback = WalkableSemiImmortal.setHeight
+})
+
+WKISection:Space()
+
+WKISection:Button({
+    Title = "Activate Fake Infinity",
+    Icon = "sparkles",
+    Justify = "Center",
+    Callback = function()
+        WalkableSemiImmortal.activateInfinity()
+        if getgenv().WalkablesemiimortalNotify and Library then
+            Library.SendNotification({ title = "Infinity", text = "Activated (10s)", duration = 2 })
+        end
+    end
+})
+
+WKISection:Button({
+    Title = "Strike Fake Infinity",
+    Icon = "arrow-up-right",
+    Justify = "Center",
+    Callback = function()
+        WalkableSemiImmortal.strikeInfinity()
+    end
 })
 
 AutoFarmTab:Space()
