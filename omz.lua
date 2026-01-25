@@ -1,13 +1,7 @@
-
---return Library
-
---[[if _G.Sigma then 
-    return warn'Already loaded.' 
-end
-
-_G.Sigma = true]]
-
 local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+
+local getinfo = getinfo or (debug and debug.getinfo)
+local islclosure = islclosure or (debug and debug.islclosure) or function() return true end
 
 local Window = WindUI:CreateWindow({
     Title = "Omz Hub — GOD-TIER",
@@ -728,6 +722,10 @@ ReplicatedStorage.Remotes.ParrySuccess.OnClientEvent:Connect(function()
         return
     end
     
+    if System.world.__hit_sound_enabled then
+        System.world.__hit_sound:Play()
+    end
+
     if System.__properties.__grab_animation then
         System.__properties.__grab_animation:Stop()
     end
@@ -1176,13 +1174,91 @@ function System.auto_spam.start()
     end)
 end
 
-function System.auto_spam.stop()
-    System.__properties.__auto_spam_enabled = false
-    if System.__properties.__connections.__auto_spam then
-        System.__properties.__connections.__auto_spam:Disconnect()
-        System.__properties.__connections.__auto_spam = nil
+System.world = {
+    __current_sound = nil,
+    __hit_sound = nil,
+    __hit_sound_enabled = false,
+    __selected_sound = "Eeyuh",
+    __sound_options = {
+        ["Eeyuh"] = "rbxassetid://16190782181",
+        ["Sweep"] = "rbxassetid://103508936658553",
+        ["Bounce"] = "rbxassetid://134818882821660",
+        ["Everybody Wants To Rule The World"] = "rbxassetid://87209527034670",
+        ["Missing Money"] = "rbxassetid://134668194128037",
+        ["Sour Grapes"] = "rbxassetid://117820392172291",
+        ["Erwachen"] = "rbxassetid://124853612881772",
+        ["Grasp the Light"] = "rbxassetid://89549155689397",
+        ["Beyond the Shadows"] = "rbxassetid://120729792529978",
+        ["Rise to the Horizon"] = "rbxassetid://72573266268313",
+        ["Echoes of the Candy Kingdom"] = "rbxassetid://103040477333590",
+        ["Speed"] = "rbxassetid://125550253895893",
+        ["Lo-fi Chill A"] = "rbxassetid://9043887091",
+        ["Lo-fi Ambient"] = "rbxassetid://129775776987523",
+        ["Tears in the Rain"] = "rbxassetid://129710845038263"
+    },
+    __hit_sound_ids = {
+        Medal = "rbxassetid://6607336718",
+        Fatality = "rbxassetid://6607113255",
+        Skeet = "rbxassetid://6607204501",
+        Switches = "rbxassetid://6607173363",
+        ["Rust Headshot"] = "rbxassetid://138750331387064",
+        ["Neverlose Sound"] = "rbxassetid://110168723447153",
+        Bubble = "rbxassetid://6534947588",
+        Laser = "rbxassetid://7837461331",
+        Steve = "rbxassetid://4965083997",
+        ["Call of Duty"] = "rbxassetid://5952120301",
+        Bat = "rbxassetid://3333907347",
+        ["TF2 Critical"] = "rbxassetid://296102734",
+        Saber = "rbxassetid://8415678813",
+        Bameware = "rbxassetid://3124331820"
+    },
+    __skyboxes = {
+        ["Default"] = {"591058823", "591059876", "591058104", "591057861", "591057625", "591059642"},
+        ["Vaporwave"] = {"1417494030", "1417494146", "1417494253", "1417494402", "1417494499", "1417494643"},
+        ["Redshift"] = {"401664839", "401664862", "401664960", "401664881", "401664901", "401664936"},
+        ["Desert"] = {"1013852", "1013853", "1013850", "1013851", "1013849", "1013854"},
+        ["Minecraft"] = {"1876545003", "1876544331", "1876542941", "1876543392", "1876543764", "1876544642"},
+        ["Blaze"] = {"150939022", "150939038", "150939047", "150939056", "150939063", "150939082"},
+        ["Space Wave"] = {"16262356578", "16262358026", "16262360469", "16262362003", "16262363873", "16262366016"},
+        ["Dark Night"] = {"6285719338", "6285721078", "6285722964", "6285724682", "6285726335", "6285730635"},
+        ["White Galaxy"] = {"5540798456", "5540799894", "5540801779", "5540801192", "5540799108", "5540800635"}
+    }
+}
+
+function System.world.init()
+    local sound_service = cloneref(game:GetService("SoundService"))
+    System.world.__current_sound = Instance.new("Sound")
+    System.world.__current_sound.Volume = 3
+    System.world.__current_sound.Parent = sound_service
+    
+    local folder = workspace:FindFirstChild("OmzUtility") or Instance.new("Folder", workspace)
+    folder.Name = "OmzUtility"
+    System.world.__hit_sound = Instance.new("Sound", folder)
+    System.world.__hit_sound.Volume = 5
+end
+
+function System.world.play_music(id)
+    if System.world.__current_sound then
+        System.world.__current_sound:Stop()
+        System.world.__current_sound.SoundId = id
+        System.world.__current_sound:Play()
     end
 end
+
+function System.world.set_skybox(name)
+    local lighting = cloneref(game:GetService("Lighting"))
+    local data = System.world.__skyboxes[name]
+    if not data then return end
+    
+    local sky = lighting:FindFirstChildOfClass("Sky") or Instance.new("Sky", lighting)
+    local faces = {"SkyboxBk", "SkyboxDn", "SkyboxFt", "SkyboxLf", "SkyboxRt", "SkyboxUp"}
+    for i, face in ipairs(faces) do
+        sky[face] = "rbxassetid://" .. data[i]
+    end
+    lighting.GlobalShadows = (name == "Default")
+end
+
+System.world.init()
 
 System.rage = {
     __ball_tp_enabled = false,
@@ -1201,14 +1277,14 @@ function System.rage.update_ball_tp(enabled)
         System.__properties.__connections.__ball_tp = RunService.Heartbeat:Connect(function()
             local ball = System.ball.get()
             local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild(\"HumanoidRootPart\")
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
             
             if ball and hrp then
-                local zoomies = ball:FindFirstChild(\"zoomies\")
-                local velocity = zoomies and zoomies.VectorVelocity or Vector3.zero
+                local zoomies = ball:FindFirstChild("zoomies")
+                local velocity = (zoomies and zoomies:IsA("LinearVelocity")) and zoomies.VectorVelocity or Vector3.zero
                 
                 -- Teleport logic from reference
-                if ball:GetAttribute(\"target\") == LocalPlayer.Name then
+                if ball:GetAttribute("target") == LocalPlayer.Name then
                     if math.abs(velocity.X) > math.abs(velocity.Z) then
                         hrp.CFrame = ball.CFrame + Vector3.new(0, 5, 10)
                     else
@@ -4340,41 +4416,90 @@ TrailSection:Toggle({
     end
 })
 
-local VisualiserSection = VisualsTab:Section({ Title = "Visualiser", Side = "Left", Box = true, Opened = true })
+local WorldSection = VisualsTab:Section({ Title = "World Effects", Side = "Right", Box = true, Opened = true })
 
-VisualiserSection:Toggle({
-    Title = "Parry Visualiser",
-    Description = "Shows parry range around you",
+WorldSection:Toggle({
+    Title = "Custom Skybox",
     Value = false,
     Callback = function(value)
-        System.visuals.update_visualiser(value)
+        if value then
+            System.world.set_skybox(getgenv().SelectedSky or "Vaporwave")
+        else
+            System.world.set_skybox("Default")
+        end
     end
 })
 
-VisualiserSection:Toggle({
-    Title = "Rainbow Visualiser",
-    Value = false,
+WorldSection:Dropdown({
+    Title = "Select Sky",
+    Values = {"Vaporwave", "Redshift", "Desert", "Minecraft", "Blaze", "Space Wave", "Dark Night", "White Galaxy"},
+    Value = "Vaporwave",
     Callback = function(value)
-        getgenv().VisualiserRainbow = value
+        getgenv().SelectedSky = value
+        System.world.set_skybox(value)
     end
 })
 
-VisualiserSection:Slider({
-    Title = "Visualiser Hue",
-    Value = { Min = 0, Max = 360, Value = 0 },
+local FilterSection = VisualsTab:Section({ Title = "Filters", Side = "Right", Box = true, Opened = true })
+
+FilterSection:Slider({
+    Title = "Atmosphere Density",
+    Value = { Min = 0, Max = 1, Value = 0 },
     Callback = function(value)
-        getgenv().VisualiserHue = value
+        local lighting = game:GetService("Lighting")
+        local atm = lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere", lighting)
+        atm.Density = value
     end
 })
 
-local StatsSection = VisualsTab:Section({ Title = "Statistics", Side = "Left", Box = true, Opened = true })
+FilterSection:Slider({
+    Title = "Fog Distance",
+    Value = { Min = 50, Max = 10000, Value = 10000 },
+    Callback = function(value)
+        game:GetService("Lighting").FogEnd = value
+    end
+})
 
-StatsSection:Toggle({
-    Title = "Ball Stats UI",
-    Description = "Shows real-time ball velocity",
+local MusicSection = MiscTab:Section({ Title = "Music Player", Side = "Right", Box = true, Opened = true })
+
+MusicSection:Toggle({
+    Title = "Enable Music",
     Value = false,
     Callback = function(value)
-        System.visuals.update_stats_ui(value)
+        if value then
+            System.world.play_music(System.world.__sound_options[getgenv().SelectedSong or "Eeyuh"])
+        else
+            System.world.__current_sound:Stop()
+        end
+    end
+})
+
+MusicSection:Dropdown({
+    Title = "Select Song",
+    Values = {"Eeyuh", "Sweep", "Bounce", "Sour Grapes", "Erwachen", "Speed", "Lo-fi Chill A"},
+    Value = "Eeyuh",
+    Callback = function(value)
+        getgenv().SelectedSong = value
+        System.world.play_music(System.world.__sound_options[value])
+    end
+})
+
+local SoundSection = MiscTab:Section({ Title = "Hit Sounds", Side = "Left", Box = true, Opened = true })
+
+SoundSection:Toggle({
+    Title = "Enable Hit Sound",
+    Value = false,
+    Callback = function(value)
+        System.world.__hit_sound_enabled = value
+    end
+})
+
+SoundSection:Dropdown({
+    Title = "Sound Type",
+    Values = {"Medal", "Fatality", "Skeet", "Rust Headshot", "Neverlose Sound", "Bubble", "Laser"},
+    Value = "Medal",
+    Callback = function(value)
+        System.world.__hit_sound.SoundId = System.world.__hit_sound_ids[value]
     end
 })
 
