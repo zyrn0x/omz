@@ -544,17 +544,43 @@ function System.detection.is_curved()
     
     local ball_distance_threshold = 15 - math.min(distance / 1000, 15) + speed_threshold
     
-    local clamped_dot = math.clamp(dot, -1, 1)
-    local radians = math.rad(math.asin(clamped_dot))
+    local Clamped_Dot = math.clamp(dot, -1, 1)
+    local Radians = math.rad(math.asin(Clamped_Dot))
     
-    ball_properties.__lerp_radians = linear_predict(ball_properties.__lerp_radians, radians, 0.8)
+    ball_properties.__lerp_radians = linear_predict(ball_properties.__lerp_radians, Radians, 0.8)
     
     if speed > 0 and reach_time > ping / 10 then
-        ball_distance_threshold = math.max(ball_distance_threshold - 15, 15)
+        if speed < 300 then
+            ball_distance_threshold = math.max(ball_distance_threshold - 15, 15)
+        elseif speed >= 300 and speed < 600 then
+            ball_distance_threshold = math.max(ball_distance_threshold - 16, 16)
+        elseif speed >= 600 and speed < 1000 then
+            ball_distance_threshold = math.max(ball_distance_threshold - 17, 17)
+        elseif speed >= 1000 and speed < 1500 then
+            ball_distance_threshold = math.max(ball_distance_threshold - 19, 19)
+        elseif speed >= 1500 then
+            ball_distance_threshold = math.max(ball_distance_threshold - 20, 20)
+        end
     end
     
     if distance < ball_distance_threshold then return false end
     if dot_difference < dot_threshold then return true end
+
+    local backwardsCurveDetected = false
+    local backwardsAngleThreshold = 85
+    local horizDirection = Vector3.new(LocalPlayer.Character.PrimaryPart.Position.X - ball.Position.X, 0, LocalPlayer.Character.PrimaryPart.Position.Z - ball.Position.Z)
+    if horizDirection.Magnitude > 0 then
+        horizDirection = horizDirection.Unit
+    end
+    local awayFromPlayer = -horizDirection
+    local horizBallDir = Vector3.new(ball_direction.X, 0, ball_direction.Z)
+    if horizBallDir.Magnitude > 0 then
+        horizBallDir = horizBallDir.Unit
+        local backwardsAngle = math.deg(math.acos(math.clamp(awayFromPlayer:Dot(horizBallDir), -1, 1)))
+        if backwardsAngle < backwardsAngleThreshold then
+            backwardsCurveDetected = true
+        end
+    end
     
     if ball_properties.__lerp_radians < 0.018 then
         ball_properties.__last_warping = tick()
@@ -568,7 +594,7 @@ function System.detection.is_curved()
         return true
     end
     
-    return dot < dot_threshold
+    return dot < dot_threshold or backwardsCurveDetected
 end
 
 ReplicatedStorage.Remotes.DeathBall.OnClientEvent:Connect(function(c, d)
@@ -809,6 +835,148 @@ function System.triggerbot.loop()
     end
 end
 
+System.visuals = {
+    __visual_part = nil,
+    __stats_ui = nil,
+    __heartbeat = nil,
+    __ball_peaks = {}
+}
+
+function System.visuals.update_visualiser(enabled)
+    if enabled then
+        if not System.visuals.__visual_part then
+            System.visuals.__visual_part = Instance.new("Part")
+            System.visuals.__visual_part.Name = "OmzVisualiser"
+            System.visuals.__visual_part.Shape = Enum.PartType.Ball
+            System.visuals.__visual_part.Material = Enum.Material.ForceField
+            System.visuals.__visual_part.Color = Color3.fromRGB(255, 255, 255)
+            System.visuals.__visual_part.Transparency = 0
+            System.visuals.__visual_part.CastShadow = false
+            System.visuals.__visual_part.Anchored = true
+            System.visuals.__visual_part.CanCollide = false
+            System.visuals.__visual_part.Parent = workspace
+        end
+        
+        System.__properties.__connections.__visualiser = RunService.RenderStepped:Connect(function()
+            local char = LocalPlayer.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            if root and System.visuals.__visual_part then
+                System.visuals.__visual_part.CFrame = root.CFrame
+                
+                if getgenv().VisualiserRainbow then
+                    System.visuals.__visual_part.Color = Color3.fromHSV((tick() % 5) / 5, 1, 1)
+                else
+                    System.visuals.__visual_part.Color = Color3.fromHSV((getgenv().VisualiserHue or 0) / 360, 1, 1)
+                end
+                
+                local balls = System.ball.get_all()
+                local max_accuracy = 15 -- base
+                for _, ball in pairs(balls) do
+                    local zoomies = ball:FindFirstChild('zoomies')
+                    if zoomies then
+                        local speed = zoomies.VectorVelocity.Magnitude
+                        local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue() / 10
+                        local ping_threshold = math.clamp(ping / 10, 5, 17)
+                        local capped_speed_diff = math.min(math.max(speed - 9.5, 0), 650)
+                        local speed_divisor = (2.4 + capped_speed_diff * 0.002) * System.__properties.__divisor_multiplier
+                        local accuracy = ping_threshold + math.max(speed / speed_divisor, 9.5)
+                        max_accuracy = math.max(max_accuracy, accuracy)
+                    end
+                end
+                System.visuals.__visual_part.Size = Vector3.new(max_accuracy * 2, max_accuracy * 2, max_accuracy * 2)
+            end
+        end)
+    else
+        if System.__properties.__connections.__visualiser then
+            System.__properties.__connections.__visualiser:Disconnect()
+            System.__properties.__connections.__visualiser = nil
+        end
+        if System.visuals.__visual_part then
+            System.visuals.__visual_part:Destroy()
+            System.visuals.__visual_part = nil
+        end
+    end
+end
+
+function System.visuals.update_stats_ui(enabled)
+    if enabled then
+        if not System.visuals.__stats_ui then
+            local main = Instance.new(\"ScreenGui\")
+            main.Name = \"OmzBallStats\"
+            main.Parent = CoreGui
+            
+            local frame = Instance.new(\"Frame\")
+            frame.Size = UDim2.new(0, 200, 0, 80)
+            frame.Position = UDim2.new(0.5, -100, 0.2, 0)
+            frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+            frame.BackgroundTransparency = 0.3
+            frame.Parent = main
+            
+            local corner = Instance.new(\"UICorner\")
+            corner.CornerRadius = UDim.new(0, 10)
+            corner.Parent = frame
+            
+            local stroke = Instance.new(\"UIStroke\")
+            stroke.Color = Color3.fromRGB(0, 255, 100)
+            stroke.Thickness = 2
+            stroke.Parent = frame
+            
+            local vel_label = Instance.new(\"TextLabel\")
+            vel_label.Size = UDim2.new(1, 0, 0.5, 0)
+            vel_label.BackgroundTransparency = 1
+            vel_label.Text = \"Velocity: 0.00\"
+            vel_label.Font = Enum.Font.GothamBold
+            vel_label.TextSize = 18
+            vel_label.TextColor3 = Color3.fromRGB(255, 255, 255)
+            vel_label.Parent = frame
+            
+            local peak_label = Instance.new(\"TextLabel\")
+            peak_label.Size = UDim2.new(1, 0, 0.5, 0)
+            peak_label.Position = UDim2.new(0, 0, 0.5, 0)
+            peak_label.BackgroundTransparency = 1
+            peak_label.Text = \"Peak: 0.00\"
+            peak_label.Font = Enum.Font.GothamBold
+            peak_label.TextSize = 18
+            peak_label.TextColor3 = Color3.fromRGB(0, 255, 100)
+            peak_label.Parent = frame
+            
+            System.visuals.__stats_ui = {gui = main, vel = vel_label, peak = peak_label}
+        end
+        
+        System.visuals.__heartbeat = RunService.Heartbeat:Connect(function()
+            local balls = System.ball.get_all()
+            for _, ball in pairs(balls) do
+                local zoomies = ball:FindFirstChild('zoomies')
+                if zoomies then
+                    local speed = zoomies.VectorVelocity.Magnitude
+                    System.visuals.__ball_peaks[ball] = math.max(System.visuals.__ball_peaks[ball] or 0, speed)
+                    
+                    if System.visuals.__stats_ui then
+                        System.visuals.__stats_ui.vel.Text = string.format(\"Velocity: %.2f\", speed)
+                        System.visuals.__stats_ui.peak.Text = string.format(\"Peak: %.2f\", System.visuals.__ball_peaks[ball])
+                    end
+                end
+            end
+            
+            -- Cleanup peaks for deleted balls
+            for ball, _ in pairs(System.visuals.__ball_peaks) do
+                if not ball.Parent then
+                    System.visuals.__ball_peaks[ball] = nil
+                end
+            end
+        end)
+    else
+        if System.visuals.__heartbeat then
+            System.visuals.__heartbeat:Disconnect()
+            System.visuals.__heartbeat = nil
+        end
+        if System.visuals.__stats_ui then
+            System.visuals.__stats_ui.gui:Destroy()
+            System.visuals.__stats_ui = nil
+        end
+    end
+end
+
 function System.triggerbot.enable(enabled)
     System.__triggerbot.__enabled = enabled
     
@@ -1013,6 +1181,53 @@ function System.auto_spam.stop()
     if System.__properties.__connections.__auto_spam then
         System.__properties.__connections.__auto_spam:Disconnect()
         System.__properties.__connections.__auto_spam = nil
+    end
+end
+
+System.rage = {
+    __ball_tp_enabled = false,
+    __original_subject = nil
+}
+
+function System.rage.update_ball_tp(enabled)
+    System.rage.__ball_tp_enabled = enabled
+    local camera = workspace.CurrentCamera
+    
+    if enabled then
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild(\"Humanoid\") then
+            System.rage.__original_subject = camera.CameraSubject
+        end
+        
+        System.__properties.__connections.__ball_tp = RunService.Heartbeat:Connect(function()
+            local ball = System.ball.get()
+            local char = LocalPlayer.Character
+            local hrp = char and char:FindFirstChild(\"HumanoidRootPart\")
+            
+            if ball and hrp then
+                local zoomies = ball:FindFirstChild(\"zoomies\")
+                local velocity = zoomies and zoomies.VectorVelocity or Vector3.zero
+                
+                -- Teleport logic from reference
+                if ball:GetAttribute(\"target\") == LocalPlayer.Name then
+                    if math.abs(velocity.X) > math.abs(velocity.Z) then
+                        hrp.CFrame = ball.CFrame + Vector3.new(0, 5, 10)
+                    else
+                        hrp.CFrame = ball.CFrame + Vector3.new(10, 5, 0)
+                    end
+                    camera.CameraSubject = ball
+                else
+                    camera.CameraSubject = char:FindFirstChildOfClass(\"Humanoid\") or System.rage.__original_subject
+                end
+            end
+        end)
+    else
+        if System.__properties.__connections.__ball_tp then
+            System.__properties.__connections.__ball_tp:Disconnect()
+            System.__properties.__connections.__ball_tp = nil
+        end
+        if System.rage.__original_subject then
+            camera.CameraSubject = System.rage.__original_subject
+        end
     end
 end
 
@@ -1444,18 +1659,18 @@ BotSection:Toggle({
                 destroy_mobile_gui(System.__properties.__mobile_guis.triggerbot)
                 System.__properties.__mobile_guis.triggerbot = nil
             end
-        else
-            System.__properties.__triggerbot_enabled = value
-            System.triggerbot.enable(value)
-            
-            if getgenv().TriggerbotNotify then
-                WindUI:Notify({
-                    Title = "Triggerbot",
-                    Content = value and "ON" or "OFF",
-                    Duration = 2
-                })
-            end
         end
+    end
+})
+
+local ExclusiveSection = ExclusiveTab:Section({ Title = "Rage Features", Side = "Left", Box = true, Opened = true })
+
+ExclusiveSection:Toggle({
+    Title = "Ball TP",
+    Description = "Teleports to the ball when targeted",
+    Value = false,
+    Callback = function(value)
+        System.rage.update_ball_tp(value)
     end
 })
 
@@ -3593,7 +3808,7 @@ PerformSection:Toggle({
     end
 })
 
---[[local ParticleSystem = {
+local ParticleSystem = {
     Particles = {},
     MaxParticles = 5000,
     SpawnArea = 500,
@@ -4088,7 +4303,80 @@ TrailSection:Colorpicker({
     end,
 })
 
-]]
+TrailSection:Toggle({
+    Title = "Rainbow Trail",
+    Value = false,
+    Callback = function(value)
+        getgenv().BallTrailRainbowEnabled = value
+        if value then
+            task.spawn(function()
+                while getgenv().BallTrailRainbowEnabled do
+                    local hue = (tick() % 5) / 5
+                    local color = Color3.fromHSV(hue, 1, 1)
+                    PlasmaTrails.TrailColor = color
+                    if last_ball then
+                        Plasma.update_trail_colors(last_ball)
+                    end
+                    task.wait()
+                end
+            end)
+        end
+    end
+})
+
+TrailSection:Toggle({
+    Title = "Particle Emitter",
+    Value = false,
+    Callback = function(value)
+        getgenv().BallTrailParticleEnabled = value
+    end
+})
+
+TrailSection:Toggle({
+    Title = "Glow Effect",
+    Value = false,
+    Callback = function(value)
+        getgenv().BallTrailGlowEnabled = value
+    end
+})
+
+local VisualiserSection = VisualsTab:Section({ Title = "Visualiser", Side = "Left", Box = true, Opened = true })
+
+VisualiserSection:Toggle({
+    Title = "Parry Visualiser",
+    Description = "Shows parry range around you",
+    Value = false,
+    Callback = function(value)
+        System.visuals.update_visualiser(value)
+    end
+})
+
+VisualiserSection:Toggle({
+    Title = "Rainbow Visualiser",
+    Value = false,
+    Callback = function(value)
+        getgenv().VisualiserRainbow = value
+    end
+})
+
+VisualiserSection:Slider({
+    Title = "Visualiser Hue",
+    Value = { Min = 0, Max = 360, Value = 0 },
+    Callback = function(value)
+        getgenv().VisualiserHue = value
+    end
+})
+
+local StatsSection = VisualsTab:Section({ Title = "Statistics", Side = "Left", Box = true, Opened = true })
+
+StatsSection:Toggle({
+    Title = "Ball Stats UI",
+    Description = "Shows real-time ball velocity",
+    Value = false,
+    Callback = function(value)
+        System.visuals.update_stats_ui(value)
+    end
+})
 
 local swordInstancesInstance = ReplicatedStorage:WaitForChild("Shared",9e9):WaitForChild("ReplicatedInstances",9e9):WaitForChild("Swords",9e9)
 local swordInstances = require(swordInstancesInstance)
