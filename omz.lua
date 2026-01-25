@@ -939,9 +939,36 @@ function System.auto_spam.start()
             Ping = ping_threshold
         })
         
-        if spam_accuracy <= 0 then return end
+        -- 2. Anti-Lag Safety
+        -- If ball is moving away, ignore it.
+        -- [FIX] Infinity Ability: If Infinity is active, the ball stops (speed 0). We must NOT ignore it if close.
+        local forward_speed = ball_properties.Velocity.Unit:Dot((LocalPlayer.Character.PrimaryPart.Position - ball.Position).Unit) * ball_properties.Velocity.Magnitude
+        local distance = ball_properties.Distance
+        if forward_speed <= 0 and not (System.__properties.__infinity_active and distance < 35) then return end
         
         local target_position = Closest_Entity.PrimaryPart.Position
+        local to_enemy = (target_position - LocalPlayer.Character.PrimaryPart.Position).Unit
+        local player_vel = LocalPlayer.Character.PrimaryPart.Velocity
+        local player_speed = player_vel.Magnitude
+        if player_speed > 3 then
+            local dot = player_vel.Unit:Dot(to_enemy)
+            if dot < -0.25 then
+                return
+            end
+        end
+
+        -- [FIX] Anti-Waste (Fleeing Opponent): If opponent is running away fast, don't spam parry.
+        local enemy_velocity = Closest_Entity.PrimaryPart.Velocity
+        local enemy_speed = enemy_velocity.Magnitude
+        if enemy_speed > 12 then -- If they are moving reasonably fast
+            local to_us = (LocalPlayer.Character.PrimaryPart.Position - target_position).Unit
+            local enemy_moving_to_us = enemy_velocity.Unit:Dot(to_us)
+            if enemy_moving_to_us < -0.4 then -- Moving AWAY from us
+                return
+            end
+        end
+        if spam_accuracy <= 0 then return end
+        
         local target_distance = (LocalPlayer.Character.PrimaryPart.Position - target_position).Magnitude
         local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
         
@@ -1031,7 +1058,14 @@ local function autoparry_process_ball(ball, one_ball, ping_threshold, parry_accu
     
     if ball:FindFirstChild('ComboCounter') then return end
     if LocalPlayer.Character.PrimaryPart:FindFirstChild('SingularityCape') then return end
-    if System.__config.__detections.__infinity and System.__properties.__infinity_active then return end
+    -- [FIX] Infinity Logic: Do NOT return here. Instead, check distance.
+    if System.__config.__detections.__infinity and System.__properties.__infinity_active then 
+        if distance < 25 then
+             System.parry.execute_action()
+             System.__properties.__parried_balls[ball] = tick() + 0.5
+             return
+        end
+    end
     if System.__config.__detections.__deathslash and System.__properties.__deathslash_active then return end
     if System.__config.__detections.__timehole and System.__properties.__timehole_active then return end
     if System.__config.__detections.__slashesoffury and System.__properties.__slashesoffury_active then return end
@@ -3614,8 +3648,8 @@ DetectionSection:Slider({
 
 DetectionSection:Slider({
     Title = "Max Parry Count",
-    Value = { Min = 0.05, Max = 0.250, Default = 0.05 },
-    Step = 0.01,
+    Value = { Min = 1, Max = 36, Default = 36 },
+    Step = 1,
     Callback = function(value)
         maxParryCount = value
     end
