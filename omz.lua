@@ -1,4 +1,3 @@
-local cloneref = cloneref or function(o) return o end
 local Players = cloneref(game:GetService('Players'))
 local ReplicatedStorage = cloneref(game:GetService('ReplicatedStorage'))
 local UserInputService = cloneref(game:GetService('UserInputService'))
@@ -20,13 +19,13 @@ local Runtime = workspace.Runtime
 
 local System = {
     __properties = {
-        __autoparry_enabled = true,
+        __autoparry_enabled = false,
         __triggerbot_enabled = false,
         __manual_spam_enabled = false,
-        __auto_spam_enabled = false, -- Default off to prevent lag, user can enable
+        __auto_spam_enabled = false,
         __play_animation = false,
         __curve_mode = 1,
-        __accuracy = 100,
+        __accuracy = 1,
         __divisor_multiplier = 1.1,
         __parried = false,
         __training_parried = false,
@@ -39,7 +38,7 @@ local System = {
         __connections = {},
         __reverted_remotes = {},
         __spam_accumulator = 0,
-        __spam_rate = 60, -- OPTIMIZED: 60Hz Cap for stability
+        __spam_rate = 240,
         __infinity_active = false,
         __deathslash_active = false,
         __timehole_active = false,
@@ -50,8 +49,7 @@ local System = {
         __parried_balls = {},
         __parry_ball_connections = {},
         __auto_spam_accumulator = 0,
-        __parry_prediction_ms = 0,
-        __autoparry_cleanup_frame = 0
+        __parry_prediction_ms = 0
     },
     
     __config = {
@@ -197,53 +195,7 @@ function System.animation.play_grab_parry()
     System.__properties.__grab_animation:Play()
 end
 
-System.ability = {}
-    
-function System.ability.get_equipped()
-    local abilities = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Abilities")
-    if not abilities then return nil end
-    for _, ab in pairs(abilities:GetChildren()) do
-        if ab.Enabled then return ab end
-    end
-    return nil
-end
-
-function System.ability.strategic_use(ball, distance, speed)
-    if not getgenv().AutoAbility then return end
-    
-    local ability = System.ability.get_equipped()
-    if not ability then return end
-    
-    local name = ability.Name
-    local hotbar = LocalPlayer.PlayerGui:FindFirstChild("Hotbar")
-    local cooldown_ui = hotbar and hotbar:FindFirstChild("Ability") and hotbar.Ability:FindFirstChild("UIGradient")
-    if cooldown_ui and cooldown_ui.Offset.Y < 0.5 then return end -- Cooldown active
-    
-    -- Strategy definitions used by 'UwU' and other top scripts
-    if name == "Infinity" or name == "Raging Deflection" or name == "Pull" then
-        -- Defensive/Panic: Use when ball is fast and close
-        if distance < 20 and speed > 60 then
-            ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
-        end
-    elseif name == "Rapture" then
-        -- Offensive: Use when ball is far to drag it
-        if distance > 40 and speed < 100 then
-             ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
-        end
-    elseif name == "Dribble" then
-        -- Spam usage usually
-         ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
-    elseif name == "Freeze" then
-        if distance < 20 then
-             ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
-        end
-    else
-        -- Generic: Use when close just in case
-        if distance < 15 and speed > 50 then
-             ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
-        end
-    end
-end
+System.ball = {}
 
 function System.ball.get()
     local balls = workspace:FindFirstChild('Balls')
@@ -996,16 +948,6 @@ function System.auto_spam.start()
         if target_distance > spam_accuracy or distance > spam_accuracy then return end
         if ball_target == LocalPlayer.Name and target_distance > 35 and distance > 35 then return end
         
-        local to_enemy = (target_position - LocalPlayer.Character.PrimaryPart.Position).Unit
-        local player_vel = LocalPlayer.Character.PrimaryPart.Velocity
-        local player_speed = player_vel.Magnitude
-        if player_speed > 3 then
-            local dot = player_vel.Unit:Dot(to_enemy)
-            if dot < -0.25 then
-                return
-            end
-        end
-        
         System.__properties.__auto_spam_accumulator = System.__properties.__auto_spam_accumulator + delta
         local interval = 1 / System.__properties.__spam_rate
         if System.__properties.__auto_spam_accumulator < interval then return end
@@ -1054,7 +996,7 @@ local function autoparry_cleanup_stale(active_balls_set)
     end
 end
 
-local function autoparry_process_ball(ball, one_ball, curved, ping_val, parry_accuracy_func)
+local function autoparry_process_ball(ball, one_ball, ping_threshold, parry_accuracy_func)
     local zoomies = ball:FindFirstChild('zoomies')
     if not zoomies then return end
     
@@ -1064,62 +1006,37 @@ local function autoparry_process_ball(ball, one_ball, curved, ping_val, parry_ac
     autoparry_ensure_connection(ball)
     
     local ball_target = ball:GetAttribute('target')
-    if ball_target ~= LocalPlayer.Name then return end
-
     local velocity = zoomies.VectorVelocity
-    local position = ball.Position
-    local root_part = LocalPlayer.Character.PrimaryPart
+    local speed = velocity.Magnitude
+    local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
     
-    -- [ULTIMATE ZERO MISS LOGIC]
+    local pred_ms = System.__properties.__parry_prediction_ms or 0
+    local effective_distance = pred_ms > 0 and (distance - speed * (pred_ms / 1000)) or distance
+    local parry_accuracy = parry_accuracy_func(speed)
     
-    -- 1. Calculate Speeds
-    local direction_to_player = (root_part.Position - position).Unit
-    local distance = (root_part.Position - position).Magnitude
-    local forward_speed = velocity:Dot(direction_to_player) -- How fast it is coming AT YOU
-    
-    -- 2. Anti-Lag Safety
-    -- If ball is moving away, ignore it.
-    if forward_speed <= 0 then return end
-    
-    -- 3. Curve Detection (Vector Rejection)
-    -- Calculate how fast the ball is moving SIDEWAYS relative to you.
-    local projectile_vector = velocity
-    local forward_vector = direction_to_player * forward_speed
-    local side_vector = projectile_vector - forward_vector
-    local side_speed = side_vector.Magnitude
-    
-    -- 4. Auto-Ping & Reaction Calculation
-    -- Get real ping, convert to seconds
-    local real_ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue() / 1000
-    local reaction_time = math.max(real_ping, 0.05) + 0.12 -- 50ms min ping + 120ms human reaction buffer
-    
-    -- 5. Time To Impact (TTI)
-    local tti = distance / forward_speed
-    
-    -- 6. Emergency Reflex (Anti-Snap)
-    -- If ball is VERY close (teleport or high speed curve snap), parry instantly.
-    if distance < 18 or tti < 0.25 then
-        reaction_time = 1.0 -- Force instant parry
+    if ball:FindFirstChild('AeroDynamicSlashVFX') then
+        ball.AeroDynamicSlashVFX:Destroy()
+        System.__properties.__tornado_time = tick()
     end
     
-    -- 7. Curve Filter
-    -- If the ball is moving more sideways than forwards, it is curving around us. IGNORE IT.
-    -- But if it is very close (<25 studs), we honor the Emergency Reflex above.
-    if distance > 25 and side_speed > (forward_speed * 1.2) then
-        return -- Ignoring curve
-    end
-
-    -- 8. EXECUTE
-    if tti <= reaction_time then
-        -- Parry allowed to proceed
-    else
-        return -- Wait for TTI
+    if Runtime:FindFirstChild('Tornado') then
+        if (tick() - System.__properties.__tornado_time) < (Runtime.Tornado:GetAttribute('TornadoTime') or 1) + 0.314159 then
+            return
+        end
     end
     
-    if getgenv().AutoAbility then
-        -- Pass forward_speed as effective speed towards player
-        System.ability.strategic_use(ball, distance, forward_speed)
+    if one_ball and one_ball:GetAttribute('target') == LocalPlayer.Name and System.detection.is_curved() then
+        return
     end
+    
+    if ball:FindFirstChild('ComboCounter') then return end
+    if LocalPlayer.Character.PrimaryPart:FindFirstChild('SingularityCape') then return end
+    if System.__config.__detections.__infinity and System.__properties.__infinity_active then return end
+    if System.__config.__detections.__deathslash and System.__properties.__deathslash_active then return end
+    if System.__config.__detections.__timehole and System.__properties.__timehole_active then return end
+    if System.__config.__detections.__slashesoffury and System.__properties.__slashesoffury_active then return end
+    
+    if ball_target ~= LocalPlayer.Name or effective_distance > parry_accuracy then return end
     
     if getgenv().CooldownProtection then
         local hotbar = LocalPlayer.PlayerGui:FindFirstChild("Hotbar")
@@ -1165,7 +1082,7 @@ local function autoparry_process_ball(ball, one_ball, curved, ping_val, parry_ac
     else
         System.parry.execute_action()
     end
-    System.__properties.__parried_balls[ball] = tick() + 0.82
+    System.__properties.__parried_balls[ball] = tick() + 1
 end
 
 function System.autoparry.start()
@@ -1173,7 +1090,7 @@ function System.autoparry.start()
         System.__properties.__connections.__autoparry:Disconnect()
     end
     
-    System.__properties.__connections.__autoparry = RunService.Heartbeat:Connect(function()
+    System.__properties.__connections.__autoparry = RunService.RenderStepped:Connect(function()
         if not System.__properties.__autoparry_enabled or not LocalPlayer.Character or not LocalPlayer.Character.PrimaryPart then
             return
         end
@@ -1184,9 +1101,8 @@ function System.autoparry.start()
         local one_ball = System.ball.get()
         
         local training_ball = nil
-        local tb = workspace:FindFirstChild("TrainingBalls")
-        if tb then
-            for _, inst in pairs(tb:GetChildren()) do
+        if workspace:FindFirstChild("TrainingBalls") then
+            for _, inst in pairs(workspace.TrainingBalls:GetChildren()) do
                 if inst:GetAttribute("realBall") then
                     training_ball = inst
                     break
@@ -1194,24 +1110,14 @@ function System.autoparry.start()
             end
         end
         
-        local cf = System.__properties.__autoparry_cleanup_frame + 1
-        System.__properties.__autoparry_cleanup_frame = cf
-        if cf >= 90 then
-            System.__properties.__autoparry_cleanup_frame = 0
-            local active_set = {}
-            for _, b in pairs(balls) do active_set[b] = true end
-            if training_ball then active_set[training_ball] = true end
-            autoparry_cleanup_stale(active_set)
-        end
+        local active_set = {}
+        for _, b in pairs(balls) do active_set[b] = true end
+        if training_ball then active_set[training_ball] = true end
+        autoparry_cleanup_stale(active_set)
         
-        local ping_val = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
-        local ping_threshold = math.clamp(ping_val / 100, 5, 18)
+        local ping_raw = Stats.Network.ServerStatsItem['Data Ping']:GetValue() / 10
+        local ping_threshold = math.clamp(ping_raw / 10, 5, 18)
         local dm = System.__properties.__divisor_multiplier
-        
-        local curved = false
-        if one_ball and one_ball:GetAttribute('target') == LocalPlayer.Name then
-            curved = System.detection.is_curved()
-        end
         
         local function parry_acc(speed)
             local capped = math.min(math.max(speed - 9.5, 0), 650)
@@ -1221,7 +1127,7 @@ function System.autoparry.start()
         
         for _, ball in pairs(balls) do
             if not ball then continue end
-            autoparry_process_ball(ball, one_ball, curved, ping_val, parry_acc)
+            autoparry_process_ball(ball, one_ball, ping_threshold, parry_acc)
         end
         
         if training_ball then
@@ -1234,12 +1140,9 @@ function System.autoparry.start()
                     local velocity = zoomies.VectorVelocity
                     local speed = velocity.Magnitude
                     local distance = (LocalPlayer.Character.PrimaryPart.Position - training_ball.Position).Magnitude
+                    local parry_accuracy = parry_acc(speed)
                     local pred_ms = System.__properties.__parry_prediction_ms or 0
-                    if pred_ms <= 0 then
-                        pred_ms = math.min(math.max(ping_val * 0.4, 15), 85)
-                    end
-                    local parry_accuracy = parry_acc(speed) + 2
-                    local effective_distance = distance - speed * (pred_ms / 1000)
+                    local effective_distance = pred_ms > 0 and (distance - speed * (pred_ms / 1000)) or distance
                     
                     if ball_target == LocalPlayer.Name and effective_distance <= parry_accuracy then
                         if getgenv().AutoParryMode == "Keypress" then
@@ -1247,7 +1150,7 @@ function System.autoparry.start()
                         else
                             System.parry.execute_action()
                         end
-                        System.__properties.__parried_balls[training_ball] = tick() + 0.82
+                        System.__properties.__parried_balls[training_ball] = tick() + 1
                     end
                 end
             end
@@ -3711,8 +3614,8 @@ DetectionSection:Slider({
 
 DetectionSection:Slider({
     Title = "Max Parry Count",
-    Value = { Min = 0, Max = 36, Default = 36 },
-    Step = 1,
+    Value = { Min = 0.05, Max = 0.250, Default = 0.05 },
+    Step = 0.01,
     Callback = function(value)
         maxParryCount = value
     end
