@@ -1008,7 +1008,7 @@ local function autoparry_cleanup_stale(active_balls_set)
     end
 end
 
-local function autoparry_process_ball(ball, one_ball, curved, ping_ms, tti_min, tti_max, acc_scale)
+local function autoparry_process_ball(ball, one_ball, curved, ping_ms, tti_min, tti_max)
     local zoomies = ball:FindFirstChild('zoomies')
     if not zoomies then return end
     
@@ -1034,11 +1034,11 @@ local function autoparry_process_ball(ball, one_ball, curved, ping_ms, tti_min, 
     if distance < 3 or distance > 58 then return end
     
     local tti = distance / (speed + 6)
-    local t_min = tti_min * acc_scale
-    local t_max = tti_max * acc_scale
+    local t_min = tti_min
+    local t_max = tti_max
     if curved and one_ball and ball == one_ball then
-        t_min = t_min * 0.92
-        t_max = t_max * 1.08
+        t_min = t_min * 0.88
+        t_max = t_max * 1.12
     end
     if tti < t_min or tti > t_max then return end
     
@@ -1085,97 +1085,204 @@ local function autoparry_process_ball(ball, one_ball, curved, ping_ms, tti_min, 
             local ball_target = ball:GetAttribute('target')
             local velocity = zoomies.VectorVelocity
             local speed = velocity.Magnitude
-            local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
+            local root = LocalPlayer.Character.PrimaryPart
+            local distance = (root.Position - ball.Position).Magnitude
             local is_targeted = (ball_target == LocalPlayer.Name)
             local is_close = (distance < 45)
             local is_very_close = (distance < 28)
-            local is_fast = (speed > 180)
-            local core_deflect = {"Raging Deflection", "Rapture", "Calming Deflection", "Aerodynamic Slash", "Fracture", "Death Slash"}
-            for _, n in ipairs(core_deflect) do
-                local abil = ab:FindFirstChild(n)
-                if abil and abil.Enabled then
-                    System.__properties.__parried_balls[ball] = tick() + 2.5
-                    ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
-                    if n == "Death Slash" then
-                        task.spawn(function()
-                            task.wait(2.432)
-                            local rs = ReplicatedStorage:FindFirstChild("Remotes")
-                            if rs then
-                                local ds = rs:FindFirstChild("DeathSlashShootActivation")
-                                if ds then ds:FireServer(true) end
-                            end
-                        end)
-                    end
-                    return true
-                end
-            end
+            local is_fast = (speed > 200)
+            local is_slow = (speed < 120)
+            local is_medium = (speed >= 120 and speed <= 200)
+            
+            System.player.get_closest()
+            local enemy_dist = Closest_Entity and (root.Position - Closest_Entity.PrimaryPart.Position).Magnitude or math.huge
+            local enemy_close = (enemy_dist < 35)
+            local ball_to_enemy_dist = Closest_Entity and (Closest_Entity.PrimaryPart.Position - ball.Position).Magnitude or math.huge
+            local ball_near_enemy = (ball_to_enemy_dist < 30)
+            
             local ability_priority = {
-                    -- DEFENSIVE (🟢) - Activate when ball targets us and is close
-                    {"Invisibility", function() return is_targeted and is_close end},
-                    {"Freeze", function() return is_targeted and is_close and speed > 100 end},
-                    {"Forcefield", function() return is_targeted and is_close end},
-                    {"Calming Deflection", function() return is_targeted and is_fast and distance < 30 end},
-                    {"Guardian Angel", function() return is_targeted and is_very_close end},
-                    {"Gale's Edge", function() return is_targeted and distance < 25 end},
-                    {"Pulse", function() return is_targeted and is_close end},
-                    {"Freeze Trap", function() return is_targeted and is_close end},
-                    {"Platform", function() return is_targeted and is_close end},
+                    -- STRATEGIC OFFENSIVE - Tactiques avancées
+                    {"Pull", function() 
+                        return not is_targeted and is_fast and ball_near_enemy and ball_to_enemy_dist < 25 and speed > 180
+                    end},
+                    {"Raging Deflection", function() 
+                        return is_targeted and is_slow and distance < 32
+                    end},
+                    {"Rapture", function() 
+                        return is_targeted and distance < 30 and (is_medium or is_slow)
+                    end},
+                    {"Calming Deflection", function() 
+                        return is_targeted and is_fast and distance < 35
+                    end},
+                    {"Aerodynamic Slash", function() 
+                        return is_targeted and distance < 32
+                    end},
+                    {"Death Slash", function() 
+                        return is_targeted and distance < 28
+                    end},
+                    {"Fracture", function() 
+                        return is_targeted and distance < 32 and enemy_close
+                    end},
+                    {"Slashes of Fury", function() 
+                        return is_targeted and distance < 28
+                    end},
+                    {"Singularity", function() 
+                        return is_targeted and distance < 32
+                    end},
+                    {"Absolute Confidence", function() 
+                        return is_targeted and distance < 35
+                    end},
+                    {"Flash Counter", function() 
+                        return is_targeted and is_very_close
+                    end},
+                    {"Swap", function() 
+                        return is_targeted and is_close and enemy_close
+                    end},
+                    {"Hell Hook", function() 
+                        return is_targeted and is_close and enemy_close
+                    end},
+                    {"Bunny Leap", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Slash of Duality", function() 
+                        return is_targeted and distance < 30
+                    end},
+                    {"Bounty", function() 
+                        return is_targeted and distance < 32 and enemy_close
+                    end},
+                    {"Dribble", function() 
+                        return is_targeted and distance < 28
+                    end},
+                    {"Doppelgänger", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Necromancer", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Displace", function() 
+                        return distance < 38 and not is_targeted
+                    end},
+                    {"Time Hole", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Dragon Spirit", function() 
+                        return is_targeted and distance < 32
+                    end},
+                    {"Quasar", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Encrypted Clone", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Serpent Shadow Clone", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Quantum Arena", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Phase Bypass", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Force", function() 
+                        return is_targeted and is_very_close
+                    end},
+                    {"Misfortune", function() 
+                        return is_targeted and distance < 32
+                    end},
+                    {"Martyrdom", function() 
+                        return is_targeted and is_very_close
+                    end},
+                    {"Golden Ball", function() 
+                        return is_targeted and distance < 32
+                    end},
+                    {"Qi-Charge", function() 
+                        return is_targeted and distance < 32
+                    end},
+                    {"Chieftain's Totem", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Telekinesis", function() 
+                        return distance < 38
+                    end},
+                    {"Blade Trap", function() 
+                        return distance < 35
+                    end},
+                    {"Reaper", function() 
+                        return is_targeted and distance < 32
+                    end},
+                    {"Scopophobia", function() 
+                        return is_targeted and is_close
+                    end},
                     
-                    -- OFFENSIVE (🟥) - Activate when we want to send ball or have control
-                    {"Raging Deflection", function() return is_targeted and distance < 30 and speed < 150 end},
-                    {"Rapture", function() return is_targeted and distance < 28 end},
-                    {"Aerodynamic Slash", function() return is_targeted and distance < 30 end},
-                    {"Death Slash", function() return is_targeted and distance < 25 end},
-                    {"Fracture", function() return is_targeted and distance < 30 end},
-                    {"Pull", function() return not is_targeted and distance < 40 end},
-                    {"Telekinesis", function() return distance < 35 end},
-                    {"Singularity", function() return is_targeted and distance < 30 end},
-                    {"Slashes of Fury", function() return is_targeted and distance < 25 end},
-                    {"Absolute Confidence", function() return is_targeted and distance < 30 end},
-                    {"Flash Counter", function() return is_targeted and is_very_close end},
-                    {"Swap", function() return is_targeted and is_close end},
-                    {"Hell Hook", function() return is_targeted and is_close end},
-                    {"Reaper", function() return is_targeted and distance < 30 end},
-                    {"Scopophobia", function() return is_targeted and is_close end},
-                    {"Blade Trap", function() return distance < 30 end},
-                    {"Bunny Leap", function() return is_targeted and is_close end},
-                    {"Slash of Duality", function() return is_targeted and distance < 28 end},
-                    {"Bounty", function() return is_targeted and distance < 30 end},
-                    {"Dribble", function() return is_targeted and distance < 25 end},
-                    {"Doppelgänger", function() return is_targeted and is_close end},
-                    {"Necromancer", function() return is_targeted and is_close end},
-                    {"Displace", function() return distance < 35 end},
-                    {"Time Hole", function() return is_targeted and is_close end},
-                    {"Dragon Spirit", function() return is_targeted and distance < 30 end},
-                    {"Quasar", function() return is_targeted and is_close end},
-                    {"Encrypted Clone", function() return is_targeted and is_close end},
-                    {"Serpent Shadow Clone", function() return is_targeted and is_close end},
-                    {"Quantum Arena", function() return is_targeted and is_close end},
-                    {"Phase Bypass", function() return is_targeted and is_close end},
-                    {"Force", function() return is_targeted and is_very_close end},
-                    {"Misfortune", function() return is_targeted and distance < 30 end},
-                    {"Martyrdom", function() return is_targeted and is_very_close end},
-                    {"Golden Ball", function() return is_targeted and distance < 30 end},
-                    {"Qi-Charge", function() return is_targeted and distance < 30 end},
-                    {"Chieftain's Totem", function() return is_targeted and is_close end},
+                    -- DEFENSIVE (🟢) - Protection
+                    {"Invisibility", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Freeze", function() 
+                        return is_targeted and is_close and speed > 100
+                    end},
+                    {"Forcefield", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Guardian Angel", function() 
+                        return is_targeted and is_very_close
+                    end},
+                    {"Gale's Edge", function() 
+                        return is_targeted and distance < 28
+                    end},
+                    {"Pulse", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Freeze Trap", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Platform", function() 
+                        return is_targeted and is_close
+                    end},
                     
-                    -- NEUTRAL (★) - Can be used offensively or defensively
-                    {"Infinity", function() return is_targeted and is_close end},
-                    {"Blink", function() return is_targeted and is_close end},
-                    {"Dash", function() return is_targeted and is_close end},
-                    {"Super Jump", function() return is_targeted and is_close end},
-                    {"Quad Jump", function() return is_targeted and is_close end},
-                    {"Thunder Dash", function() return is_targeted and is_close end},
-                    {"Shadow Step", function() return is_targeted and is_close end},
-                    {"Wind Cloak", function() return is_targeted and is_close end},
-                    {"Ninja Dash", function() return is_targeted and is_close end},
-                    {"Waypoint", function() return is_targeted and is_close end},
-                    {"Phantom", function() return is_targeted and is_close end},
-                    {"Titan", function() return is_targeted and distance < 30 end},
-                    {"Continuity Zero", function() return distance < 35 end},
-                    {"Tact", function() return is_targeted and distance < 30 end},
-                    
-                    -- PASSIVE abilities don't need activation (Luck, Reaper passive, Misfortune passive, etc.)
+                    -- NEUTRAL (★) - Utility
+                    {"Infinity", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Blink", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Dash", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Super Jump", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Quad Jump", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Thunder Dash", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Shadow Step", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Wind Cloak", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Ninja Dash", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Waypoint", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Phantom", function() 
+                        return is_targeted and is_close
+                    end},
+                    {"Titan", function() 
+                        return is_targeted and distance < 32
+                    end},
+                    {"Continuity Zero", function() 
+                        return distance < 38
+                    end},
+                    {"Tact", function() 
+                        return is_targeted and distance < 32
+                    end},
                 }
                 
                 for _, ability_data in ipairs(ability_priority) do
@@ -1253,10 +1360,12 @@ function System.autoparry.start()
         System.__properties.__ping_smooth = smooth
         local ping_ms = math.floor(smooth + 0.5)
         local sec = ping_ms * 0.001
-        local tti_min = sec * 0.42 + 0.028
-        local tti_max = sec * 0.70 + 0.20
         local acc = math.clamp(System.__properties.__accuracy or 50, 1, 100)
-        local acc_scale = 0.82 + (acc / 100) * 0.36
+        local acc_factor = 0.65 + (acc / 100) * 0.7
+        local base_tti_min = sec * 0.36 + 0.024
+        local base_tti_max = sec * 0.92 + 0.26
+        local tti_min = base_tti_min * acc_factor
+        local tti_max = base_tti_max * acc_factor
         
         local curved = false
         if one_ball and one_ball:GetAttribute('target') == LocalPlayer.Name then
@@ -1265,7 +1374,7 @@ function System.autoparry.start()
         
         for _, ball in pairs(balls) do
             if not ball then continue end
-            autoparry_process_ball(ball, one_ball, curved, ping_ms, tti_min, tti_max, acc_scale)
+            autoparry_process_ball(ball, one_ball, curved, ping_ms, tti_min, tti_max)
         end
         
         if training_ball then
@@ -1286,9 +1395,7 @@ function System.autoparry.start()
                                 local distance = (root.Position - training_ball.Position).Magnitude
                                 if distance >= 3 and distance <= 58 then
                                     local tti = distance / (speed + 6)
-                                    local t_min = tti_min * acc_scale
-                                    local t_max = tti_max * acc_scale
-                                    if tti >= t_min and tti <= t_max then
+                                    if tti >= tti_min and tti <= tti_max then
                                         if getgenv().AutoParryMode == "Keypress" then
                                             System.parry.keypress()
                                         else
