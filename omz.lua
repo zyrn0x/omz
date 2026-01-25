@@ -25,7 +25,7 @@ local System = {
         __auto_spam_enabled = false,
         __play_animation = false,
         __curve_mode = 1,
-        __accuracy = 50,
+        __accuracy = 1,
         __divisor_multiplier = 1.1,
         __parried = false,
         __training_parried = false,
@@ -50,8 +50,7 @@ local System = {
         __parry_ball_connections = {},
         __auto_spam_accumulator = 0,
         __parry_prediction_ms = 0,
-        __autoparry_cleanup_frame = 0,
-        __ping_smooth = 50
+        __autoparry_cleanup_frame = 0
     },
     
     __config = {
@@ -1008,7 +1007,7 @@ local function autoparry_cleanup_stale(active_balls_set)
     end
 end
 
-local function autoparry_process_ball(ball, one_ball, curved, ping_ms, tti_min, tti_max)
+local function autoparry_process_ball(ball, one_ball, curved, ping_val, parry_accuracy_func)
     local zoomies = ball:FindFirstChild('zoomies')
     if not zoomies then return end
     
@@ -1018,29 +1017,22 @@ local function autoparry_process_ball(ball, one_ball, curved, ping_ms, tti_min, 
     autoparry_ensure_connection(ball)
     
     local ball_target = ball:GetAttribute('target')
-    if ball_target ~= LocalPlayer.Name then return end
-    
     local velocity = zoomies.VectorVelocity
     local speed = velocity.Magnitude
-    if speed < 5 then return end
+    local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
     
-    local root = LocalPlayer.Character.PrimaryPart
-    local to_us = (root.Position - ball.Position).Unit
-    local vel_unit = velocity.Unit
-    local dot = to_us:Dot(vel_unit)
-    if dot < 0.68 then return end
-    
-    local distance = (root.Position - ball.Position).Magnitude
-    if distance < 3 or distance > 58 then return end
-    
-    local tti = distance / (speed + 6)
-    local t_min = tti_min
-    local t_max = tti_max
-    if curved and one_ball and ball == one_ball then
-        t_min = t_min * 0.88
-        t_max = t_max * 1.12
+    local pred_ms = System.__properties.__parry_prediction_ms or 0
+    if pred_ms <= 0 then
+        pred_ms = math.min(math.max(ping_val * 0.4, 15), 85)
     end
-    if tti < t_min or tti > t_max then return end
+    if curved and one_ball and ball == one_ball then
+        pred_ms = pred_ms + 28
+    end
+    local effective_distance = distance - speed * (pred_ms / 1000)
+    local parry_accuracy = parry_accuracy_func(speed) + 2
+    if curved and one_ball and ball == one_ball then
+        parry_accuracy = parry_accuracy + 4
+    end
     
     if ball:FindFirstChild('AeroDynamicSlashVFX') then
         ball.AeroDynamicSlashVFX:Destroy()
@@ -1054,11 +1046,14 @@ local function autoparry_process_ball(ball, one_ball, curved, ping_ms, tti_min, 
     end
     
     if ball:FindFirstChild('ComboCounter') then return end
-    if root:FindFirstChild('SingularityCape') then return end
+    if LocalPlayer.Character.PrimaryPart:FindFirstChild('SingularityCape') then return end
     if System.__config.__detections.__infinity and System.__properties.__infinity_active then return end
     if System.__config.__detections.__deathslash and System.__properties.__deathslash_active then return end
     if System.__config.__detections.__timehole and System.__properties.__timehole_active then return end
     if System.__config.__detections.__slashesoffury and System.__properties.__slashesoffury_active then return end
+    
+    if ball_target ~= LocalPlayer.Name then return end
+    if effective_distance > parry_accuracy then return end
     
     if getgenv().CooldownProtection then
         local hotbar = LocalPlayer.PlayerGui:FindFirstChild("Hotbar")
@@ -1073,240 +1068,30 @@ local function autoparry_process_ball(ball, one_ball, curved, ping_ms, tti_min, 
     end
     
     if getgenv().AutoAbility then
-        local ok, done = pcall(function()
-            local ab = LocalPlayer.Character:FindFirstChild("Abilities")
-            local hb = LocalPlayer.PlayerGui:FindFirstChild("Hotbar")
-            if not ab or not hb then return false end
-            local abBtn = hb:FindFirstChild("Ability")
-            if not abBtn then return false end
-            local AbilityCD = abBtn:FindFirstChild("UIGradient")
-            local oy = AbilityCD and AbilityCD.Offset.Y or 0
-            if oy < 0.44 or oy > 0.56 then return false end
-            local ball_target = ball:GetAttribute('target')
-            local velocity = zoomies.VectorVelocity
-            local speed = velocity.Magnitude
-            local root = LocalPlayer.Character.PrimaryPart
-            local distance = (root.Position - ball.Position).Magnitude
-            local is_targeted = (ball_target == LocalPlayer.Name)
-            local is_close = (distance < 45)
-            local is_very_close = (distance < 28)
-            local is_fast = (speed > 200)
-            local is_slow = (speed < 120)
-            local is_medium = (speed >= 120 and speed <= 200)
-            
-            System.player.get_closest()
-            local enemy_dist = Closest_Entity and (root.Position - Closest_Entity.PrimaryPart.Position).Magnitude or math.huge
-            local enemy_close = (enemy_dist < 35)
-            local ball_to_enemy_dist = Closest_Entity and (Closest_Entity.PrimaryPart.Position - ball.Position).Magnitude or math.huge
-            local ball_near_enemy = (ball_to_enemy_dist < 30)
-            
-            local ability_priority = {
-                    -- STRATEGIC OFFENSIVE - Tactiques avancées
-                    {"Pull", function() 
-                        return not is_targeted and is_fast and ball_near_enemy and ball_to_enemy_dist < 25 and speed > 180
-                    end},
-                    {"Raging Deflection", function() 
-                        return is_targeted and is_slow and distance < 32
-                    end},
-                    {"Rapture", function() 
-                        return is_targeted and distance < 30 and (is_medium or is_slow)
-                    end},
-                    {"Calming Deflection", function() 
-                        return is_targeted and is_fast and distance < 35
-                    end},
-                    {"Aerodynamic Slash", function() 
-                        return is_targeted and distance < 32
-                    end},
-                    {"Death Slash", function() 
-                        return is_targeted and distance < 28
-                    end},
-                    {"Fracture", function() 
-                        return is_targeted and distance < 32 and enemy_close
-                    end},
-                    {"Slashes of Fury", function() 
-                        return is_targeted and distance < 28
-                    end},
-                    {"Singularity", function() 
-                        return is_targeted and distance < 32
-                    end},
-                    {"Absolute Confidence", function() 
-                        return is_targeted and distance < 35
-                    end},
-                    {"Flash Counter", function() 
-                        return is_targeted and is_very_close
-                    end},
-                    {"Swap", function() 
-                        return is_targeted and is_close and enemy_close
-                    end},
-                    {"Hell Hook", function() 
-                        return is_targeted and is_close and enemy_close
-                    end},
-                    {"Bunny Leap", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Slash of Duality", function() 
-                        return is_targeted and distance < 30
-                    end},
-                    {"Bounty", function() 
-                        return is_targeted and distance < 32 and enemy_close
-                    end},
-                    {"Dribble", function() 
-                        return is_targeted and distance < 28
-                    end},
-                    {"Doppelgänger", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Necromancer", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Displace", function() 
-                        return distance < 38 and not is_targeted
-                    end},
-                    {"Time Hole", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Dragon Spirit", function() 
-                        return is_targeted and distance < 32
-                    end},
-                    {"Quasar", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Encrypted Clone", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Serpent Shadow Clone", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Quantum Arena", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Phase Bypass", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Force", function() 
-                        return is_targeted and is_very_close
-                    end},
-                    {"Misfortune", function() 
-                        return is_targeted and distance < 32
-                    end},
-                    {"Martyrdom", function() 
-                        return is_targeted and is_very_close
-                    end},
-                    {"Golden Ball", function() 
-                        return is_targeted and distance < 32
-                    end},
-                    {"Qi-Charge", function() 
-                        return is_targeted and distance < 32
-                    end},
-                    {"Chieftain's Totem", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Telekinesis", function() 
-                        return distance < 38
-                    end},
-                    {"Blade Trap", function() 
-                        return distance < 35
-                    end},
-                    {"Reaper", function() 
-                        return is_targeted and distance < 32
-                    end},
-                    {"Scopophobia", function() 
-                        return is_targeted and is_close
-                    end},
-                    
-                    -- DEFENSIVE (🟢) - Protection
-                    {"Invisibility", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Freeze", function() 
-                        return is_targeted and is_close and speed > 100
-                    end},
-                    {"Forcefield", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Guardian Angel", function() 
-                        return is_targeted and is_very_close
-                    end},
-                    {"Gale's Edge", function() 
-                        return is_targeted and distance < 28
-                    end},
-                    {"Pulse", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Freeze Trap", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Platform", function() 
-                        return is_targeted and is_close
-                    end},
-                    
-                    -- NEUTRAL (★) - Utility
-                    {"Infinity", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Blink", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Dash", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Super Jump", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Quad Jump", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Thunder Dash", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Shadow Step", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Wind Cloak", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Ninja Dash", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Waypoint", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Phantom", function() 
-                        return is_targeted and is_close
-                    end},
-                    {"Titan", function() 
-                        return is_targeted and distance < 32
-                    end},
-                    {"Continuity Zero", function() 
-                        return distance < 38
-                    end},
-                    {"Tact", function() 
-                        return is_targeted and distance < 32
-                    end},
-                }
-                
-                for _, ability_data in ipairs(ability_priority) do
-                    local ability_name, should_activate = ability_data[1], ability_data[2]
-                    local abil = ab:FindFirstChild(ability_name)
-                    if abil and abil.Enabled and should_activate() then
+        local ab = LocalPlayer.Character:FindFirstChild("Abilities")
+        local hb = LocalPlayer.PlayerGui:FindFirstChild("Hotbar")
+        if ab and hb and hb:FindFirstChild("Ability") then
+            local AbilityCD = hb.Ability:FindFirstChild("UIGradient")
+            if AbilityCD and AbilityCD.Offset.Y == 0.5 then
+                local names = {"Raging Deflection", "Rapture", "Calming Deflection", "Aerodynamic Slash", "Fracture", "Death Slash"}
+                for _, n in ipairs(names) do
+                    local abil = ab:FindFirstChild(n)
+                    if abil and abil.Enabled then
                         System.__properties.__parried_balls[ball] = tick() + 2.5
                         ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
-                        if ability_name == "Death Slash" then
-                            task.spawn(function()
-                                task.wait(2.432)
-                                local rs = ReplicatedStorage:FindFirstChild("Remotes")
-                                if rs then
-                                    local ds = rs:FindFirstChild("DeathSlashShootActivation")
-                                    if ds then ds:FireServer(true) end
-                                end
-                            end)
-                        end
-                        return true
+                        task.spawn(function()
+                            task.wait(2.432)
+                            local rs = ReplicatedStorage:FindFirstChild("Remotes")
+                            if rs then
+                                local ds = rs:FindFirstChild("DeathSlashShootActivation")
+                                if ds then ds:FireServer(true) end
+                            end
+                        end)
+                        return
                     end
                 end
-            return false
-        end)
-        if ok and done then return end
+            end
+        end
     end
     
     if getgenv().AutoParryMode == "Keypress" then
@@ -1353,28 +1138,24 @@ function System.autoparry.start()
             autoparry_cleanup_stale(active_set)
         end
         
-        local ping_raw = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
-        local clamped = math.clamp(ping_raw, 8, 400)
-        local smooth = System.__properties.__ping_smooth
-        smooth = smooth * 0.91 + clamped * 0.09
-        System.__properties.__ping_smooth = smooth
-        local ping_ms = math.floor(smooth + 0.5)
-        local sec = ping_ms * 0.001
-        local acc = math.clamp(System.__properties.__accuracy or 50, 1, 100)
-        local acc_factor = 0.65 + (acc / 100) * 0.7
-        local base_tti_min = sec * 0.36 + 0.024
-        local base_tti_max = sec * 0.92 + 0.26
-        local tti_min = base_tti_min * acc_factor
-        local tti_max = base_tti_max * acc_factor
+        local ping_val = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
+        local ping_threshold = math.clamp(ping_val / 100, 5, 18)
+        local dm = System.__properties.__divisor_multiplier
         
         local curved = false
         if one_ball and one_ball:GetAttribute('target') == LocalPlayer.Name then
             curved = System.detection.is_curved()
         end
         
+        local function parry_acc(speed)
+            local capped = math.min(math.max(speed - 9.5, 0), 650)
+            local div = (2.4 + capped * 0.002) * dm
+            return ping_threshold + math.max(speed / div, 9.5)
+        end
+        
         for _, ball in pairs(balls) do
             if not ball then continue end
-            autoparry_process_ball(ball, one_ball, curved, ping_ms, tti_min, tti_max)
+            autoparry_process_ball(ball, one_ball, curved, ping_val, parry_acc)
         end
         
         if training_ball then
@@ -1384,28 +1165,23 @@ function System.autoparry.start()
                 local cooldown = System.__properties.__parried_balls[training_ball]
                 if not cooldown or tick() >= cooldown then
                     local ball_target = training_ball:GetAttribute('target')
-                    if ball_target == LocalPlayer.Name then
-                        local velocity = zoomies.VectorVelocity
-                        local speed = velocity.Magnitude
-                        if speed >= 5 then
-                            local root = LocalPlayer.Character.PrimaryPart
-                            local to_us = (root.Position - training_ball.Position).Unit
-                            local dot = to_us:Dot(velocity.Unit)
-                            if dot >= 0.68 then
-                                local distance = (root.Position - training_ball.Position).Magnitude
-                                if distance >= 3 and distance <= 58 then
-                                    local tti = distance / (speed + 6)
-                                    if tti >= tti_min and tti <= tti_max then
-                                        if getgenv().AutoParryMode == "Keypress" then
-                                            System.parry.keypress()
-                                        else
-                                            System.parry.execute_action()
-                                        end
-                                        System.__properties.__parried_balls[training_ball] = tick() + 0.82
-                                    end
-                                end
-                            end
+                    local velocity = zoomies.VectorVelocity
+                    local speed = velocity.Magnitude
+                    local distance = (LocalPlayer.Character.PrimaryPart.Position - training_ball.Position).Magnitude
+                    local pred_ms = System.__properties.__parry_prediction_ms or 0
+                    if pred_ms <= 0 then
+                        pred_ms = math.min(math.max(ping_val * 0.4, 15), 85)
+                    end
+                    local parry_accuracy = parry_acc(speed) + 2
+                    local effective_distance = distance - speed * (pred_ms / 1000)
+                    
+                    if ball_target == LocalPlayer.Name and effective_distance <= parry_accuracy then
+                        if getgenv().AutoParryMode == "Keypress" then
+                            System.parry.keypress()
+                        else
+                            System.parry.execute_action()
                         end
+                        System.__properties.__parried_balls[training_ball] = tick() + 0.82
                     end
                 end
             end
@@ -5022,7 +4798,7 @@ ConfigSection:Button({
             System.__properties.__auto_spam_enabled = config.auto_spam_enabled or false
             System.__properties.__play_animation = config.play_animation or false
             System.__properties.__curve_mode = config.curve_mode or 1
-            System.__properties.__accuracy = config.accuracy or 50
+            System.__properties.__accuracy = config.accuracy or 1
             System.__properties.__spam_threshold = config.spam_threshold or 1.5
             System.__properties.__spam_rate = config.spam_rate or 240
             System.__properties.__parry_prediction_ms = config.parry_prediction_ms or 0
