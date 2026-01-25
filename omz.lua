@@ -948,6 +948,16 @@ function System.auto_spam.start()
         if target_distance > spam_accuracy or distance > spam_accuracy then return end
         if ball_target == LocalPlayer.Name and target_distance > 35 and distance > 35 then return end
         
+        local to_enemy = (target_position - LocalPlayer.Character.PrimaryPart.Position).Unit
+        local player_vel = LocalPlayer.Character.PrimaryPart.Velocity
+        local player_speed = player_vel.Magnitude
+        if player_speed > 3 then
+            local dot = player_vel.Unit:Dot(to_enemy)
+            if dot < -0.25 then
+                return
+            end
+        end
+        
         System.__properties.__auto_spam_accumulator = System.__properties.__auto_spam_accumulator + delta
         local interval = 1 / System.__properties.__spam_rate
         if System.__properties.__auto_spam_accumulator < interval then return end
@@ -1011,8 +1021,13 @@ local function autoparry_process_ball(ball, one_ball, ping_threshold, parry_accu
     local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
     
     local pred_ms = System.__properties.__parry_prediction_ms or 0
-    local effective_distance = pred_ms > 0 and (distance - speed * (pred_ms / 1000)) or distance
+    if pred_ms <= 0 then
+        local ping_val = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
+        pred_ms = math.min(math.max(ping_val * 0.4, 15), 85)
+    end
+    local effective_distance = distance - speed * (pred_ms / 1000)
     local parry_accuracy = parry_accuracy_func(speed)
+    parry_accuracy = parry_accuracy + 2
     
     if ball:FindFirstChild('AeroDynamicSlashVFX') then
         ball.AeroDynamicSlashVFX:Destroy()
@@ -1036,7 +1051,8 @@ local function autoparry_process_ball(ball, one_ball, ping_threshold, parry_accu
     if System.__config.__detections.__timehole and System.__properties.__timehole_active then return end
     if System.__config.__detections.__slashesoffury and System.__properties.__slashesoffury_active then return end
     
-    if ball_target ~= LocalPlayer.Name or effective_distance > parry_accuracy then return end
+    if ball_target ~= LocalPlayer.Name then return end
+    if effective_distance > parry_accuracy then return end
     
     if getgenv().CooldownProtection then
         local hotbar = LocalPlayer.PlayerGui:FindFirstChild("Hotbar")
@@ -1082,7 +1098,7 @@ local function autoparry_process_ball(ball, one_ball, ping_threshold, parry_accu
     else
         System.parry.execute_action()
     end
-    System.__properties.__parried_balls[ball] = tick() + 1
+    System.__properties.__parried_balls[ball] = tick() + 0.82
 end
 
 function System.autoparry.start()
@@ -1140,9 +1156,13 @@ function System.autoparry.start()
                     local velocity = zoomies.VectorVelocity
                     local speed = velocity.Magnitude
                     local distance = (LocalPlayer.Character.PrimaryPart.Position - training_ball.Position).Magnitude
-                    local parry_accuracy = parry_acc(speed)
+                    local parry_accuracy = parry_acc(speed) + 2
                     local pred_ms = System.__properties.__parry_prediction_ms or 0
-                    local effective_distance = pred_ms > 0 and (distance - speed * (pred_ms / 1000)) or distance
+                    if pred_ms <= 0 then
+                        local pv = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
+                        pred_ms = math.min(math.max(pv * 0.4, 15), 85)
+                    end
+                    local effective_distance = distance - speed * (pred_ms / 1000)
                     
                     if ball_target == LocalPlayer.Name and effective_distance <= parry_accuracy then
                         if getgenv().AutoParryMode == "Keypress" then
@@ -1150,7 +1170,7 @@ function System.autoparry.start()
                         else
                             System.parry.execute_action()
                         end
-                        System.__properties.__parried_balls[training_ball] = tick() + 1
+                        System.__properties.__parried_balls[training_ball] = tick() + 0.82
                     end
                 end
             end
