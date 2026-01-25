@@ -428,7 +428,28 @@ function System.parry.keypress()
         return
     end
 
-    PF()
+    if PF then
+        pcall(PF)
+    else
+        -- Fallback: If PF is nil, try execute_action or just warn
+        -- For 'keypress' mode, we really need PF. 
+        -- Attempt to rescan?
+       if LocalPlayer.PlayerGui:FindFirstChild("Hotbar") and LocalPlayer.PlayerGui.Hotbar:FindFirstChild("Block") then
+            for _, v in next, getconnections(LocalPlayer.PlayerGui.Hotbar.Block.Activated) do
+                if v.Function then
+                    PF = v.Function
+                    pcall(PF)
+                    break
+                end
+            end
+       end
+       
+       if not PF then
+           -- Last ditch: Use VirtualInputManager to press F or click
+           -- For now, safe return to prevent crash
+           return
+       end
+    end
 
     if System.__properties.__parries > 10000 then return end
     
@@ -3416,7 +3437,7 @@ ParrySection:Dropdown({
 
 ParrySection:Slider({
     Title = "Parry Accuracy",
-    Value = { Min = 1, Max = 100, Default = 50 },
+    Value = { Min = 1, Max = 100, Default = 100 },
     Step = 1,
     Callback = function(value)
         System.__properties.__accuracy = value
