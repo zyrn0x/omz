@@ -136,6 +136,14 @@ function hookRemote(remote)
     end
 end
 
+-- Anti-AFK
+local VirtualUser = game:GetService("VirtualUser")
+LocalPlayer.Idled:Connect(function()
+    VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+    task.wait(1)
+    VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+end)
+
 for _, remote in pairs(ReplicatedStorage:GetChildren()) do
     if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
         hookRemote(remote)
@@ -999,6 +1007,136 @@ function System.auto_spam.stop()
     end
 end
 
+System.prediction = {}
+
+function System.prediction.get_real_target(ball)
+    if not ball then return nil end
+    local zoomies = ball:FindFirstChild('zoomies')
+    if not zoomies then return ball:GetAttribute("target") end
+    
+    local velocity = zoomies.VectorVelocity
+    local position = ball.Position
+    
+    if velocity.Magnitude < 0.1 then return ball:GetAttribute("target") end
+    
+    local ray_direction = velocity.Unit
+    local max_dist = math.huge
+    local real_target = nil
+    
+    for _, player in pairs(Alive:GetChildren()) do
+        if player:FindFirstChild("HumanoidRootPart") then
+            -- Project player onto the ball's path
+            local to_player = player.HumanoidRootPart.Position - position
+            local projection = to_player:Dot(ray_direction)
+            
+            if projection > 0 then -- In front of the ball
+                local closest_point = position + ray_direction * projection
+                local dist_from_line = (player.HumanoidRootPart.Position - closest_point).Magnitude
+                
+                -- Ball Radius/Hitbox is roughly 5-10 studs
+                if dist_from_line < 10 and projection < max_dist then
+                    max_dist = projection
+                    real_target = player.Name
+                end
+            end
+        end
+    end
+    
+    return real_target or ball:GetAttribute("target")
+end
+
+System.visuals = {}
+
+function System.visuals.draw_circle(position, radius, color)
+    if not getgenv().ShowParryRadius then return end
+    -- Real-time drawing of a circle on the floor
+    -- Using a temporary part for visualization
+    local circle = Instance.new("Part")
+    circle.Size = Vector3.new(radius * 2, 0.1, radius * 2)
+    circle.Position = position - Vector3.new(0, 3, 0)
+    circle.Anchored = true
+    circle.CanCollide = false
+    circle.Transparency = 0.5
+    circle.Color = color or Color3.fromRGB(136, 0, 255) -- Sigma Purple
+    circle.Shape = Enum.PartType.Cylinder
+    circle.Orientation = Vector3.new(0, 0, 90)
+    circle.Parent = workspace
+    task.delay(0.01, function() circle:Destroy() end)
+end
+
+function System.visuals.draw_path(ball)
+    if not ball or not getgenv().ShowBallPath then return end
+    local zoomies = ball:FindFirstChild('zoomies')
+    if not zoomies then return end
+    
+    local beam = Instance.new("Part")
+    beam.Size = Vector3.new(0.5, 0.5, 100)
+    beam.CFrame = CFrame.new(ball.Position, ball.Position + zoomies.VectorVelocity.Unit * 10) * CFrame.new(0, 0, -50)
+    beam.Anchored = true
+    beam.CanCollide = false
+    beam.Transparency = 0.5
+    beam.Color = Color3.fromRGB(255, 0, 68) -- Sigma Crimson
+    beam.Material = Enum.Material.Neon
+    beam.Parent = workspace
+    task.delay(0.01, function() beam:Destroy() end)
+end
+
+RunService.RenderStepped:Connect(function()
+    local ball = System.ball.get()
+    if ball then
+        System.visuals.draw_path(ball)
+    end
+    
+    if LocalPlayer.Character and LocalPlayer.Character.PrimaryPart then
+        System.visuals.draw_circle(LocalPlayer.Character.PrimaryPart.Position, 25) -- Assume 25 studs radius
+    end
+end)
+
+System.audio = {
+    __playing = false,
+    __sound = nil,
+    __ids = {
+        ["Phonk 1"] = "rbxassetid://15133606626",
+        ["Phonk 2"] = "rbxassetid://15133611345",
+        ["Darkness"] = "rbxassetid://15133614532"
+    }
+}
+
+function System.audio.play(id_name)
+    if System.audio.__sound then 
+        System.audio.__sound:Stop()
+        System.audio.__sound:Destroy()
+    end
+    
+    local sound = Instance.new("Sound")
+    sound.SoundId = System.audio.__ids[id_name] or id_name
+    sound.Volume = 0.5
+    sound.Looped = true
+    sound.Parent = game:GetService("SoundService")
+    sound:Play()
+    System.audio.__sound = sound
+    System.audio.__playing = true
+end
+
+function System.audio.stop()
+    if System.audio.__sound then
+        System.audio.__sound:Stop()
+    end
+    System.audio.__playing = false
+end
+
+System.performance = {}
+
+function System.performance.boost_fps()
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Texture") or v:IsA("Decal") or v:IsA("ParticleEmitter") then
+            v.Enabled = false
+        elseif v:IsA("BasePart") then
+            v.Material = Enum.Material.SmoothPlastic
+        end
+    end
+end
+
 System.autoparry = {}
 
 local function autoparry_ensure_connection(ball)
@@ -1032,7 +1170,7 @@ local function autoparry_process_ball(ball, one_ball, ping_threshold, parry_accu
     
     autoparry_ensure_connection(ball)
     
-    local ball_target = ball:GetAttribute('target')
+    local ball_target = System.prediction.get_real_target(ball)
     local velocity = zoomies.VectorVelocity
     local speed = velocity.Magnitude
     local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
@@ -3265,75 +3403,55 @@ task.defer(function()
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
 WindUI:AddTheme({
-    Name = "Nebula",
+    Name = "Sigma Dark",
 
-    Accent = Color3.fromHex("#7B61FF"),
-    Background = Color3.fromHex("#070217"),
-    BackgroundTransparency = 0,
-    Outline = Color3.fromHex("#3DEFD1"),
-    Text = Color3.fromHex("#EAF2FF"),
-    Placeholder = Color3.fromHex("#9AA4B2"),
-    Button = Color3.fromHex("#4B2BFF"),
-    Icon = Color3.fromHex("#7BE7FF"),
+    Accent = Color3.fromHex("#8800FF"),
+    Background = Color3.fromHex("#000000"),
+    BackgroundTransparency = 0.1,
+    Outline = Color3.fromHex("#FF0044"),
+    Text = Color3.fromHex("#FFFFFF"),
+    Placeholder = Color3.fromHex("#808080"),
+    Button = Color3.fromHex("#1A1A1A"),
+    Icon = Color3.fromHex("#FF0044"),
 
-    Hover = Color3.fromHex("#FFFFFF"),
-    BackgroundTransparency = 0,
+    Hover = Color3.fromHex("#2A2A2A"),
+    WindowBackground = Color3.fromHex("#050505"),
+    WindowShadow = Color3.fromHex("#110022"),
 
-    WindowBackground = Color3.fromHex("#070217"),
-    WindowShadow = Color3.fromHex("#000000"),
+    DialogBackground = Color3.fromHex("#0A0A0A"),
+    DialogTitle = Color3.fromHex("#8800FF"),
+    DialogContent = Color3.fromHex("#CCCCCC"),
 
-    DialogBackground = Color3.fromHex("#09021A"),
-    DialogBackgroundTransparency = 0,
-    DialogTitle = Color3.fromHex("#FFFFFF"),
-    DialogContent = Color3.fromHex("#DDEBFF"),
-    DialogIcon = Color3.fromHex("#7BE7FF"),
+    TabBackground = Color3.fromHex("#0D0D0D"),
+    TabTitle = Color3.fromHex("#FFFFFF"),
+    TabIcon = Color3.fromHex("#8800FF"),
 
-    WindowTopbarButtonIcon = Color3.fromHex("#7BE7FF"),
-    WindowTopbarTitle = Color3.fromHex("#FFFFFF"),
-    WindowTopbarAuthor = Color3.fromHex("#BFD8FF"),
-    WindowTopbarIcon = Color3.fromHex("#FFFFFF"),
+    ElementBackground = Color3.fromHex("#121212"),
+    ElementTitle = Color3.fromHex("#FFFFFF"),
+    ElementDesc = Color3.fromHex("#999999"),
+    ElementIcon = Color3.fromHex("#FF0044"),
 
-    TabBackground = Color3.fromHex("#0B1230"),
-    TabTitle = Color3.fromHex("#EAF2FF"),
-    TabIcon = Color3.fromHex("#7B61FF"),
+    Toggle = Color3.fromHex("#8800FF"),
+    ToggleBar = Color3.fromHex("#FF0044"),
 
-    ElementBackground = Color3.fromHex("#0E1428"),
-    ElementTitle = Color3.fromHex("#EAF2FF"),
-    ElementDesc = Color3.fromHex("#B7C6E6"),
-    ElementIcon = Color3.fromHex("#7BE7FF"),
-
-    PopupBackground = Color3.fromHex("#070217"),
-    PopupBackgroundTransparency = 0,
-    PopupTitle = Color3.fromHex("#FFFFFF"),
-    PopupContent = Color3.fromHex("#DDEBFF"),
-    PopupIcon = Color3.fromHex("#7BE7FF"),
-
-    Toggle = Color3.fromHex("#5A3BFF"),
-    ToggleBar = Color3.fromHex("#3DEFD1"),
-
-    Checkbox = Color3.fromHex("#5A3BFF"),
-    CheckboxIcon = Color3.fromHex("#FFFFFF"),
-
-    Slider = Color3.fromHex("#5A3BFF"),
-    SliderThumb = Color3.fromHex("#3DEFD1"),
+    Slider = Color3.fromHex("#8800FF"),
+    SliderThumb = Color3.fromHex("#FF0044"),
 })
 
 local Window = WindUI:CreateWindow({
-    Title = "Omz Hub — Nebula",
-    Icon = "star", -- lucide icon. optional
-    Author = "by Omz", -- optional
-    Theme = "Nebula",
+    Title = "SIGMA HUB — ULTIMATE",
+    Icon = "skull",
+    Author = "by Antigravity",
+    Theme = "Sigma Dark",
     Background = WindUI:Gradient({                                                      
-        ["0"] = { Color = Color3.fromHex("#7B61FF"), Transparency = 0 },            
-        ["50"] = { Color = Color3.fromHex("#3DEFD1"), Transparency = 0 },
-        ["100"]   = { Color = Color3.fromHex("#070217"), Transparency = 0 },      
+        ["0"] = { Color = Color3.fromHex("#000000"), Transparency = 0 },            
+        ["100"]   = { Color = Color3.fromHex("#1A0033"), Transparency = 0 },      
     }, {                                                                            
         Rotation = 45,                                                               
     }),
 })
 
--- Tags (optionnel)
-Window:Tag({ Title = "v1.0 • OMZ • Nebula", Icon = "sparkles", Color = Color3.fromHex("#1c1c1c"), Border = true })
+Window:Tag({ Title = "GOD-TIER VERSION", Icon = "zap", Color = Color3.fromHex("#FF0044"), Border = true })
 
 -- Icon Colors
 local Purple = Color3.fromHex("#7775F2")
@@ -3844,6 +3962,63 @@ ManualSpamSection:Slider({
 })
 
 -- ────────────────────────────────────────────────────────────────
+--  MISC TAB (MUSIC & PERFORMANCE)
+-- ────────────────────────────────────────────────────────────────
+
+local MiscTab = Window:Tab({ 
+    Title = "Misc", 
+    Icon = "solar:settings-bold", 
+    IconColor = Grey,
+    IconShape = "Square",
+    Border = true
+})
+
+local MusicSection = MiscTab:Section({ Title = "Music Player (PHONK)" })
+
+MusicSection:Dropdown({
+    Title = "Select Track",
+    Values = {"Phonk 1", "Phonk 2", "Darkness"},
+    Default = "Phonk 1",
+    Callback = function(val)
+        getgenv().SelectedTrack = val
+        if System.audio.__playing then
+            System.audio.play(val)
+        end
+    end
+})
+
+MusicSection:Toggle({
+    Title = "Play Music",
+    Default = false,
+    Callback = function(val)
+        if val then
+            System.audio.play(getgenv().SelectedTrack or "Phonk 1")
+        else
+            System.audio.stop()
+        end
+    end
+})
+
+local PerfSection = MiscTab:Section({ Title = "Performance / FPS" })
+
+PerfSection:Button({
+    Title = "FPS Booster (Max Performance)",
+    Icon = "zap",
+    Callback = function()
+        System.performance.boost_fps()
+    end
+})
+
+PerfSection:Toggle({
+    Title = "Low Detail Mode",
+    Default = false,
+    Callback = function(val)
+        getgenv().LowDetailMode = val
+        -- Logic already in boost_fps, can be looped if needed
+    end
+})
+
+-- ────────────────────────────────────────────────────────────────
 --  VISUAL TAB
 -- ────────────────────────────────────────────────────────────────
 
@@ -3853,6 +4028,33 @@ local VisualTab = Window:Tab({
     IconColor = Yellow,
     IconShape = "Square",
     Border = true
+})
+
+local PredictionSection = VisualTab:Section({ Title = "GOD-TIER Visuals" })
+
+PredictionSection:Toggle({
+    Title = "Predicted Ball Path",
+    Default = false,
+    Callback = function(val)
+        getgenv().ShowBallPath = val
+    end
+})
+
+PredictionSection:Toggle({
+    Title = "Parry Radius Visualizer",
+    Default = false,
+    Callback = function(val)
+        getgenv().ShowParryRadius = val
+    end
+})
+
+PredictionSection:Toggle({
+    Title = "Target Line",
+    Desc = "Draws a line to the predicted target",
+    Default = false,
+    Callback = function(val)
+        getgenv().ShowTargetLine = val
+    end
 })
 
 local AvatarChangerSection = VisualTab:Section({
