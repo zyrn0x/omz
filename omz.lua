@@ -1,7 +1,15 @@
 local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 
 local getinfo = getinfo or (debug and debug.getinfo)
-local islclosure = islclosure or (debug and debug.islclosure) or function() return true end
+local getfenv = getfenv or function() return {} end
+local getconnections = getconnections or function() return {} end
+local getupvalues = getupvalues or (debug and debug.getupvalues) or function() return {} end
+local setupvalue = setupvalue or (debug and debug.setupvalue) or function() end
+local getrawmetatable = getrawmetatable or function() return {} end
+local setreadonly = setreadonly or function() end
+local islclosure = islclosure or (debug and debug.islclosure) or function(f) return type(f) == "function" end
+local cloneref = cloneref or function(o) return o end
+local hookmetamethod = hookmetamethod or function(o, m, f) return f end
 
 local Window = WindUI:CreateWindow({
     Title = "Omz Hub — GOD-TIER",
@@ -135,8 +143,9 @@ if ReplicatedStorage:FindFirstChild("Controllers") then
 end
 
 if LocalPlayer.PlayerGui:FindFirstChild("Hotbar") and LocalPlayer.PlayerGui.Hotbar:FindFirstChild("Block") then
-    for _, v in next, getconnections(LocalPlayer.PlayerGui.Hotbar.Block.Activated) do
-        if SC and getfenv(v.Function).script == SC then
+    local connections = getconnections(LocalPlayer.PlayerGui.Hotbar.Block.Activated)
+    for _, v in next, (type(connections) == "table" and connections or {}) do
+        if v.Function and SC and getfenv(v.Function).script == SC then
             PF = v.Function
             break
         end
@@ -2003,11 +2012,11 @@ local function create_curve_selector_mobile()
                 
                 current_selected = buttons[i]
                 
-                if getgenv().AutoCurveHotkeyNotify then
-                    Library.SendNotification({
-                        Title = "AutoCurve",
-                        text = curve_data.name,
-                        Duration = 2
+                if getgenv().AutoParryNotify then
+                    WindUI:Notify({
+                        Title = "Module Notification",
+                        Content = value and "Auto Parry has been turned ON" or "Auto Parry has been turned OFF",
+                        Duration = 3
                     })
                 end
             end
@@ -2088,9 +2097,9 @@ local function updateCurveType(newType)
     end
     
     if getgenv().AutoCurveHotkeyNotify then
-        Library.SendNotification({
+        WindUI:Notify({
             Title = "AutoCurve",
-            text = newType,
+            Content = newType,
             Duration = 2
         })
     end
@@ -2166,9 +2175,9 @@ end
 local function sendNotification(title, text)
     if not state.notificationsEnabled then return end
     
-    Library.SendNotification({
+    WindUI:Notify({
         Title = title,
-        text = text,
+        Content = text,
         Duration = config.notificationDuration
     })
 end
@@ -4551,7 +4560,8 @@ local swordInstances = require(swordInstancesInstance)
 local swordsController
 
 while task.wait() and (not swordsController) do
-    for i,v in getconnections(ReplicatedStorage.Remotes.FireSwordInfo.OnClientEvent) do
+    local conns = getconnections(ReplicatedStorage.Remotes.FireSwordInfo.OnClientEvent)
+    for _, v in ipairs(type(conns) == "table" and conns or {}) do
         if v.Function and islclosure(v.Function) then
             local upvalues = getupvalues(v.Function)
             if #upvalues == 1 and type(upvalues[1]) == "table" then
@@ -4585,8 +4595,9 @@ local playParryFunc
 local parrySuccessAllConnection
 
 while task.wait() and not parrySuccessAllConnection do
-    for i,v in getconnections(ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent) do
-        if v.Function and getinfo(v.Function).name == "parrySuccessAll" then
+    local conns = getconnections(ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent)
+    for _, v in ipairs(type(conns) == "table" and conns or {}) do
+        if v.Function and getinfo and getinfo(v.Function) and getinfo(v.Function).name == "parrySuccessAll" then
             parrySuccessAllConnection = v
             playParryFunc = v.Function
             v:Disable()
@@ -4596,8 +4607,9 @@ end
 
 local parrySuccessClientConnection
 while task.wait() and not parrySuccessClientConnection do
-    for i,v in getconnections(ReplicatedStorage.Remotes.ParrySuccessClient.Event) do
-        if v.Function and getinfo(v.Function).name == "parrySuccessAll" then
+    local conns = getconnections(ReplicatedStorage.Remotes.ParrySuccessClient.Event)
+    for _, v in ipairs(type(conns) == "table" and conns or {}) do
+        if v.Function and getinfo and getinfo(v.Function) and getinfo(v.Function).name == "parrySuccessAll" then
             parrySuccessClientConnection = v
             v:Disable()
         end
@@ -5658,10 +5670,10 @@ local function performDesync()
 end
 
 local function sendNotification(text)
-    if state.notify and Library then
-        Library.SendNotification({
+    if state.notify then
+        WindUI:Notify({
             Title = "Walkable Semi-Immortal",
-            text = text
+            Content = text
         })
     end
 end
@@ -5875,10 +5887,10 @@ local function performDesync()
 end
 
 local function sendNotification(text)
-    if state.notify and Library then
-        Library.SendNotification({
+    if state.notify then
+        WindUI:Notify({
             Title = "IDK???",
-            text = text
+            Content = text
         })
     end
 end
