@@ -143,6 +143,29 @@ if LocalPlayer.PlayerGui:FindFirstChild("Hotbar") and LocalPlayer.PlayerGui.Hotb
     end
 end
 
+local function get_remote(path)
+    local segments = path:split("/")
+    local current = ReplicatedStorage
+    for _, segment in ipairs(segments) do
+        if not current then return nil end
+        current = current:FindFirstChild(segment)
+    end
+    return current
+end
+
+local function safe_net_remote(name)
+    local packages = ReplicatedStorage:FindFirstChild("Packages")
+    local index = packages and packages:FindFirstChild("_Index")
+    for _, child in ipairs(index and index:GetChildren() or {}) do
+        if child.Name:find("sleitnick_net") then
+            local net = child:FindFirstChild("net")
+            local remote = net and net:FindFirstChild(name)
+            if remote then return remote end
+        end
+    end
+    return nil
+end
+
 local function update_divisor()
     System.__properties.__divisor_multiplier = 0.75 + (System.__properties.__accuracy - 1) * (3 / 99)
 end
@@ -475,7 +498,9 @@ function System.parry.keypress()
         return
     end
 
-    PF()
+    if PF then 
+        pcall(PF) 
+    end
 
     if System.__properties.__parries > 10000 then return end
     
@@ -599,53 +624,66 @@ ReplicatedStorage.Remotes.InfinityBall.OnClientEvent:Connect(function(a, b)
     System.__properties.__infinity_active = b or false
 end)
 
-ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/TimeHoleActivate"].OnClientEvent:Connect(function(...)
-    local args = {...}
-    local player = args[1]
-    
-    if player == LocalPlayer or player == LocalPlayer.Name or (player and player.Name == LocalPlayer.Name) then
-        System.__properties.__timehole_active = true
-    end
-end)
-
-ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/TimeHoleDeactivate"].OnClientEvent:Connect(function()
-    System.__properties.__timehole_active = false
-end)
-
-local maxParryCount = 36
-local parryDelay = 0.05
-
-ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/SlashesOfFuryActivate"].OnClientEvent:Connect(function(...)
-    local args = {...}
-    local player = args[1]
-    
-    if player == LocalPlayer or player == LocalPlayer.Name or (player and player.Name == LocalPlayer.Name) then
-        System.__properties.__slashesoffury_active = true
-        System.__properties.__slashesoffury_count = 0
-    end
-end)
-
-ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/SlashesOfFuryEnd"].OnClientEvent:Connect(function()
-    System.__properties.__slashesoffury_active = false
-    System.__properties.__slashesoffury_count = 0
-end)
-
-ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/SlashesOfFuryParry"].OnClientEvent:Connect(function()
-    System.__properties.__slashesoffury_count = System.__properties.__slashesoffury_count + 1
-end)
-
-ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/SlashesOfFuryCatch"].OnClientEvent:Connect(function()
-    spawn(function()
-        while System.__properties.__slashesoffury_active and System.__properties.__slashesoffury_count < maxParryCount do
-            if System.__config.__detections.__slashesoffury then
-                System.parry.execute()
-                task.wait(parryDelay)
-            else
-                break
-            end
+local time_hole_activate = safe_net_remote("RE/TimeHoleActivate")
+if time_hole_activate then
+    time_hole_activate.OnClientEvent:Connect(function(...)
+        local args = {...}
+        local player = args[1]
+        if player == LocalPlayer or player == LocalPlayer.Name or (player and player.Name == LocalPlayer.Name) then
+            System.__properties.__timehole_active = true
         end
     end)
-end)
+end
+
+local time_hole_deactivate = safe_net_remote("RE/TimeHoleDeactivate")
+if time_hole_deactivate then
+    time_hole_deactivate.OnClientEvent:Connect(function()
+        System.__properties.__timehole_active = false
+    end)
+end
+
+local slashes_activate = safe_net_remote("RE/SlashesOfFuryActivate")
+if slashes_activate then
+    slashes_activate.OnClientEvent:Connect(function(...)
+        local args = {...}
+        local player = args[1]
+        if player == LocalPlayer or player == LocalPlayer.Name or (player and player.Name == LocalPlayer.Name) then
+            System.__properties.__slashesoffury_active = true
+            System.__properties.__slashesoffury_count = 0
+        end
+    end)
+end
+
+local slashes_end = safe_net_remote("RE/SlashesOfFuryEnd")
+if slashes_end then
+    slashes_end.OnClientEvent:Connect(function()
+        System.__properties.__slashesoffury_active = false
+        System.__properties.__slashesoffury_count = 0
+    end)
+end
+
+local slashes_parry = safe_net_remote("RE/SlashesOfFuryParry")
+if slashes_parry then
+    slashes_parry.OnClientEvent:Connect(function()
+        System.__properties.__slashesoffury_count = System.__properties.__slashesoffury_count + 1
+    end)
+end
+
+local slashes_catch = safe_net_remote("RE/SlashesOfFuryCatch")
+if slashes_catch then
+    slashes_catch.OnClientEvent:Connect(function()
+        task.spawn(function()
+            while System.__properties.__slashesoffury_active and System.__properties.__slashesoffury_count < 36 do
+                if System.__config.__detections.__slashesoffury then
+                    System.parry.execute()
+                    task.wait(0.05)
+                else
+                    break
+                end
+            end
+        end)
+    end)
+end
 
 Runtime.ChildAdded:Connect(function(Object)
     if System.__config.__detections.__phantom then
@@ -1240,7 +1278,9 @@ end
 function System.world.play_music(id)
     if System.world.__current_sound then
         System.world.__current_sound:Stop()
-        System.world.__current_sound.SoundId = id
+        pcall(function()
+            System.world.__current_sound.SoundId = id
+        end)
         System.world.__current_sound:Play()
     end
 end
@@ -4499,7 +4539,9 @@ SoundSection:Dropdown({
     Values = {"Medal", "Fatality", "Skeet", "Rust Headshot", "Neverlose Sound", "Bubble", "Laser"},
     Value = "Medal",
     Callback = function(value)
-        System.world.__hit_sound.SoundId = System.world.__hit_sound_ids[value]
+        pcall(function()
+            System.world.__hit_sound.SoundId = System.world.__hit_sound_ids[value]
+        end)
     end
 })
 
