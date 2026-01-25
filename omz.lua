@@ -1,4 +1,18 @@
-local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+local function safe_load(url)
+    local success, result = pcall(function()
+        return game:HttpGet(url)
+    end)
+    if not success or not result or result == "" then return nil end
+    
+    local loader = loadstring or (getgenv and getgenv().loadstring)
+    if not loader then return nil end
+    
+    local func, err = loader(result)
+    if not func then return nil end
+    
+    local ok, lib = pcall(func)
+    return ok and lib or nil
+end
 
 local getinfo = getinfo or (debug and debug.getinfo)
 local getfenv = getfenv or function() return {} end
@@ -10,6 +24,12 @@ local setreadonly = setreadonly or function() end
 local islclosure = islclosure or (debug and debug.islclosure) or function(f) return type(f) == "function" end
 local cloneref = cloneref or function(o) return o end
 local hookmetamethod = hookmetamethod or function(o, m, f) return f end
+
+local WindUI = safe_load("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua")
+
+if not WindUI then
+    return warn("Omz Hub: Failed to load UI library. Please check your internet or executor.")
+end
 
 local Window = WindUI:CreateWindow({
     Title = "Omz Hub — GOD-TIER",
