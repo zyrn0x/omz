@@ -49,7 +49,8 @@ local System = {
         __parried_balls = {},
         __parry_ball_connections = {},
         __auto_spam_accumulator = 0,
-        __parry_prediction_ms = 0
+        __parry_prediction_ms = 0,
+        __autoparry_cleanup_frame = 0
     },
     
     __config = {
@@ -1006,7 +1007,7 @@ local function autoparry_cleanup_stale(active_balls_set)
     end
 end
 
-local function autoparry_process_ball(ball, one_ball, ping_threshold, parry_accuracy_func)
+local function autoparry_process_ball(ball, one_ball, curved, ping_val, parry_accuracy_func)
     local zoomies = ball:FindFirstChild('zoomies')
     if not zoomies then return end
     
@@ -1022,12 +1023,16 @@ local function autoparry_process_ball(ball, one_ball, ping_threshold, parry_accu
     
     local pred_ms = System.__properties.__parry_prediction_ms or 0
     if pred_ms <= 0 then
-        local ping_val = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
         pred_ms = math.min(math.max(ping_val * 0.4, 15), 85)
     end
+    if curved and one_ball and ball == one_ball then
+        pred_ms = pred_ms + 28
+    end
     local effective_distance = distance - speed * (pred_ms / 1000)
-    local parry_accuracy = parry_accuracy_func(speed)
-    parry_accuracy = parry_accuracy + 2
+    local parry_accuracy = parry_accuracy_func(speed) + 2
+    if curved and one_ball and ball == one_ball then
+        parry_accuracy = parry_accuracy + 4
+    end
     
     if ball:FindFirstChild('AeroDynamicSlashVFX') then
         ball.AeroDynamicSlashVFX:Destroy()
@@ -1038,10 +1043,6 @@ local function autoparry_process_ball(ball, one_ball, ping_threshold, parry_accu
         if (tick() - System.__properties.__tornado_time) < (Runtime.Tornado:GetAttribute('TornadoTime') or 1) + 0.314159 then
             return
         end
-    end
-    
-    if one_ball and one_ball:GetAttribute('target') == LocalPlayer.Name and System.detection.is_curved() then
-        return
     end
     
     if ball:FindFirstChild('ComboCounter') then return end
@@ -1106,7 +1107,7 @@ function System.autoparry.start()
         System.__properties.__connections.__autoparry:Disconnect()
     end
     
-    System.__properties.__connections.__autoparry = RunService.RenderStepped:Connect(function()
+    System.__properties.__connections.__autoparry = RunService.Heartbeat:Connect(function()
         if not System.__properties.__autoparry_enabled or not LocalPlayer.Character or not LocalPlayer.Character.PrimaryPart then
             return
         end
@@ -1117,8 +1118,9 @@ function System.autoparry.start()
         local one_ball = System.ball.get()
         
         local training_ball = nil
-        if workspace:FindFirstChild("TrainingBalls") then
-            for _, inst in pairs(workspace.TrainingBalls:GetChildren()) do
+        local tb = workspace:FindFirstChild("TrainingBalls")
+        if tb then
+            for _, inst in pairs(tb:GetChildren()) do
                 if inst:GetAttribute("realBall") then
                     training_ball = inst
                     break
@@ -1126,14 +1128,24 @@ function System.autoparry.start()
             end
         end
         
-        local active_set = {}
-        for _, b in pairs(balls) do active_set[b] = true end
-        if training_ball then active_set[training_ball] = true end
-        autoparry_cleanup_stale(active_set)
+        local cf = System.__properties.__autoparry_cleanup_frame + 1
+        System.__properties.__autoparry_cleanup_frame = cf
+        if cf >= 90 then
+            System.__properties.__autoparry_cleanup_frame = 0
+            local active_set = {}
+            for _, b in pairs(balls) do active_set[b] = true end
+            if training_ball then active_set[training_ball] = true end
+            autoparry_cleanup_stale(active_set)
+        end
         
-        local ping_raw = Stats.Network.ServerStatsItem['Data Ping']:GetValue() / 10
-        local ping_threshold = math.clamp(ping_raw / 10, 5, 18)
+        local ping_val = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
+        local ping_threshold = math.clamp(ping_val / 100, 5, 18)
         local dm = System.__properties.__divisor_multiplier
+        
+        local curved = false
+        if one_ball and one_ball:GetAttribute('target') == LocalPlayer.Name then
+            curved = System.detection.is_curved()
+        end
         
         local function parry_acc(speed)
             local capped = math.min(math.max(speed - 9.5, 0), 650)
@@ -1143,7 +1155,7 @@ function System.autoparry.start()
         
         for _, ball in pairs(balls) do
             if not ball then continue end
-            autoparry_process_ball(ball, one_ball, ping_threshold, parry_acc)
+            autoparry_process_ball(ball, one_ball, curved, ping_val, parry_acc)
         end
         
         if training_ball then
@@ -1156,12 +1168,11 @@ function System.autoparry.start()
                     local velocity = zoomies.VectorVelocity
                     local speed = velocity.Magnitude
                     local distance = (LocalPlayer.Character.PrimaryPart.Position - training_ball.Position).Magnitude
-                    local parry_accuracy = parry_acc(speed) + 2
                     local pred_ms = System.__properties.__parry_prediction_ms or 0
                     if pred_ms <= 0 then
-                        local pv = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
-                        pred_ms = math.min(math.max(pv * 0.4, 15), 85)
+                        pred_ms = math.min(math.max(ping_val * 0.4, 15), 85)
                     end
+                    local parry_accuracy = parry_acc(speed) + 2
                     local effective_distance = distance - speed * (pred_ms / 1000)
                     
                     if ball_target == LocalPlayer.Name and effective_distance <= parry_accuracy then
@@ -3634,8 +3645,8 @@ DetectionSection:Slider({
 
 DetectionSection:Slider({
     Title = "Max Parry Count",
-    Value = { Min = 0.05, Max = 0.250, Default = 0.05 },
-    Step = 0.01,
+    Value = { Min = 0, Max = 36, Default = 36 },
+    Step = 1,
     Callback = function(value)
         maxParryCount = value
     end
