@@ -2229,24 +2229,10 @@ function WalkableSemiImmortal.activateInfinity()
     state.heldStart = nil
     state.holdTime = 0
 
-    -- aura (particle emitter) attachée au HumanoidRootPart
-    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        local pe = Instance.new("ParticleEmitter")
-        pe.Name = "FakeInfinityAura"
-        pe.Color = ColorSequence.new(Color3.fromRGB(100,170,255))
-        pe.LightEmission = 0.8
-        pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2), NumberSequenceKeypoint.new(1, 3) })
-        pe.Rate = 200
-        pe.Lifetime = NumberRange.new(0.4, 0.8)
-        pe.Speed = NumberRange.new(0)
-        pe.RotSpeed = NumberRange.new(10)
-        pe.VelocitySpread = 180
-        pe.Parent = hrp
-        state.aura = pe
-    end
-
-    -- connection qui ralentit/attrape la balle et la maintient en avant du joueur
+    -- connection qui ralentit progressivement la balle quand elle s'approche,
+    -- puis la capture et la maintient devant le joueur
+    local attractRadius = 12
+    local captureRadius = 3
     state.infinityConnection = RunService.Heartbeat:Connect(function()
         if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
         local hrp = LocalPlayer.Character.HumanoidRootPart
@@ -2256,15 +2242,26 @@ function WalkableSemiImmortal.activateInfinity()
             local ok, dist = pcall(function()
                 return (hrp.Position - ball.Position).Magnitude
             end)
-            if ok and dist and dist < 12 then
-                -- commencer à tenir la balle
-                state.heldBall = ball
-                state.heldStart = tick()
-                state.holdTime = 0
-                pcall(function()
-                    ball.AssemblyLinearVelocity = Vector3.new(0,0,0)
-                    ball.CanCollide = false
-                end)
+            if ok and dist then
+                if dist < attractRadius then
+                    -- ralentir la balle progressivement selon la distance
+                    pcall(function()
+                        local vel = ball.AssemblyLinearVelocity or Vector3.new(0,0,0)
+                        local alpha = math.clamp((attractRadius - dist) / attractRadius, 0.05, 0.9)
+                        ball.AssemblyLinearVelocity = vel * (1 - alpha)
+                    end)
+                end
+
+                if dist < captureRadius then
+                    -- capturer la balle et la placer devant le joueur
+                    state.heldBall = ball
+                    state.heldStart = tick()
+                    state.holdTime = 0
+                    pcall(function()
+                        ball.AssemblyLinearVelocity = Vector3.new(0,0,0)
+                        ball.CanCollide = false
+                    end)
+                end
             end
         end
 
@@ -2301,11 +2298,6 @@ function WalkableSemiImmortal.deactivateInfinity()
             state.heldBall.CanCollide = true
         end)
         state.heldBall = nil
-    end
-
-    if state.aura then
-        pcall(function() state.aura:Destroy() end)
-        state.aura = nil
     end
 
     -- cooldown (30s)
