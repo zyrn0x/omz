@@ -97,7 +97,7 @@ if LocalPlayer.PlayerGui:FindFirstChild("Hotbar") and LocalPlayer.PlayerGui.Hotb
 end
 
 local function update_divisor()
-    System.__properties.__divisor_multiplier = 0.75 + (System.__properties.__accuracy - 1) * (3 / 99)
+    -- Reserved for future use / Backwards compatibility
 end
 
 local function isValidRemoteArgs(args)
@@ -964,55 +964,35 @@ function System.prediction.get_real_target(ball)
     local velocity = zoomies.VectorVelocity
     local position = ball.Position
     local speed = velocity.Magnitude
-    
     if speed < 0.1 then return ball:GetAttribute("target") end
     
     local ray_direction = velocity.Unit
-    local real_target = nil
-    local min_projection = math.huge
+    local official_target = ball:GetAttribute("target")
     
     local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return ball:GetAttribute("target") end
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return official_target end
     
-    -- Optimize: Check LocalPlayer first for performance
     local my_root = character.HumanoidRootPart
     local to_me = my_root.Position - position
     local my_projection = to_me:Dot(ray_direction)
     
+    -- Precise Hitbox Logic
     if my_projection > 0 then
         local closest_point = position + ray_direction * my_projection
         local dist_to_path = (my_root.Position - closest_point).Magnitude
         
-        -- High Precision Hitbox: Smaller for passes, larger if actually targeted
-        local is_officially_target = ball:GetAttribute("target") == LocalPlayer.Name
-        local hitbox = is_officially_target and 35 or 12 -- Lowered passing hitbox from 10-25 to flat 12
-        
-        if dist_to_path < hitbox then
-            return LocalPlayer.Name
+        -- If we are the official target, we have a generous hitbox
+        if official_target == LocalPlayer.Name then
+            if dist_to_path < 30 then return LocalPlayer.Name end
+        else
+            -- If NOT official target, only parry if the ball is LITERALLY hitting our body (e.g. 6 studs)
+            -- This prevents "parrying when walking past the ball"
+            if dist_to_path < 7 then return LocalPlayer.Name end
         end
     end
 
-    -- If not clearly hitting me, check others (less frequent or optimized)
-    for _, player in pairs(Alive:GetChildren()) do
-        if player == character then continue end
-        local root = player:FindFirstChild("HumanoidRootPart")
-        if root then
-            local to_player = root.Position - position
-            local projection = to_player:Dot(ray_direction)
-            
-            if projection > 0 and projection < min_projection then
-                local closest_point = position + ray_direction * projection
-                local dist_from_path = (root.Position - closest_point).Magnitude
-                
-                if dist_from_path < 15 then -- Fixed smaller hitbox for others
-                    min_projection = projection
-                    real_target = player.Name
-                end
-            end
-        end
-    end
-    
-    return real_target or ball:GetAttribute("target")
+    -- Return official target if no physical threat to us
+    return official_target
 end
 
 System.visuals = {}
@@ -1235,6 +1215,8 @@ local function autoparry_process_ball(ball, one_ball, ping_threshold, parry_accu
 end
 
 local Last_Frame_Ball_Velocity = {}
+local Last_Parried_Ball = nil
+local Last_Parried_Ball_Target = nil
 
 function System.autoparry.start()
     if System.__properties.__connections.__autoparry then
@@ -1251,10 +1233,24 @@ function System.autoparry.start()
         local my_pos = LocalPlayer.Character.PrimaryPart.Position
         local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue() / 1000
         
-        -- Timing Offset from UI (Accuracy Slider)
-        -- System.__properties.__accuracy is 1-100. We map it to -0.1s to 0.1s offset.
-        local timing_offset = (System.__properties.__accuracy - 50) / 500 -- -0.1 to 0.1
+        -- FINAL ACCURACY LOGIC:
+        -- User: "100 = Body (Latest), Lower = Advance (Earliest)"
+        local accuracy = System.__properties.__accuracy or 100
         
+        -- Normalization: 0 (Body) to 1 (Max Advance)
+        local advance_factor = (100 - accuracy) / 100
+        
+        -- Base buffer for "at the body" parry (accounts for native game delay)
+        local body_buffer = 0.025 
+        -- Max advance added at 0 accuracy (about 250ms early)
+        local max_advance_buffer = 0.25 
+        
+        local threshold = ping + delta + body_buffer + (advance_factor * max_advance_buffer)
+        
+        -- Add User's MS Predicton Slider (if any)
+        local user_pred_ms = (System.__properties.__parry_prediction_ms or 0) / 1000
+        threshold = threshold + user_pred_ms
+
         for _, ball in pairs(balls) do
             local zoomies = ball:FindFirstChild('zoomies')
             if not zoomies then continue end
@@ -1263,30 +1259,34 @@ function System.autoparry.start()
             local speed = velocity.Magnitude
             if speed < 0.1 then continue end
             
-            local direction = velocity.Unit
             local to_me = (my_pos - ball.Position)
             local distance = to_me.Magnitude
+            local direction = velocity.Unit
             
-            -- Physics-based Time to Impact (TTI)
+            -- Direction dot check: Is it coming towards us?
             local dot = to_me.Unit:Dot(direction)
-            if dot < 0.6 then continue end -- Ball not moving towards us
             
-            -- Calculate Acceleration for better prediction at high speeds
-            local last_vel = Last_Frame_Ball_Velocity[ball] or velocity
-            local acceleration = (velocity - last_vel) / delta
-            Last_Frame_Ball_Velocity[ball] = velocity
+            -- Prediction
+            local predicted_target = System.prediction.get_real_target(ball)
+            if predicted_target ~= LocalPlayer.Name then continue end
             
-            -- Predicted Time to Reach (solve: d = vt + 0.5at^2)
-            -- For simplicity and performance, we use optimized linear TTI with ping compensation
+            -- If not official target, ball must be moving ALMOST directly at us (High Dot)
+            if ball:GetAttribute("target") ~= LocalPlayer.Name and dot < 0.85 then
+                 continue
+            end
+            
+            -- TTI
             local tti = distance / speed
             
-            -- Dynamic Threshold: Ping + FrameTime + Native Execution Delay + User Offset
-            local threshold = ping + delta + 0.035 + timing_offset
+            -- DOUBLE PARRY / RE-PARRY PROTECTION
+            if Last_Parried_Ball == ball and ball:GetAttribute("target") == Last_Parried_Ball_Target then
+                continue
+            end
             
-            -- Advanced Prediction: If ball is PASSING close to us
-            local real_target = System.prediction.get_real_target(ball)
-            
-            if real_target == LocalPlayer.Name and tti <= threshold then
+            if tti <= threshold then
+                Last_Parried_Ball = ball
+                Last_Parried_Ball_Target = ball:GetAttribute("target")
+                
                 if getgenv().AutoParryMode == "Keypress" then
                     System.parry.keypress()
                 else
@@ -1295,9 +1295,12 @@ function System.autoparry.start()
             end
         end
         
-        -- Cleanup velocity cache
-        for ball, _ in pairs(Last_Frame_Ball_Velocity) do
-            if not ball.Parent then Last_Frame_Ball_Velocity[ball] = nil end
+        -- Cleanup and reset state if target changes
+        for _, ball in pairs(balls) do
+            if Last_Parried_Ball == ball and ball:GetAttribute("target") ~= Last_Parried_Ball_Target then
+                Last_Parried_Ball = nil
+                Last_Parried_Ball_Target = nil
+            end
         end
     end)
 end
