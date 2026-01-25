@@ -4083,6 +4083,8 @@ TrailSection:Colorpicker({
     end,
 })
 
+]]
+
 local swordInstancesInstance = ReplicatedStorage:WaitForChild("Shared",9e9):WaitForChild("ReplicatedInstances",9e9):WaitForChild("Swords",9e9)
 local swordInstances = require(swordInstancesInstance)
 
@@ -5515,6 +5517,8 @@ DupeSection:Slider({
         constants.velocityThreshold = value
     end
 })
+
+]]
 
 local AboutSection = AboutTab:Section({ Title = "Information", Box = true, Opened = true })
 
