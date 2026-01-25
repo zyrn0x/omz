@@ -38,7 +38,7 @@ local System = {
         __connections = {},
         __reverted_remotes = {},
         __spam_accumulator = 0,
-        __spam_rate = 240,
+        __spam_rate = 60, -- OPTIMIZED: Reduced from 240 to 60 to prevent lag/crash on low-end devices
         __infinity_active = false,
         __deathslash_active = false,
         __timehole_active = false,
@@ -1017,40 +1017,59 @@ local function autoparry_process_ball(ball, one_ball, curved, ping_val, parry_ac
     autoparry_ensure_connection(ball)
     
     local ball_target = ball:GetAttribute('target')
+    local ball_target = ball:GetAttribute('target')
     if ball_target ~= LocalPlayer.Name then return end
 
     local velocity = zoomies.VectorVelocity
-    local speed = velocity.Magnitude
     local position = ball.Position
     local root_part = LocalPlayer.Character.PrimaryPart
-    local distance = (root_part.Position - position).Magnitude
     
-    -- HYBRID LOGIC: Angle-Based Danger Zones
+    -- ULTIMATE VECTOR MATH (The "God Mode" Calculation)
     local direction_to_player = (root_part.Position - position).Unit
-    local velocity_direction = velocity.Unit
+    local distance = (root_part.Position - position).Magnitude
+    local forward_speed = velocity:Dot(direction_to_player) -- Positive = Towards us
     
-    -- Dot Product: 1.0 = Coming straight at you. 0.0 = Moving sideways.
-    local angle_dot = velocity_direction:Dot(direction_to_player)
+    -- Lag/Desync Safety: If ball is moving away, ignore immediately
+    if forward_speed <= 0 then return end
     
-    -- Emergency Reflex: If extremely close, parry regardless of math (anti-snap)
-    if distance < 15 then
-        -- Execute Parry immediately
+    -- Side/Curve Velocity: How fast is it moving sideways?
+    -- We project velocity onto the direction vector, then subtract to get the rejection (side component)
+    local side_velocity_vector = velocity - (direction_to_player * forward_speed)
+    local side_speed = side_velocity_vector.Magnitude
+    
+    -- Time-To-Impact (TTI)
+    local tti = distance / forward_speed
+    
+    -- CONFIGURABLE SAFETY BUFFER (This replaces "Accuracy")
+    -- Accuracy 100 = Max Safety Buffer (0.15s) = Early Parry
+    -- Accuracy 1   = Min Safety Buffer (0.02s) = Late Parry (Riskier but good for clips)
+    local accuracy_clamped = math.clamp(System.__properties.__accuracy or 100, 1, 100)
+    local safety_buffer = (accuracy_clamped / 100) * 0.18 -- Up to 180ms extra safety
+    
+    -- Ping Lag Compensation
+    local ping_delay = math.clamp(ping_val / 1000, 0.05, 0.3) -- Minimum 50ms assumed lag
+    
+    -- REACTION THRESHOLD
+    local reaction_time = ping_delay + safety_buffer + 0.1 -- Base human reflex
+    
+    -- EMERGENCY REFLEX (Anti-Teleport/Snap)
+    if distance < 18 or tti < 0.25 then
+        reaction_time = 1.0 -- Force instant parry
+    end
+    
+    -- CURVE FILTER
+    -- If moving mostly sideways AND still far away -> It's a curve, ignore it.
+    -- If SideSpeed is 2x ForwardSpeed, it's definitely curving.
+    local is_curving = side_speed > (forward_speed * 1.6)
+    if is_curving and distance > 25 then
+        return -- Too much side movement, safe to ignore for now
+    end
+
+    -- EXECUTE
+    if tti <= reaction_time then
+        -- Trigger Parry (Fallthrough to execution)
     else
-        -- Distance Scaling based on Angle
-        -- Direct Hit (dot > 0.9): Full parry range (e.g., 20 studs)
-        -- Curve/Side (dot < 0.9): Strictly reduced range (force late parry)
-        
-        local ping_compensation = math.clamp(ping_val / 10, 1, 20)
-        local base_parry_range = 15 + math.max(speed / 12, 0) + ping_compensation
-        
-        local effective_range = base_parry_range
-        if angle_dot < 0.9 then
-            effective_range = base_parry_range * 0.55 -- Wait until it's much closer
-        end
-        
-        if distance > effective_range then
-            return -- Too far / safe for now
-        end
+        return -- Not time yet
     end
     
     if getgenv().CooldownProtection then
@@ -1162,25 +1181,12 @@ function System.autoparry.start()
                 autoparry_ensure_connection(training_ball)
                 local cooldown = System.__properties.__parried_balls[training_ball]
                 if not cooldown or tick() >= cooldown then
-                    local ball_target = training_ball:GetAttribute('target')
-                    local velocity = zoomies.VectorVelocity
-                    local speed = velocity.Magnitude
-                    local distance = (LocalPlayer.Character.PrimaryPart.Position - training_ball.Position).Magnitude
-                    local pred_ms = System.__properties.__parry_prediction_ms or 0
-                    if pred_ms <= 0 then
-                        pred_ms = math.min(math.max(ping_val * 0.4, 15), 85)
-                    end
-                    local parry_accuracy = parry_acc(speed) + 2
-                    local effective_distance = distance - speed * (pred_ms / 1000)
-                    
-                    if ball_target == LocalPlayer.Name and effective_distance <= parry_accuracy then
-                        if getgenv().AutoParryMode == "Keypress" then
-                            System.parry.keypress()
-                        else
-                            System.parry.execute_action()
-                        end
-                        System.__properties.__parried_balls[training_ball] = tick() + 0.82
-                    end
+                    -- Use the Ultimate Logic for Training Balls too!
+                    -- Passing 'false' for curved since training balls usually don't curve unpredictably,
+                    -- but the internal logic handles it anyway.
+                    autoparry_process_ball(training_ball, one_ball, false, ping_val, parry_acc)
+                end
+
                 end
             end
         end
