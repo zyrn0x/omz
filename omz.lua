@@ -19,17 +19,23 @@ local Runtime = workspace.Runtime
 
 local System = {
     __properties = {
+        -- Core States
         __autoparry_enabled = false,
         __triggerbot_enabled = false,
         __manual_spam_enabled = false,
         __auto_spam_enabled = false,
         __play_animation = false,
+        __prediction_enabled = true, -- Default to true now
+        __is_mobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled,
+        
+        -- Tuning & Settings
+        __accuracy = 100, -- 100 = Body, 0 = Advance
         __curve_mode = 1,
-        __accuracy = 1,
-        __divisor_multiplier = 1.1,
-        __parried = false,
-        __training_parried = false,
+        __spam_rate = 240,
         __spam_threshold = 1.5,
+        __parry_prediction_ms = 0,
+        
+        -- Run-time Data
         __parries = 0,
         __parry_key = nil,
         __grab_animation = nil,
@@ -37,39 +43,32 @@ local System = {
         __first_parry_done = false,
         __connections = {},
         __reverted_remotes = {},
-        __spam_accumulator = 0,
-        __spam_rate = 240,
+        
+        -- Physics & Memory
+        __ball_memory = {}, -- { [ball] = { velocities = {}, last_tti = 0, last_target = nil, warping = tick() } }
+        __parried_balls = {}, -- Specific ball cooldowns
+        __mobile_guis = {},
+        
+        -- Ability Flags
         __infinity_active = false,
         __deathslash_active = false,
         __timehole_active = false,
         __slashesoffury_active = false,
         __slashesoffury_count = 0,
-        __is_mobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled,
-        __mobile_guis = {},
-        __parried_balls = {},
-        __parry_ball_connections = {},
-        __auto_spam_accumulator = 0,
-        __parry_prediction_ms = 0,
-        __prediction_enabled = false
+        __phantom_active = false
     },
-    
+
     __config = {
         __curve_names = {'Camera', 'Random', 'Accelerated', 'Backwards', 'Slow', 'High'},
         __detections = {
-            __infinity = false,
-            __deathslash = false,
-            __timehole = false,
-            __slashesoffury = false,
-            __phantom = false
-        }
-    },
-    
-    __triggerbot = {
-        __enabled = false,
-        __is_parrying = false,
-        __parries = 0,
-        __max_parries = 10000,
-        __parry_delay = 0.5
+            __infinity = true,
+            __deathslash = true,
+            __timehole = true,
+            __slashesoffury = true,
+            __phantom = true
+        },
+        __cpa_hitbox = 4.5, -- Surgical hitbox for non-targets (4.5 studs)
+        __official_hitbox = 30 -- Hitbox for official target (30 studs)
     }
 }
 
@@ -446,6 +445,94 @@ function System.parry.keypress()
 end
 
 -- // aqqqqq
+
+System.physics = {}
+
+function System.physics.get_cpa(ball, target_pos)
+    -- CPA = Closest Point of Approach
+    local zoomies = ball:FindFirstChild('zoomies')
+    if not zoomies then return math.huge end
+    
+    local pos = ball.Position
+    local vel = zoomies.VectorVelocity
+    if vel.Magnitude < 0.1 then return (pos - target_pos).Magnitude end
+    
+    local direction = vel.Unit
+    local to_target = target_pos - pos
+    local projection = to_target:Dot(direction)
+    
+    if projection < 0 then
+        -- Ball is moving away from target
+        return (pos - target_pos).Magnitude
+    end
+    
+    local closest_point = pos + direction * projection
+    return (target_pos - closest_point).Magnitude, projection / vel.Magnitude -- returns distance and time
+end
+
+function System.physics.calculate_threat(ball)
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return 0 end
+    
+    local my_hrp = char.HumanoidRootPart
+    local my_pos = my_hrp.Position
+    local official_target = ball:GetAttribute("target")
+    local zoomies = ball:FindFirstChild('zoomies')
+    if not zoomies then return 0 end
+    
+    local velocity = zoomies.VectorVelocity
+    local speed = velocity.Magnitude
+    local distance = (ball.Position - my_pos).Magnitude
+    
+    -- Get Memory Data
+    local memory = System.__properties.__ball_memory[ball]
+    if not memory then
+        System.__properties.__ball_memory[ball] = { velocities = {}, warping = tick() }
+        memory = System.__properties.__ball_memory[ball]
+    end
+    
+    -- Update Velocity History
+    table.insert(memory.velocities, velocity)
+    if #memory.velocities > 5 then table.remove(memory.velocities, 1) end
+    
+    -- Curve Detection (Sudden Angle Change)
+    local is_curving = false
+    if #memory.velocities >= 3 then
+        local last_vel = memory.velocities[#memory.velocities-1]
+        local dot_change = velocity.Unit:Dot(last_vel.Unit)
+        if dot_change < 0.98 then -- Angle changed significantly
+            is_curving = true
+            memory.warping = tick()
+        end
+    end
+    
+    -- Closest Point Analysis
+    local cpa_dist, tti = System.physics.get_cpa(ball, my_pos)
+    
+    -- Weighting Factors
+    local score = 0
+    
+    -- FACTOR 1: Official Target
+    if official_target == LocalPlayer.Name then
+        score = score + 50
+    end
+    
+    -- FACTOR 2: Physical Trajectory (CPA)
+    -- Surgical logic: if it's not the official target, but CPA is < 5 studs, it's a "side hit" attempt.
+    local hitbox = (official_target == LocalPlayer.Name) and System.__config.__official_hitbox or System.__config.__cpa_hitbox
+    if cpa_dist < hitbox then
+        score = score + 30
+    end
+    
+    -- FACTOR 3: Sudden Acceleration / Warp
+    if (tick() - memory.warping) < 0.15 then
+        score = score + 20
+    end
+    
+    -- "AI" Threshold Decision
+    local is_threat = score >= 50
+    return is_threat, tti, score
+end
 
 function System.parry.execute_action()
     System.animation.play_grab_parry()
@@ -927,14 +1014,19 @@ function System.auto_spam.start()
         local dist_to_ball = (my_pos - ball_pos).Magnitude
         local dist_to_entity = (my_pos - entity_pos).Magnitude
         
-        -- High Speed Clash Logic: Activate spam when ball is bouncing fast between close players
         local zoomies = ball:FindFirstChild('zoomies')
         local speed = zoomies and zoomies.VectorVelocity.Magnitude or 0
         
-        -- Mapping UI Slider: 1-100 to 5-35 studs range for spam
-        local spam_range = 5 + (System.__properties.__accuracy / 100) * 30
+        -- PRO SPAM LOGIC (from Allusive/NoKey mix)
+        -- Dynamic distance threshold based on speed and ping
+        local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
+        local max_spam_dist = math.clamp(15 + (speed / 15) + (ping / 50), 10, 85)
         
-        if dist_to_ball < spam_range and dist_to_entity < spam_range then
+        -- Factor in User Accuracy Slider (0-100)
+        local accuracy_weight = (System.__properties.__accuracy / 100)
+        max_spam_dist = max_spam_dist * (0.5 + accuracy_weight)
+
+        if dist_to_ball < max_spam_dist and dist_to_entity < max_spam_dist then
             System.__properties.__auto_spam_accumulator = System.__properties.__auto_spam_accumulator + delta
             local interval = 1 / System.__properties.__spam_rate
             
@@ -1230,60 +1322,51 @@ function System.autoparry.start()
         if System.__triggerbot.__enabled then return end
         
         local balls = System.ball.get_all()
-        local my_pos = LocalPlayer.Character.PrimaryPart.Position
         local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue() / 1000
         
         -- FINAL ACCURACY LOGIC:
         -- User: "100 = Body (Latest), Lower = Advance (Earliest)"
         local accuracy = System.__properties.__accuracy or 100
-        
-        -- Normalization: 0 (Body) to 1 (Max Advance)
         local advance_factor = (100 - accuracy) / 100
-        
-        -- Base buffer for "at the body" parry (accounts for native game delay)
-        local body_buffer = 0.025 
-        -- Max advance added at 0 accuracy (about 250ms early)
-        local max_advance_buffer = 0.25 
+        local body_buffer = 0.022 -- Ultra-precise body buffer
+        local max_advance_buffer = 0.28 -- Wide range for advance
         
         local threshold = ping + delta + body_buffer + (advance_factor * max_advance_buffer)
         
-        -- Add User's MS Predicton Slider (if any)
+        -- User MS Prediction
         local user_pred_ms = (System.__properties.__parry_prediction_ms or 0) / 1000
         threshold = threshold + user_pred_ms
 
         for _, ball in pairs(balls) do
-            local zoomies = ball:FindFirstChild('zoomies')
-            if not zoomies then continue end
+            -- Professional AI Analysis
+            local is_threat, tti, score = System.physics.calculate_threat(ball)
+            if not is_threat then continue end
             
-            local velocity = zoomies.VectorVelocity
-            local speed = velocity.Magnitude
-            if speed < 0.1 then continue end
+            -- Detect Power-ups (Infinity, DeathSlash etc)
+            local speed = ball:FindFirstChild('zoomies') and ball.zoomies.VectorVelocity.Magnitude or 0
             
-            local to_me = (my_pos - ball.Position)
-            local distance = to_me.Magnitude
-            local direction = velocity.Unit
-            
-            -- Direction dot check: Is it coming towards us?
-            local dot = to_me.Unit:Dot(direction)
-            
-            -- Prediction
-            local predicted_target = System.prediction.get_real_target(ball)
-            if predicted_target ~= LocalPlayer.Name then continue end
-            
-            -- If not official target, ball must be moving ALMOST directly at us (High Dot)
-            if ball:GetAttribute("target") ~= LocalPlayer.Name and dot < 0.85 then
-                 continue
+            -- Tornado / AeroDynamic Detection
+            if ball:FindFirstChild('AeroDynamicSlashVFX') then
+                System.__properties.__tornado_time = tick()
             end
             
-            -- TTI
-            local tti = distance / speed
+            if (tick() - System.__properties.__tornado_time) < 1.3 then
+                -- Ball is being sucked into tornado, risky to parry standard
+                continue
+            end
             
-            -- DOUBLE PARRY / RE-PARRY PROTECTION
+            -- Double Parry Safety
             if Last_Parried_Ball == ball and ball:GetAttribute("target") == Last_Parried_Ball_Target then
                 continue
             end
             
-            if tti <= threshold then
+            -- SPEED-BASED ADAPTIVE AI
+            -- Adjust threshold slightly based on ball speed for high-speed duels
+            local speed_weight = math.clamp(speed / 1000, 0, 0.05)
+            local final_threshold = threshold + speed_weight
+
+            -- PARRY EXECUTION
+            if tti <= final_threshold then
                 Last_Parried_Ball = ball
                 Last_Parried_Ball_Target = ball:GetAttribute("target")
                 
@@ -1295,7 +1378,7 @@ function System.autoparry.start()
             end
         end
         
-        -- Cleanup and reset state if target changes
+        -- State Reset
         for _, ball in pairs(balls) do
             if Last_Parried_Ball == ball and ball:GetAttribute("target") ~= Last_Parried_Ball_Target then
                 Last_Parried_Ball = nil
@@ -1317,98 +1400,142 @@ function System.autoparry.stop()
     table.clear(System.__properties.__parried_balls)
 end
 
-local function create_mobile_button(name, position_y, color)
-    local gui = Instance.new('ScreenGui')
-    gui.Name = 'Sigma' .. name .. 'Mobile'
-    gui.ResetOnSpawn = false
-    gui.IgnoreGuiInset = true
-    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    
-    local button = Instance.new('TextButton')
-    button.Size = UDim2.new(0, 140, 0, 50)
-    button.Position = UDim2.new(0.5, -70, position_y, 0)
-    button.BackgroundTransparency = 1
-    button.AnchorPoint = Vector2.new(0.5, 0)
-    button.Draggable = true
-    button.AutoButtonColor = false
-    button.ZIndex = 2
-    
-    local bg = Instance.new('Frame')
-    bg.Size = UDim2.new(1, 0, 1, 0)
-    bg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    bg.Parent = button
-    
-    local corner = Instance.new('UICorner')
-    corner.CornerRadius = UDim.new(0, 10)
-    corner.Parent = bg
-    
-    local stroke = Instance.new('UIStroke')
-    stroke.Color = color
-    stroke.Thickness = 1
-    stroke.Transparency = 0.3
-    stroke.Parent = bg
-    
-    local text = Instance.new('TextLabel')
-    text.Size = UDim2.new(1, 0, 1, 0)
-    text.BackgroundTransparency = 1
-    text.Text = name
-    text.Font = Enum.Font.GothamBold
-    text.TextSize = 16
-    text.TextColor3 = Color3.fromRGB(255, 255, 255)
-    text.ZIndex = 3
-    text.Parent = button
-    
-    button.Parent = gui
-    gui.Parent = CoreGui
-    
-    return {gui = gui, button = button, text = text, bg = bg}
+System.extra = {
+    ball_tp_enabled = false,
+    phantom_enabled = false,
+    visuals_enabled = false,
+    peak_velocity = 0
+}
+
+function System.extra.start_ball_tp()
+    if System.__properties.__connections.ball_tp then System.__properties.__connections.ball_tp:Disconnect() end
+    System.__properties.__connections.ball_tp = RunService.RenderStepped:Connect(function()
+        if not System.extra.ball_tp_enabled then return end
+        local ball = System.ball.get()
+        local char = LocalPlayer.Character
+        if ball and char and char:FindFirstChild("HumanoidRootPart") then
+            local speed = ball:FindFirstChild('zoomies') and ball.zoomies.VectorVelocity.Magnitude or 0
+            if speed > 0 then
+                local velocity = ball.zoomies.VectorVelocity
+                local side_offset = Vector3.new(-velocity.Z, 0, velocity.X).Unit * 12
+                char.HumanoidRootPart.CFrame = CFrame.new(ball.Position + side_offset + Vector3.new(0, 4, 0), ball.Position)
+            end
+        end
+    end)
 end
 
+function System.extra.start_phantom()
+    if System.__properties.__connections.phantom then System.__properties.__connections.phantom:Disconnect() end
+    System.__properties.__connections.phantom = RunService.Heartbeat:Connect(function()
+        if not System.extra.phantom_enabled then return end
+        local ball = System.ball.get()
+        local char = LocalPlayer.Character
+        if ball and char and ball:GetAttribute("target") == LocalPlayer.Name then
+            local dist = (ball.Position - char.PrimaryPart.Position).Magnitude
+            if dist < 50 then
+                local move_dir = (char.PrimaryPart.CFrame.RightVector * (math.sin(tick() * 12) * 20))
+                char.Humanoid:Move(move_dir, false)
+            end
+        end
+    end)
+end
+
+function System.extra.setup_visuals(ball)
+    if not ball or not System.extra.visuals_enabled then return end
+    
+    -- Trail
+    if not ball:FindFirstChild("SigmaTrail") then
+        local trail = Instance.new("Trail")
+        trail.Name = "SigmaTrail"
+        trail.Lifetime = 0.6
+        trail.WidthScale = NumberSequence.new(0.5)
+        trail.Transparency = NumberSequence.new(0.2, 1)
+        trail.Color = ColorSequence.new(Color3.fromRGB(219, 0, 91))
+        local a0 = Instance.new("Attachment", ball); a0.Position = Vector3.new(0,0.4,0)
+        local a1 = Instance.new("Attachment", ball); a1.Position = Vector3.new(0,-0.4,0)
+        trail.Attachment0 = a0; trail.Attachment1 = a1
+        trail.Parent = ball
+    end
+    
+    -- Glow
+    if not ball:FindFirstChild("SigmaGlow") then
+        local glow = Instance.new("PointLight")
+        glow.Name = "SigmaGlow"
+        glow.Color = Color3.fromRGB(255, 45, 120)
+        glow.Range = 18
+        glow.Brightness = 4
+        glow.Parent = ball
+    end
+end
+
+-- Global Ball Handler for Features
+function System.extra.global_ball_sync()
+    local balls = workspace:FindFirstChild('Balls')
+    if not balls then return end
+    
+    balls.ChildAdded:Connect(function(ball)
+        task.wait(0.1)
+        if System.extra.visuals_enabled then
+            System.extra.setup_visuals(ball)
+        end
+    end)
+end
+System.extra.global_ball_sync()
+
+-- Slashes Of Fury / Logic Counters
+function System.extra.sof_handler()
+    local balls = workspace:FindFirstChild('Balls')
+    if not balls then return end
+    
+    System.__properties.__connections.sof = balls.ChildAdded:Connect(function(ball)
+        ball.ChildAdded:Connect(function(child)
+            if System.__config.__detections.__slashesoffury and child.Name == 'ComboCounter' then
+                local label = child:FindFirstChildOfClass('TextLabel')
+                if label then
+                    local conn; conn = RunService.Heartbeat:Connect(function()
+                        if not label.Parent then conn:Disconnect() return end
+                        local count = tonumber(label.Text)
+                        if count and count < 32 then
+                            System.parry.execute()
+                        end
+                    end)
+                end
+            end
+        end)
+    end)
+end
+System.extra.sof_handler()
+
 local function create_mobile_button(name, position_y, color)
-    local gui = Instance.new('ScreenGui')
+    local gui = Instance.new('ScreenGui', CoreGui)
     gui.Name = 'Sigma' .. name .. 'Mobile'
     gui.ResetOnSpawn = false
     gui.IgnoreGuiInset = true
-    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     
-    local button = Instance.new('TextButton')
-    button.Size = UDim2.new(0, 140, 0, 50)
-    button.Position = UDim2.new(0.5, -70, position_y, 0)
-    button.BackgroundTransparency = 1
-    button.AnchorPoint = Vector2.new(0.5, 0)
-    button.Draggable = true
-    button.AutoButtonColor = false
-    button.ZIndex = 2
+    local button = Instance.new('TextButton', gui)
+    button.Size = UDim2.new(0, 130, 0, 45)
+    button.Position = UDim2.new(0.5, -65, position_y, 0)
+    button.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    button.BackgroundTransparency = 0.2
+    button.BorderSizePixel = 0
+    button.Text = ""
     
-    local bg = Instance.new('Frame')
-    bg.Size = UDim2.new(1, 0, 1, 0)
-    bg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    bg.Parent = button
-    
-    local corner = Instance.new('UICorner')
+    local corner = Instance.new('UICorner', button)
     corner.CornerRadius = UDim.new(0, 10)
-    corner.Parent = bg
     
-    local stroke = Instance.new('UIStroke')
+    local stroke = Instance.new('UIStroke', button)
     stroke.Color = color
-    stroke.Thickness = 1
-    stroke.Transparency = 0.3
-    stroke.Parent = bg
+    stroke.Thickness = 2
     
-    local text = Instance.new('TextLabel')
+    local text = Instance.new('TextLabel', button)
     text.Size = UDim2.new(1, 0, 1, 0)
     text.BackgroundTransparency = 1
     text.Text = name
-    text.Font = Enum.Font.GothamBold
+    text.Font = Enum.Font.Ubuntu
     text.TextSize = 16
-    text.TextColor3 = Color3.fromRGB(255, 255, 255)
-    text.ZIndex = 3
-    text.Parent = button
+    text.TextColor3 = Color3.fromRGB(240, 240, 240)
     
-    button.Parent = gui
-    gui.Parent = CoreGui
-    
-    return {gui = gui, button = button, text = text, bg = bg}
+    return {gui = gui, button = button, text = text}
 end
 
 local function destroy_mobile_gui(gui_data)
@@ -3517,11 +3644,10 @@ ParrySection:Dropdown({
 
 ParrySection:Slider({
     Title = "Parry Accuracy",
-    Value = { Min = 1, Max = 100, Default = 50 },
+    Value = { Min = 1, Max = 100, Default = 100 },
     Step = 1,
     Callback = function(value)
         System.__properties.__accuracy = value
-        update_divisor()
     end
 })
 
@@ -4006,12 +4132,61 @@ PerfSection:Toggle({
 --  VISUAL TAB
 -- ────────────────────────────────────────────────────────────────
 
-local VisualTab = Window:Tab({ 
-    Title = "Visual", 
-    Icon = "solar:eye-bold", 
-    IconColor = Yellow,
+-- ────────────────────────────────────────────────────────────────
+--  ELITE / SPECIAL FEATURES TAB
+-- ────────────────────────────────────────────────────────────────
+
+local EliteTab = Window:Tab({ 
+    Title = "Elite", 
+    Icon = "solar:star-bold", 
+    IconColor = Purple,
     IconShape = "Square",
     Border = true
+})
+
+local SpecialSection = EliteTab:Section({ Title = "Special Features" })
+
+SpecialSection:Toggle({
+    Title = "Phantom V2 (AI Evasion)",
+    Default = false,
+    Callback = function(val)
+        System.extra.phantom_enabled = val
+        if val then System.extra.start_phantom() end
+    end
+})
+
+SpecialSection:Toggle({
+    Title = "Ball TP (Pro Positioning)",
+    Default = false,
+    Callback = function(val)
+        System.extra.ball_tp_enabled = val
+        if val then System.extra.start_ball_tp() end
+    end
+})
+
+DetectionSection:Toggle({
+    Title = "Slashes of Fury Counter",
+    Default = true,
+    Callback = function(val) System.__config.__detections.__slashesoffury = val end
+})
+
+DetectionSection:Toggle({
+    Title = "AI Trajectory Learning",
+    Default = true,
+    Callback = function(val) System.__properties.__prediction_enabled = val end
+})
+
+-- Visual Tab Update
+local VisualsSection = VisualTab:Section({ Title = "Elite Visuals" })
+
+VisualsSection:Toggle({
+    Title = "Elite Visual Pack (Trail/Glow)",
+    Default = false,
+    Callback = function(val)
+        System.extra.visuals_enabled = val
+        local b = System.ball.get()
+        if b then System.extra.setup_visuals(b) end
+    end
 })
 
 local PredictionSection = VisualTab:Section({ Title = "GOD-TIER Visuals" })
