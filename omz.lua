@@ -1049,6 +1049,7 @@ function System.autoparry.start()
                 if getgenv().AutoAbility then
                     local AbilityCD = LocalPlayer.PlayerGui.Hotbar.Ability.UIGradient
                     if AbilityCD.Offset.Y == 0.5 then
+                        -- Existing offensive / defensive abilities (when ball targets you)
                         if LocalPlayer.Character.Abilities:FindFirstChild("Raging Deflection") and LocalPlayer.Character.Abilities["Raging Deflection"].Enabled or
                            LocalPlayer.Character.Abilities:FindFirstChild("Rapture") and LocalPlayer.Character.Abilities["Rapture"].Enabled or
                            LocalPlayer.Character.Abilities:FindFirstChild("Calming Deflection") and LocalPlayer.Character.Abilities["Calming Deflection"].Enabled or
@@ -1060,6 +1061,35 @@ function System.autoparry.start()
                             task.wait(2.432)
                             ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DeathSlashShootActivation"):FireServer(true)
                             continue
+                        end
+
+                        -- Auto Pull (feint) logic: use Pull to disrupt an enemy's incoming ball
+                        if LocalPlayer.Character.Abilities:FindFirstChild("Pull") and LocalPlayer.Character.Abilities["Pull"].Enabled then
+                            local targetName = ball:GetAttribute('target')
+                            if targetName and targetName ~= LocalPlayer.Name then
+                                local targetChar = Alive and Alive:FindFirstChild(targetName)
+                                if targetChar and targetChar.PrimaryPart then
+                                    local distToTarget = (ball.Position - targetChar.PrimaryPart.Position).Magnitude
+                                    local velocity = zoomies.VectorVelocity
+                                    if velocity and velocity.Magnitude > 1 then
+                                        local dirToTarget = (targetChar.PrimaryPart.Position - ball.Position).Unit
+                                        local approachDot = dirToTarget:Dot(velocity.Unit)
+
+                                        -- Conditions: ball is fairly close to that player and is moving toward them
+                                        if distToTarget <= 25 and approachDot > 0.5 then
+                                            -- Small randomized delay for a natural 'feint' timing
+                                            System.__properties.__parried = true
+                                            local delayMs = math.random(60, 150) / 1000
+                                            task.delay(delayMs, function()
+                                                pcall(function()
+                                                    ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
+                                                end)
+                                            end)
+                                            continue
+                                        end
+                                    end
+                                end
+                            end
                         end
                     end
                 end
