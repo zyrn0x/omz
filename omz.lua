@@ -1296,18 +1296,18 @@ local MainSection = AutoparryTab:Section({
 MainSection:Toggle({
     Title = 'Auto Parry',
     Description = 'Automatically parries ball',
-    Default = false,
+    Value = false,
     Callback = function(value)
         System.__properties.__autoparry_enabled = value
         if value then
             System.autoparry.start()
             if getgenv().AutoParryNotify then
-                WindUI:Notify({ title = "Auto Parry", content = "ON", duration = 2 })
+                WindUI:Notify({ Title = "Auto Parry", Content = "ON", Duration = 2 })
             end
         else
             System.autoparry.stop()
             if getgenv().AutoParryNotify then
-                WindUI:Notify({ title = "Auto Parry", content = "OFF", duration = 2 })
+                WindUI:Notify({ Title = "Auto Parry", Content = "OFF", Duration = 2 })
             end
         end
     end
@@ -1315,17 +1315,17 @@ MainSection:Toggle({
 
 MainSection:Dropdown({
     Title = "Parry Mode",
-    Options = {"Remote", "Keypress"},
-    Default = "Remote",
+    Values = {"Remote", "Keypress"},
+    Value = "Remote",
     Callback = function(value)
         getgenv().AutoParryMode = value
     end
 })
 
-MainSection:Dropdown({
+local AutoCurveDropdown = MainSection:Dropdown({
     Title = "AutoCurve",
-    Options = System.__config.__curve_names,
-    Default = System.__config.__curve_names[1],
+    Values = System.__config.__curve_names,
+    Value = System.__config.__curve_names[1],
     Callback = function(value)
         for i, name in ipairs(System.__config.__curve_names) do
             if name == value then
@@ -1338,7 +1338,7 @@ MainSection:Dropdown({
 
 MainSection:Slider({
     Title = 'Parry Accuracy',
-    Value = { Min = 1, Max = 100, Default = 50 },
+    Value = { Min = 1, Max = 100, Value = 50 },
     Callback = function(value)
         System.__properties.__accuracy = value
         update_divisor()
@@ -1347,33 +1347,33 @@ MainSection:Slider({
 
 MainSection:Toggle({
     Title = "Play Animation",
-    Default = false,
+    Value = false,
     Callback = function(value)
         System.__properties.__play_animation = value
     end
 })
 
-MainSection:Divider()
+MainSection:Space()
 
-MainSection:Checkbox({
+MainSection:Toggle({ Type = "Checkbox",
     Title = "Notify",
-    Default = false,
+    Value = false,
     Callback = function(value)
         getgenv().AutoParryNotify = value
     end
 })
 
-MainSection:Checkbox({
+MainSection:Toggle({ Type = "Checkbox",
     Title = "Cooldown Protection",
-    Default = false,
+    Value = false,
     Callback = function(value)
         getgenv().CooldownProtection = value
     end
 })
 
-MainSection:Checkbox({
+MainSection:Toggle({ Type = "Checkbox",
     Title = "Auto Ability",
-    Default = false,
+    Value = false,
     Callback = function(value)
         getgenv().AutoAbility = value
     end
@@ -1389,7 +1389,7 @@ local BotSection = AutoparryTab:Section({
 BotSection:Toggle({
     Title = "Triggerbot",
     Description = "Parries instantly if targeted",
-    Default = false,
+    Value = false,
     Callback = function(value)
         if System.__properties.__is_mobile then
             if value then
@@ -1430,9 +1430,9 @@ BotSection:Toggle({
                             
                             if getgenv().TriggerbotNotify then
                                 WindUI:Notify({
-                                    title = "Triggerbot",
-                                    content = System.__properties.__triggerbot_enabled and "ON" or "OFF",
-                                    duration = 2
+                                    Title = "Triggerbot",
+                                    Content = System.__properties.__triggerbot_enabled and "ON" or "OFF",
+                                    Duration = 2
                                 })
                             end
                         end
@@ -1450,18 +1450,18 @@ BotSection:Toggle({
             
             if getgenv().TriggerbotNotify then
                 WindUI:Notify({
-                    title = "Triggerbot",
-                    content = value and "ON" or "OFF",
-                    duration = 2
+                    Title = "Triggerbot",
+                    Content = value and "ON" or "OFF",
+                    Duration = 2
                 })
             end
         end
     end
 })
 
-BotSection:Checkbox({
+BotSection:Toggle({ Type = "Checkbox",
     Title = "Notify",
-    Default = false,
+    Value = false,
     Callback = function(value)
         getgenv().TriggerbotNotify = value
     end
@@ -1639,7 +1639,9 @@ local function create_curve_selector_mobile()
                 for idx, name in ipairs(System.__config.__curve_names) do
                     if name == curve_data.name then
                         System.__properties.__curve_mode = idx
-                        AutoCurveDropdown:update(curve_data.name)
+                        if AutoCurveDropdown and AutoCurveDropdown.Set then
+                            AutoCurveDropdown:Set(curve_data.name)
+                        end
                         break
                     end
                 end
@@ -1672,9 +1674,9 @@ local function create_curve_selector_mobile()
                 
                 if getgenv().AutoCurveHotkeyNotify then
                     Library.SendNotification({
-                        title = "AutoCurve",
+                        Title = "AutoCurve",
                         text = curve_data.name,
-                        duration = 2
+                        Duration = 2
                     })
                 end
             end
@@ -1756,19 +1758,20 @@ local function updateCurveType(newType)
     
     if getgenv().AutoCurveHotkeyNotify then
         Library.SendNotification({
-            title = "AutoCurve",
+            Title = "AutoCurve",
             text = newType,
-            duration = 2
+            Duration = 2
         })
     end
 end
 
-local hotkeyModule = rage:create_module({
-    title = "AutoCurve Hotkey" .. (System.__properties.__is_mobile and "(Mobile)" or "(PC)"),
-    description = "Press 1-6 to change curve",
-    flag = "autocurve_hotkey",
-    section = "left",
-    callback = function(state)
+local HotkeySection = AutoparryTab:Section({ Title = "Autocurve Hotkey", Side = "Left", Box = true, Opened = true })
+
+HotkeySection:Toggle({
+    Title = "AutoCurve Hotkey " .. (System.__properties.__is_mobile and "(Mobile)" or "(PC)"),
+    Description = "Press 1-6 to change curve",
+    Value = false,
+    Callback = function(state)
         getgenv().AutoCurveHotkeyEnabled = state
         
         if System.__properties.__is_mobile then
@@ -1785,10 +1788,11 @@ local hotkeyModule = rage:create_module({
     end
 })
 
-hotkeyModule:create_checkbox({
-    title = "Notify",
-    flag = "AutoCurveHotkeyNotify",
-    callback = function(value)
+HotkeySection:Toggle({
+    Type = "Checkbox",
+    Title = "Notify",
+    Value = false,
+    Callback = function(value)
         getgenv().AutoCurveHotkeyNotify = value
     end
 })
@@ -1821,7 +1825,7 @@ local state = {
 local config = {
     refreshDelay = 0.5,
     notificationDuration = 3,
-    maxOptions = 20
+    maxValues = 20
 }
 
 local function formatPlayerDisplay(player)
@@ -1832,9 +1836,9 @@ local function sendNotification(title, text)
     if not state.notificationsEnabled then return end
     
     Library.SendNotification({
-        title = title,
+        Title = title,
         text = text,
-        duration = config.notificationDuration
+        Duration = config.notificationDuration
     })
 end
 
@@ -1934,30 +1938,32 @@ local function onPlayerRemoving(player)
     AimPlayer.refreshDropdown()
 end
 
-AimPlayer.updatePlayerList()
+local function initialize_target_module()
+    local TargetSection = DetectionTab:Section({ Title = "Player Aim", Side = "Right", Box = true, Opened = true })
 
-local targetModule = rage:create_module({
-    title = "Player Aim",
-    description = "Target a specific player only",
-    flag = "targetplayer",
-    section = "left",
-    callback = AimPlayer.toggle
-})
+    TargetSection:Toggle({
+        Title = "Player Aim",
+        Description = "Target a specific player only",
+        Value = false,
+        Callback = AimPlayer.toggle
+    })
 
-targetModule:create_checkbox({
-    title = "Notify",
-    flag = "TargetPlayerNotify",
-    callback = AimPlayer.setNotifications
-})
+    TargetSection:Toggle({
+        Type = "Checkbox",
+        Title = "Notify",
+        Value = false,
+        Callback = AimPlayer.setNotifications
+    })
 
-state.dropdown = targetModule:create_dropdown({
-    title = "Select Target",
-    flag = "TargetPlayerName",
-    options = state.playerNames,
-    multi_dropdown = false,
-    maximum_options = config.maxOptions,
-    callback = AimPlayer.setTarget
-})
+    state.dropdown = TargetSection:Dropdown({
+        Title = "Select Target",
+        Values = state.playerNames,
+        Value = nil,
+        Callback = AimPlayer.setTarget
+    })
+end
+
+initialize_target_module()
 
 Players.PlayerAdded:Connect(onPlayerAdded)
 Players.PlayerRemoving:Connect(onPlayerRemoving)
@@ -1979,7 +1985,7 @@ local SpecSection = DetectionTab:Section({ Title = "Special Detections", Side = 
 
 SpecSection:Toggle({
     Title = 'Infinity Detection',
-    Default = false,
+    Value = false,
     Callback = function(value)
         System.__config.__detections.__infinity = value
     end
@@ -1987,7 +1993,7 @@ SpecSection:Toggle({
 
 SpecSection:Toggle({
     Title = 'Death Slash Detection',
-    Default = false,
+    Value = false,
     Callback = function(value)
         System.__config.__detections.__deathslash = value
     end
@@ -1995,7 +2001,7 @@ SpecSection:Toggle({
 
 SpecSection:Toggle({
     Title = 'Time Hole Detection',
-    Default = false,
+    Value = false,
     Callback = function(value)
         System.__config.__detections.__timehole = value
     end
@@ -2005,7 +2011,7 @@ local SlashesSection = DetectionTab:Section({ Title = "Slashes Of Fury", Side = 
 
 SlashesSection:Toggle({
     Title = 'Enable Slashes Detection',
-    Default = false,
+    Value = false,
     Callback = function(value)
         System.__config.__detections.__slashesoffury = value
     end
@@ -2013,7 +2019,7 @@ SlashesSection:Toggle({
 
 SlashesSection:Slider({
     Title = "Parry Delay",
-    Value = { Min = 0.05, Max = 0.250, Default = 0.05 },
+    Value = { Min = 0.05, Max = 0.250, Value = 0.05 },
     Callback = function(value)
         parryDelay = value
     end
@@ -2021,7 +2027,7 @@ SlashesSection:Slider({
 
 SlashesSection:Slider({
     Title = "Max Parry Count",
-    Value = { Min = 1, Max = 36, Default = 36 },
+    Value = { Min = 1, Max = 36, Value = 36 },
     Callback = function(value)
         maxParryCount = value
     end
@@ -2031,7 +2037,7 @@ local PhantomSection = DetectionTab:Section({ Title = "Advanced", Side = "Left",
 
 PhantomSection:Toggle({
     Title = 'Anti-Phantom [BETA]',
-    Default = false,
+    Value = false,
     Callback = function(value)
         System.__config.__detections.__phantom = value
     end
@@ -2042,7 +2048,7 @@ local ManualSection = SpamTab:Section({ Title = "Manual Spam", Side = "Left", Bo
 ManualSection:Toggle({
     Title = "Manual Spam",
     Description = "High-frequency parry spam",
-    Default = false,
+    Value = false,
     Callback = function(state)
         if System.__properties.__is_mobile then
             if state then
@@ -2084,9 +2090,9 @@ ManualSection:Toggle({
                             
                             if getgenv().ManualSpamNotify then
                                 WindUI:Notify({
-                                    title = "ManualSpam",
-                                    content = System.__properties.__manual_spam_enabled and "ON" or "OFF",
-                                    duration = 2
+                                    Title = "ManualSpam",
+                                    Content = System.__properties.__manual_spam_enabled and "ON" or "OFF",
+                                    Duration = 2
                                 })
                             end
                         end
@@ -2108,18 +2114,18 @@ ManualSection:Toggle({
             
             if getgenv().ManualSpamNotify then
                 WindUI:Notify({
-                    title = "Manual Spam",
-                    content = state and "ON" or "OFF",
-                    duration = 2
+                    Title = "Manual Spam",
+                    Content = state and "ON" or "OFF",
+                    Duration = 2
                 })
             end
         end
     end
 })
 
-ManualSection:Checkbox({
+ManualSection:Toggle({ Type = "Checkbox",
     Title = "Notify",
-    Default = false,
+    Value = false,
     Callback = function(value)
         getgenv().ManualSpamNotify = value
     end
@@ -2127,16 +2133,16 @@ ManualSection:Checkbox({
 
 ManualSection:Dropdown({
     Title = "Mode",
-    Options = {"Remote", "Keypress"},
-    Default = "Remote",
+    Values = {"Remote", "Keypress"},
+    Value = "Remote",
     Callback = function(value)
         getgenv().ManualSpamMode = value
     end
 })
 
-ManualSection:Checkbox({
+ManualSection:Toggle({ Type = "Checkbox",
     Title = "Animation Fix",
-    Default = false,
+    Value = false,
     Callback = function(value)
         getgenv().ManualSpamAnimationFix = value
     end
@@ -2144,7 +2150,7 @@ ManualSection:Checkbox({
 
 ManualSection:Slider({
     Title = 'Spam Rate',
-    Value = { Min = 60, Max = 5000, Default = 240 },
+    Value = { Min = 60, Max = 5000, Value = 240 },
     Callback = function(value)
         System.__properties.__spam_rate = value
     end
@@ -2155,26 +2161,26 @@ local AutoSpamSection = SpamTab:Section({ Title = "Auto Spam", Side = "Right", B
 AutoSpamSection:Toggle({
     Title = 'Auto Spam',
     Description = 'Automatically spam parries ball',
-    Default = false,
+    Value = false,
     Callback = function(value)
         System.__properties.__auto_spam_enabled = value
         if value then
             System.auto_spam.start()
             if getgenv().AutoSpamNotify then
-                WindUI:Notify({ title = "Auto Spam", content = "ON", duration = 2 })
+                WindUI:Notify({ Title = "Auto Spam", Content = "ON", Duration = 2 })
             end
         else
             System.auto_spam.stop()
             if getgenv().AutoSpamNotify then
-                WindUI:Notify({ title = "Auto Spam", content = "OFF", duration = 2 })
+                WindUI:Notify({ Title = "Auto Spam", Content = "OFF", Duration = 2 })
             end
         end
     end
 })
 
-AutoSpamSection:Checkbox({
+AutoSpamSection:Toggle({ Type = "Checkbox",
     Title = "Notify",
-    Default = false,
+    Value = false,
     Callback = function(value)
         getgenv().AutoSpamNotify = value
     end
@@ -2182,16 +2188,16 @@ AutoSpamSection:Checkbox({
 
 AutoSpamSection:Dropdown({
     Title = "Mode",
-    Options = {"Remote", "Keypress"},
-    Default = "Remote",
+    Values = {"Remote", "Keypress"},
+    Value = "Remote",
     Callback = function(value)
         getgenv().AutoSpamMode = value
     end
 })
 
-AutoSpamSection:Checkbox({
+AutoSpamSection:Toggle({ Type = "Checkbox",
     Title = "Animation Fix",
-    Default = false,
+    Value = false,
     Callback = function(value)
         getgenv().AutoSpamAnimationFix = value
     end
@@ -2199,7 +2205,7 @@ AutoSpamSection:Checkbox({
 
 AutoSpamSection:Slider({
     Title = "Parry Threshold",
-    Value = { Min = 1, Max = 5, Default = 2.5 },
+    Value = { Min = 1, Max = 5, Value = 2.5 },
     Callback = function(value)
         System.__properties.__spam_threshold = value
     end
@@ -2441,7 +2447,7 @@ local AppearanceSection = PlayerTab:Section({ Title = "Appearance", Side = "Left
 AppearanceSection:Toggle({
     Title = 'Avatar Changer',
     Description = 'Change your avatar to another player',
-    Default = false,
+    Value = false,
     Callback = function(val)
         __flags['Skin Changer'] = val
 
@@ -2511,7 +2517,7 @@ local EmotesSection = PlayerTab:Section({ Title = "Animations", Side = "Right", 
 EmotesSection:Toggle({
     Title = 'Emotes',
     Description = 'Custom Emotes',
-    Default = false,
+    Value = false,
     Callback = function(value)
         getgenv().Animations = value
         
@@ -2527,9 +2533,9 @@ EmotesSection:Toggle({
     end
 })
 
-EmotesSection:Checkbox({
+EmotesSection:Toggle({ Type = "Checkbox",
     Title = "Auto Stop",
-    Default = false,
+    Value = false,
     Callback = function(value)
         getgenv().AutoStop = value
     end
@@ -2537,8 +2543,8 @@ EmotesSection:Checkbox({
 
 EmotesSection:Dropdown({
     Title = 'Emote Type',
-    Options = emotes_data,
-    Default = emotes_data[1],
+    Values = emotes_data,
+    Value = emotes_data[1],
     Callback = function(value)
         selected_animation = value
         
@@ -2548,14 +2554,14 @@ EmotesSection:Dropdown({
     end
 })
 
-animation_dropdown:update(selected_animation)
+-- animation_dropdown:update(selected_animation) (removed legacy call)
 
 local POVSection = PlayerTab:Section({ Title = "Camera", Side = "Left", Box = true, Opened = true })
 
 POVSection:Toggle({
     Title = 'FOV Change',
     Description = 'Changes Camera POV',
-    Default = false,
+    Value = false,
     Callback = function(value)
         getgenv().CameraEnabled = value
         local Camera = game:GetService("Workspace").CurrentCamera
@@ -2584,7 +2590,7 @@ POVSection:Toggle({
 
 POVSection:Slider({
     Title = 'Camera FOV Value',
-    Value = { Min = 50, Max = 120, Default = 70 },
+    Value = { Min = 50, Max = 120, Value = 70 },
     Callback = function(value)
         getgenv().CameraFOV = value
         if getgenv().CameraEnabled then
@@ -2598,7 +2604,7 @@ local ModSection = PlayerTab:Section({ Title = "Modifications", Side = "Right", 
 ModSection:Toggle({
     Title = 'Enable Character Mods',
     Description = 'Toggles various character properties',
-    Default = false,
+    Value = false,
     Callback = function(value)
         getgenv().CharacterModifierEnabled = value
 
@@ -2690,9 +2696,9 @@ ModSection:Toggle({
     end
 })
 
-ModSection:Checkbox({
+ModSection:Toggle({ Type = "Checkbox",
     Title = "Infinite Jump",
-    Default = false,
+    Value = false,
     Callback = function(value)
         getgenv().InfiniteJumpCheckboxEnabled = value
         
@@ -2716,11 +2722,11 @@ ModSection:Checkbox({
     end
 })
 
-ModSection:Divider()
+ModSection:Space()
 
-ModSection:Checkbox({
+ModSection:Toggle({ Type = "Checkbox",
     Title = "Spin",
-    Default = false,
+    Value = false,
     Callback = function(value)
         getgenv().SpinbotCheckboxEnabled = value
         
@@ -2735,17 +2741,17 @@ ModSection:Checkbox({
 
 ModSection:Slider({
     Title = 'Spin Speed',
-    Value = { Min = 1, Max = 50, Default = 5 },
+    Value = { Min = 1, Max = 50, Value = 5 },
     Callback = function(value)
         getgenv().CustomSpinSpeed = value
     end
 })
 
-ModSection:Divider()
+ModSection:Space()
 
-ModSection:Checkbox({
+ModSection:Toggle({ Type = "Checkbox",
     Title = "Walk Speed",
-    Default = false,
+    Value = false,
     Callback = function(value)
         getgenv().WalkspeedCheckboxEnabled = value
         
@@ -2760,7 +2766,7 @@ ModSection:Checkbox({
 
 ModSection:Slider({
     Title = 'Walk Speed Value',
-    Value = { Min = 16, Max = 500, Default = 36 },
+    Value = { Min = 16, Max = 500, Value = 36 },
     Callback = function(value)
         getgenv().CustomWalkSpeed = value
         
@@ -2773,11 +2779,11 @@ ModSection:Slider({
     end
 })
 
-ModSection:Divider()
+ModSection:Space()
 
-ModSection:Checkbox({
+ModSection:Toggle({ Type = "Checkbox",
     Title = "Jump Power",
-    Default = false,
+    Value = false,
     Callback = function(value)
         getgenv().JumpPowerCheckboxEnabled = value
         
@@ -2797,7 +2803,7 @@ ModSection:Checkbox({
 
 ModSection:Slider({
     Title = 'Jump Power Value',
-    Value = { Min = 50, Max = 200, Default = 50 },
+    Value = { Min = 50, Max = 200, Value = 50 },
     Callback = function(value)
         getgenv().CustomJumpPower = value
         getgenv().CustomJumpHeight = value * 0.144
@@ -2816,11 +2822,11 @@ ModSection:Slider({
     end
 })
 
-ModSection:Divider()
+ModSection:Space()
 
-ModSection:Checkbox({
+ModSection:Toggle({ Type = "Checkbox",
     Title = "Gravity",
-    Default = false,
+    Value = false,
     Callback = function(value)
         getgenv().GravityCheckboxEnabled = value
         
@@ -2832,7 +2838,7 @@ ModSection:Checkbox({
 
 ModSection:Slider({
     Title = 'Gravity Value',
-    Value = { Min = 0, Max = 400.0, Default = 196.2 },
+    Value = { Min = 0, Max = 400.0, Value = 196.2 },
     Callback = function(value)
         getgenv().CustomGravity = value
         
@@ -2842,11 +2848,11 @@ ModSection:Slider({
     end
 })
 
-ModSection:Divider()
+ModSection:Space()
 
-ModSection:Checkbox({
+ModSection:Toggle({ Type = "Checkbox",
     Title = "Hip Height",
-    Default = false,
+    Value = false,
     Callback = function(value)
         getgenv().HipHeightCheckboxEnabled = value
         
@@ -2861,7 +2867,7 @@ ModSection:Checkbox({
 
 ModSection:Slider({
     Title = 'Hip Height Value',
-    Value = { Min = -5, Max = 20, Default = 0 },
+    Value = { Min = -5, Max = 20, Value = 0 },
     Callback = function(value)
         getgenv().CustomHipHeight = value
         
@@ -3193,7 +3199,7 @@ local ESPSection = VisualsTab:Section({ Title = "ESP & Information", Side = "Lef
 ESPSection:Toggle({
     Title = 'Ability ESP',
     Description = 'Displays Player Abilities',
-    Default = false,
+    Value = false,
     Callback = function(value)
         ability_esp.toggle(value)
     end
@@ -3202,7 +3208,7 @@ ESPSection:Toggle({
 ESPSection:Toggle({
     Title = "Show Ball Velocity",
     Description = "Displays real-time ball speed stats",
-    Default = false,
+    Value = false,
     Callback = function(state)
         if state then
             ball_velocity.start()
@@ -3217,7 +3223,7 @@ local EffectsSection = VisualsTab:Section({ Title = "Special Effects", Side = "R
 EffectsSection:Toggle({
     Title = 'Rain',
     Description = 'Magical particle rain effect',
-    Default = false,
+    Value = false,
     Callback = function(state)
         ParticleSystem.Enabled = state
         if not state then
@@ -3228,7 +3234,7 @@ EffectsSection:Toggle({
 
 EffectsSection:Slider({
     Title = 'Max Particles',
-    Value = { Min = 100, Max = 20000, Default = 5000 },
+    Value = { Min = 100, Max = 20000, Value = 5000 },
     Callback = function(value)
         ParticleSystem.MaxParticles = value
     end,
@@ -3236,7 +3242,7 @@ EffectsSection:Slider({
 
 EffectsSection:Slider({
     Title = 'Spawn Rate',
-    Value = { Min = 1, Max = 25, Default = 3 },
+    Value = { Min = 1, Max = 25, Value = 3 },
     Callback = function(value)
         ParticleSystem.SpawnRate = value
     end,
@@ -3244,19 +3250,19 @@ EffectsSection:Slider({
 
 EffectsSection:Colorpicker({
     Title = 'Particle Color',
-    Default = Color3.fromRGB(100, 200, 255),
+    Value = Color3.fromRGB(100, 200, 255),
     Callback = function(color)
         ParticleSystem.ParticleColor = color
         Particles.update_colors()
     end,
 })
 
-EffectsSection:Divider()
+EffectsSection:Space()
 
 EffectsSection:Toggle({
     Title = 'Ball Trail',
     Description = 'Advanced plasma trail for the ball',
-    Default = false,
+    Value = false,
     Callback = function(state)
         PlasmaTrails.Enabled = state
         if not state and last_ball then
@@ -3268,7 +3274,7 @@ EffectsSection:Toggle({
 
 EffectsSection:Slider({
     Title = 'Number of Trails',
-    Value = { Min = 2, Max = 16, Default = 8 },
+    Value = { Min = 2, Max = 16, Value = 8 },
     Callback = function(value)
         PlasmaTrails.NumTrails = value
         if last_ball then
@@ -3282,7 +3288,7 @@ EffectsSection:Slider({
 
 EffectsSection:Colorpicker({
     Title = 'Trail Color',
-    Default = Color3.fromRGB(0, 255, 255),
+    Value = Color3.fromRGB(0, 255, 255),
     Callback = function(color)
         PlasmaTrails.TrailColor = color
         if last_ball then
@@ -3390,7 +3396,7 @@ function ball_velocity.create_gui()
 
     ball_velocity.create_corner(10).Parent = header
 
-    local title = Instance.new("TextLabel")
+    local Title = Instance.new("TextLabel")
     title.Name = "Title"
     title.Size = UDim2.new(1, -12, 1, 0)
     title.Position = UDim2.new(0, 12, 0, 0)
@@ -3402,7 +3408,7 @@ function ball_velocity.create_gui()
     title.TextXAlignment = Enum.TextXAlignment.Left
     title.Parent = header
 
-    local content = Instance.new("Frame")
+    local Content = Instance.new("Frame")
     content.Name = "Content"
     content.Size = UDim2.new(1, -18, 1, -34)
     content.Position = UDim2.new(0, 9, 0, 30)
@@ -3556,19 +3562,7 @@ function ball_velocity.stop()
     ball_velocity.__state.ball_data = {}
 end
 
-visuals:create_module({
-    title = "Show Ball Velocity",
-    description = "",
-    flag = "ballvelocity",
-    section = "right",
-    callback = function(state)
-        if state then
-            ball_velocity.start()
-        else
-            ball_velocity.stop()
-        end
-    end
-})
+-- Show Ball Velocity already ported elsewhere
 
 local Connections_Manager = {}
 
@@ -3577,7 +3571,7 @@ local PerformSection = MiscTab:Section({ Title = "Performance", Side = "Left", B
 PerformSection:Toggle({
     Title = 'No Render',
     Description = 'Disables rendering of effects',
-    Default = false,
+    Value = false,
     Callback = function(state)
         LocalPlayer.PlayerScripts.EffectScripts.ClientFX.Disabled = state
 
@@ -3999,12 +3993,13 @@ RunService.Heartbeat:Connect(function(delta_time)
     end
 end)
 
-local particle_module = visuals:create_module({
-    title = 'Rain',
-    description = '',
-    section = 'left',
-    flag = 'particle_rain_module',
-    callback = function(state)
+local RainSection = VisualsTab:Section({ Title = "Rain Effects", Side = "Left", Box = true, Opened = true })
+
+RainSection:Toggle({
+    Title = 'Rain',
+    Description = 'Magical particle rain effect',
+    Value = false,
+    Callback = function(state)
         ParticleSystem.Enabled = state
         if not state then
             Particles.clear_all()
@@ -4012,64 +4007,49 @@ local particle_module = visuals:create_module({
     end,
 })
 
-particle_module:create_slider({
-    title = 'Max Particles',
-    flag = 'max_particles',
-    maximum_value = 20000,
-    minimum_value = 100,
-    value = 5000,
-    round_number = true,
-    callback = function(value)
+RainSection:Slider({
+    Title = 'Max Particles',
+    Value = { Min = 100, Max = 20000, Value = 5000 },
+    Callback = function(value)
         ParticleSystem.MaxParticles = value
     end,
 })
 
-particle_module:create_slider({
-    title = 'Spawn Rate',
-    flag = 'spawn_rate',
-    maximum_value = 25,
-    minimum_value = 1,
-    value = 3,
-    round_number = true,
-    callback = function(value)
+RainSection:Slider({
+    Title = 'Spawn Rate',
+    Value = { Min = 1, Max = 25, Value = 3 },
+    Callback = function(value)
         ParticleSystem.SpawnRate = value
     end,
 })
 
-particle_module:create_slider({
-    title = 'Fall Speed',
-    flag = 'fall_speed',
-    maximum_value = 150,
-    minimum_value = 5,
-    value = 25,
-    round_number = true,
-    callback = function(value)
+RainSection:Slider({
+    Title = 'Fall Speed',
+    Value = { Min = 5, Max = 150, Value = 50 },
+    Callback = function(value)
         ParticleSystem.FallSpeed = value
         for _, particle_data in ipairs(ParticleSystem.Particles) do
-            particle_data.Velocity = Vector3.new(
-                particle_data.Velocity.X,
-                -value,
-                particle_data.Velocity.Z
-            )
+            particle_data.Velocity = Vector3.new(particle_data.Velocity.X, -value, particle_data.Velocity.Z)
         end
     end,
 })
 
-particle_module:create_colorpicker({
-    title = 'Particle Color',
-    flag = 'particle_color',
-    callback = function(color)
+RainSection:Colorpicker({
+    Title = 'Particle Color',
+    Value = Color3.fromRGB(100, 200, 255),
+    Callback = function(color)
         ParticleSystem.ParticleColor = color
         Particles.update_colors()
     end,
 })
 
-local plasma_module = visuals:create_module({
-    title = 'Ball Trail',
-    description = '',
-    section = 'right',
-    flag = 'plasma_trails_module',
-    callback = function(state)
+local TrailSection = VisualsTab:Section({ Title = "Ball Trails", Side = "Right", Box = true, Opened = true })
+
+TrailSection:Toggle({
+    Title = 'Ball Trail',
+    Description = 'Advanced plasma ball trails',
+    Value = false,
+    Callback = function(state)
         PlasmaTrails.Enabled = state
         if not state and last_ball then
             Plasma.cleanup_trails(last_ball)
@@ -4078,14 +4058,10 @@ local plasma_module = visuals:create_module({
     end,
 })
 
-plasma_module:create_slider({
-    title = 'Number of Trails',
-    flag = 'num_trails',
-    maximum_value = 16,
-    minimum_value = 2,
-    value = 8,
-    round_number = true,
-    callback = function(value)
+TrailSection:Slider({
+    Title = 'Number of Trails',
+    Value = { Min = 2, Max = 16, Value = 8 },
+    Callback = function(value)
         PlasmaTrails.NumTrails = value
         if last_ball then
             Plasma.cleanup_trails(last_ball)
@@ -4096,16 +4072,16 @@ plasma_module:create_slider({
     end,
 })
 
-plasma_module:create_colorpicker({
-    title = 'Trail Color',
-    flag = 'trail_color',
-    callback = function(color)
+TrailSection:Colorpicker({
+    Title = 'Trail Color',
+    Value = Color3.fromRGB(0, 255, 255),
+    Callback = function(color)
         PlasmaTrails.TrailColor = color
         if last_ball then
             Plasma.update_trail_colors(last_ball)
         end
     end,
-})]]
+})
 
 local swordInstancesInstance = ReplicatedStorage:WaitForChild("Shared",9e9):WaitForChild("ReplicatedInstances",9e9):WaitForChild("Swords",9e9)
 local swordInstances = require(swordInstancesInstance)
@@ -4217,7 +4193,7 @@ local SkinSection = MiscTab:Section({ Title = "Skins", Side = "Left", Box = true
 SkinSection:Toggle({
     Title = 'Skin Changer',
     Description = 'Ported Skin Changer',
-    Default = false,
+    Value = false,
     Callback = function(value)
         getgenv().skinChangerEnabled = value
         if value then
@@ -4226,9 +4202,9 @@ SkinSection:Toggle({
     end
 })
 
-SkinSection:Checkbox({
+SkinSection:Toggle({ Type = "Checkbox",
     Title = "Change Sword Model",
-    Default = true,
+    Value = true,
     Callback = function(value)
         getgenv().changeSwordModel = value
         if getgenv().skinChangerEnabled then
@@ -4248,9 +4224,9 @@ SkinSection:Input({
     end
 })
 
-SkinSection:Checkbox({
+SkinSection:Toggle({ Type = "Checkbox",
     Title = "Change Sword Animation",
-    Default = true,
+    Value = true,
     Callback = function(value)
         getgenv().changeSwordAnimation = value
         if getgenv().skinChangerEnabled then
@@ -4270,9 +4246,9 @@ SkinSection:Input({
     end
 })
 
-SkinSection:Checkbox({
+SkinSection:Toggle({ Type = "Checkbox",
     Title = "Change Sword FX",
-    Default = true,
+    Value = true,
     Callback = function(value)
         getgenv().changeSwordFX = value
         if getgenv().skinChangerEnabled then
@@ -5004,7 +4980,7 @@ local AISection = MiscTab:Section({ Title = "AI Autoplay", Side = "Right", Box =
 AISection:Toggle({
     Title = 'AI Play',
     Description = 'Automatically Plays',
-    Default = false,
+    Value = false,
     Callback = function(value)
         if value then
             AutoPlayModule.runThread()
@@ -5014,35 +4990,35 @@ AISection:Toggle({
     end
 })
 
-AISection:Checkbox({
+AISection:Toggle({ Type = "Checkbox",
     Title = "AI Enable Jumping",
-    Default = false,
+    Value = false,
     Callback = function(value)
         AutoPlayModule.CONFIG.JUMPING_ENABLED = value
     end
 })
 
-AISection:Checkbox({
+AISection:Toggle({ Type = "Checkbox",
     Title = "AI Auto Vote",
-    Default = false,
+    Value = false,
     Callback = function(value)
         getgenv().AutoVote = value
     end
 })
 
-AISection:Checkbox({
+AISection:Toggle({ Type = "Checkbox",
     Title = "AI Avoid Players",
-    Default = false,
+    Value = false,
     Callback = function(value)
         AutoPlayModule.CONFIG.PLAYER_DISTANCE_ENABLED = value
     end
 })
 
-AISection:Divider()
+AISection:Space()
 
 AISection:Slider({
     Title = 'AI Update Frequency',
-    Value = { Min = 3, Max = 20, Default = AutoPlayModule.CONFIG.UPDATE_FREQUENCY },
+    Value = { Min = 3, Max = 20, Value = AutoPlayModule.CONFIG.UPDATE_FREQUENCY },
     Callback = function(value)
         AutoPlayModule.CONFIG.UPDATE_FREQUENCY = value
     end
@@ -5050,7 +5026,7 @@ AISection:Slider({
 
 AISection:Slider({
     Title = 'AI Distance From Ball',
-    Value = { Min = 5, Max = 100, Default = AutoPlayModule.CONFIG.DEFAULT_DISTANCE },
+    Value = { Min = 5, Max = 100, Value = AutoPlayModule.CONFIG.DEFAULT_DISTANCE },
     Callback = function(value)
         AutoPlayModule.CONFIG.DEFAULT_DISTANCE = value
     end
@@ -5058,7 +5034,7 @@ AISection:Slider({
 
 AISection:Slider({
     Title = 'AI Distance From Players',
-    Value = { Min = 10, Max = 150, Default = AutoPlayModule.CONFIG.MINIMUM_PLAYER_DISTANCE },
+    Value = { Min = 10, Max = 150, Value = AutoPlayModule.CONFIG.MINIMUM_PLAYER_DISTANCE },
     Callback = function(value)
         AutoPlayModule.CONFIG.MINIMUM_PLAYER_DISTANCE = value
     end
@@ -5066,7 +5042,7 @@ AISection:Slider({
 
 AISection:Slider({
     Title = 'AI Speed Multiplier',
-    Value = { Min = 10, Max = 200, Default = AutoPlayModule.CONFIG.MULTIPLIER_THRESHOLD },
+    Value = { Min = 10, Max = 200, Value = AutoPlayModule.CONFIG.MULTIPLIER_THRESHOLD },
     Callback = function(value)
         AutoPlayModule.CONFIG.MULTIPLIER_THRESHOLD = value
     end
@@ -5074,7 +5050,7 @@ AISection:Slider({
 
 AISection:Slider({
     Title = 'AI Transversing',
-    Value = { Min = 0, Max = 100, Default = AutoPlayModule.CONFIG.TRAVERSING },
+    Value = { Min = 0, Max = 100, Value = AutoPlayModule.CONFIG.TRAVERSING },
     Callback = function(value)
         AutoPlayModule.CONFIG.TRAVERSING = value
     end
@@ -5082,7 +5058,7 @@ AISection:Slider({
 
 AISection:Slider({
     Title = 'AI Direction',
-    Value = { Min = -1, Max = 1, Default = AutoPlayModule.CONFIG.DIRECTION },
+    Value = { Min = -1, Max = 1, Value = AutoPlayModule.CONFIG.DIRECTION },
     Callback = function(value)
         AutoPlayModule.CONFIG.DIRECTION = value
     end
@@ -5090,7 +5066,7 @@ AISection:Slider({
 
 AISection:Slider({
     Title = 'AI Offset Factor',
-    Value = { Min = 0.1, Max = 1, Default = AutoPlayModule.CONFIG.OFFSET_FACTOR },
+    Value = { Min = 0.1, Max = 1, Value = AutoPlayModule.CONFIG.OFFSET_FACTOR },
     Callback = function(value)
         AutoPlayModule.CONFIG.OFFSET_FACTOR = value
     end
@@ -5098,7 +5074,7 @@ AISection:Slider({
 
 AISection:Slider({
     Title = 'AI Movement Duration',
-    Value = { Min = 0.1, Max = 1, Default = AutoPlayModule.CONFIG.MOVEMENT_DURATION },
+    Value = { Min = 0.1, Max = 1, Value = AutoPlayModule.CONFIG.MOVEMENT_DURATION },
     Callback = function(value)
         AutoPlayModule.CONFIG.MOVEMENT_DURATION = value
     end
@@ -5106,7 +5082,7 @@ AISection:Slider({
 
 AISection:Slider({
     Title = 'AI Generation Threshold',
-    Value = { Min = 0.1, Max = 0.5, Default = AutoPlayModule.CONFIG.GENERATION_THRESHOLD },
+    Value = { Min = 0.1, Max = 0.5, Value = AutoPlayModule.CONFIG.GENERATION_THRESHOLD },
     Callback = function(value)
         AutoPlayModule.CONFIG.GENERATION_THRESHOLD = value
     end
@@ -5114,7 +5090,7 @@ AISection:Slider({
 
 AISection:Slider({
     Title = 'AI Jump Chance',
-    Value = { Min = 0, Max = 100, Default = AutoPlayModule.CONFIG.JUMP_PERCENTAGE },
+    Value = { Min = 0, Max = 100, Value = AutoPlayModule.CONFIG.JUMP_PERCENTAGE },
     Callback = function(value)
         AutoPlayModule.CONFIG.JUMP_PERCENTAGE = value
     end
@@ -5122,7 +5098,7 @@ AISection:Slider({
 
 AISection:Slider({
     Title = 'AI Double Jump Chance',
-    Value = { Min = 0, Max = 100, Default = AutoPlayModule.CONFIG.DOUBLE_JUMP_PERCENTAGE },
+    Value = { Min = 0, Max = 100, Value = AutoPlayModule.CONFIG.DOUBLE_JUMP_PERCENTAGE },
     Callback = function(value)
         AutoPlayModule.CONFIG.DOUBLE_JUMP_PERCENTAGE = value
     end
@@ -5222,7 +5198,7 @@ end
 local function sendNotification(text)
     if state.notify and Library then
         Library.SendNotification({
-            title = "Walkable Semi-Immortal",
+            Title = "Walkable Semi-Immortal",
             text = text
         })
     end
@@ -5288,25 +5264,25 @@ local BlatantSection = ExclusiveTab:Section({ Title = "Blatant Features", Side =
 
 BlatantSection:Toggle({
     Title = "Walkable Semi-Immortal [BLATANT!]",
-    Default = false,
+    Value = false,
     Callback = WalkableSemiImmortal.toggle
 })
 
-BlatantSection:Checkbox({
+BlatantSection:Toggle({ Type = "Checkbox",
     Title = "Notify",
-    Default = false,
+    Value = false,
     Callback = WalkableSemiImmortal.setNotify
 })
 
 BlatantSection:Slider({
     Title = 'Immortal Radius',
-    Value = { Min = 0, Max = 100, Default = 25 },
+    Value = { Min = 0, Max = 100, Value = 25 },
     Callback = WalkableSemiImmortal.setRadius
 })
 
 BlatantSection:Slider({
     Title = 'Immortal Height',
-    Value = { Min = 0, Max = 60, Default = 30 },
+    Value = { Min = 0, Max = 60, Value = 30 },
     Callback = WalkableSemiImmortal.setHeight
 })
 
@@ -5439,7 +5415,7 @@ end
 local function sendNotification(text)
     if state.notify and Library then
         Library.SendNotification({
-            title = "IDK???",
+            Title = "IDK???",
             text = text
         })
     end
@@ -5516,45 +5492,42 @@ hooks.oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
     return hooks.oldIndex(self, key)
 end))
 
-local module = devuwu:create_module({
-    title = "Dupe Ball[BLATANT!]",
-    description = "",
-    flag = "IDK_Toggle",
-    section = "right",
-    callback = Invisibilidade.toggle
+local DupeSection = ExclusiveTab:Section({ Title = "Dupe Ball", Side = "Right", Box = true, Opened = true })
+
+DupeSection:Toggle({
+    Title = "Dupe Ball [BLATANT!]",
+    Description = "Duplicity exploit",
+    Value = false,
+    Callback = Invisibilidade.toggle
 })
 
-module:create_checkbox({
-    title = "Notify",
-    flag = "IDK_Notify",
-    callback = Invisibilidade.setNotify
+DupeSection:Toggle({
+    Type = "Checkbox",
+    Title = "Notify",
+    Value = false,
+    Callback = Invisibilidade.setNotify
 })
 
-module:create_slider({
-    title = 'Velocity Threshold',
-    flag = 'dasdada',
-    maximum_value = 1500,
-    minimum_value = 800,
-    value = 800,
-    round_number = true,
-    callback = function(value)
+DupeSection:Slider({
+    Title = 'Velocity Threshold',
+    Value = { Min = 800, Max = 1500, Value = 800 },
+    Callback = function(value)
         constants.velocityThreshold = value
     end
-})]]
+})
 
-local AboutTab = Window:Tab({ Title = "About", Icon = "solar:info-circle-bold", IconColor = Grey })
-local AboutGroup = AboutTab:Group({ Title = "Information" })
+local AboutSection = AboutTab:Section({ Title = "Information", Box = true, Opened = true })
 
-AboutGroup:Button({
+AboutSection:Button({
     Title = "Join Discord",
     Description = "Support and Updates",
     Callback = function()
         setclipboard("https://discord.gg/omzhub")
-        WindUI:Notify({ title = "Discord", content = "Link copied to clipboard!", duration = 3 })
+        WindUI:Notify({ Title = "Discord", Content = "Link copied to clipboard!", Duration = 3 })
     end
 })
 
-AboutGroup:Button({
+AboutSection:Button({
     Title = "Destroy UI",
     Description = "Fully unload Omz Hub",
     Callback = function()
@@ -5562,12 +5535,12 @@ AboutGroup:Button({
     end
 })
 
-local config_module = AboutTab:Group({ Title = "GUI Library" })
+local config_module = AboutTab:Section({ Title = "GUI Library", Box = true, Opened = true })
 
 config_module:Toggle({
     Title = "GUI Library Visible",
     Description = "Visibility of GUI library",
-    Default = true,
+    Value = true,
     Callback = function(state)
         getgenv().guilibraryVisible = state
         Window:SetVisible(state)
