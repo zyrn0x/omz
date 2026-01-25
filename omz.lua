@@ -2543,8 +2543,7 @@ EmotesSection:Toggle({ Type = "Checkbox",
 
 EmotesSection:Dropdown({
     Title = 'Emote Type',
-    Values = emotes_data,
-    Value = emotes_data[1],
+    Value = emotes_data,
     Callback = function(value)
         selected_animation = value
         
