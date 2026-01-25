@@ -1020,38 +1020,37 @@ local function autoparry_process_ball(ball, one_ball, curved, ping_val, parry_ac
     if ball_target ~= LocalPlayer.Name then return end
 
     local velocity = zoomies.VectorVelocity
+    local speed = velocity.Magnitude
     local position = ball.Position
     local root_part = LocalPlayer.Character.PrimaryPart
-    
-    -- PHYSICS: Calculate Closing Velocity (Speed towards player only)
-    -- This fixes curves because their sideways velocity is ignored!
-    local direction_to_player = (root_part.Position - position).Unit
-    local closing_velocity = velocity:Dot(direction_to_player)
-    
-    -- Anti-Lag: If ball is moving away (negative closing_velocity), ignore it
-    if closing_velocity <= 0 then return end
-    
     local distance = (root_part.Position - position).Magnitude
     
-    -- Time-To-Impact (TTI) Calculation
-    -- How many seconds until the ball hits us?
-    local tti = distance / closing_velocity
+    -- HYBRID LOGIC: Angle-Based Danger Zones
+    local direction_to_player = (root_part.Position - position).Unit
+    local velocity_direction = velocity.Unit
     
-    -- Dynamic Reaction Threshold
-    -- Ping is in ms, convert to seconds. Add processing buffer.
-    local ping_delay = math.clamp(ping_val / 1000, 0.0, 0.2) -- Limit max lag comp
-    local reaction_buffer = 0.15 -- Base reaction time (human-like but perfect)
+    -- Dot Product: 1.0 = Coming straight at you. 0.0 = Moving sideways.
+    local angle_dot = velocity_direction:Dot(direction_to_player)
     
-    -- If high speed (close range), react faster
+    -- Emergency Reflex: If extremely close, parry regardless of math (anti-snap)
     if distance < 15 then
-        reaction_buffer = 0.1
-    end
-
-    -- Trigger Parry if TTI is within our reaction window
-    if tti <= (ping_delay + reaction_buffer) then
-        -- Execute Parry logic...
+        -- Execute Parry immediately
     else
-        return -- Too far away in time
+        -- Distance Scaling based on Angle
+        -- Direct Hit (dot > 0.9): Full parry range (e.g., 20 studs)
+        -- Curve/Side (dot < 0.9): Strictly reduced range (force late parry)
+        
+        local ping_compensation = math.clamp(ping_val / 10, 1, 20)
+        local base_parry_range = 15 + math.max(speed / 12, 0) + ping_compensation
+        
+        local effective_range = base_parry_range
+        if angle_dot < 0.9 then
+            effective_range = base_parry_range * 0.55 -- Wait until it's much closer
+        end
+        
+        if distance > effective_range then
+            return -- Too far / safe for now
+        end
     end
     
     if getgenv().CooldownProtection then
