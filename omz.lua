@@ -1810,7 +1810,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
     end
 end)
 
---[[local AimPlayer = {}
+local AimPlayer = {}
 
 local state = {
     playerNames = {},
@@ -1979,7 +1979,7 @@ end
 function AimPlayer.getTargetPlayer()
     if not state.selectedTarget then return nil end
     return Players:FindFirstChild(state.selectedTarget)
-end]]
+end
 
 local SpecSection = DetectionTab:Section({ Title = "Special Detections", Side = "Left", Box = true, Opened = true })
 
@@ -2541,9 +2541,15 @@ EmotesSection:Toggle({ Type = "Checkbox",
     end
 })
 
+local emotes_data = {
+    "Dab", "Sit", "Dance 1", "Dance 2", "Dance 3", "Dance 4", "Dance 5", 
+    "Robot", "Wave", "Point", "Cheer", "Laugh"
+}
+
 EmotesSection:Dropdown({
     Title = 'Emote Type',
-    Value = emotes_data,
+    Values = emotes_data,
+    Value = emotes_data[1],
     Callback = function(value)
         selected_animation = value
         
@@ -3396,18 +3402,18 @@ function ball_velocity.create_gui()
     ball_velocity.create_corner(10).Parent = header
 
     local Title = Instance.new("TextLabel")
-    title.Name = "Title"
-    title.Size = UDim2.new(1, -12, 1, 0)
-    title.Position = UDim2.new(0, 12, 0, 0)
-    title.BackgroundTransparency = 1
-    title.Text = "Ball Stats"
-    title.TextColor3 = ball_velocity.__config.colors.text_primary
-    title.TextSize = 13
-    title.Font = Enum.Font.GothamBold
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Parent = header
+    Title.Name = "Title"
+    Title.Size = UDim2.new(1, -12, 1, 0)
+    Title.Position = UDim2.new(0, 12, 0, 0)
+    Title.BackgroundTransparency = 1
+    Title.Text = "BALL VELOCITY"
+    Title.TextColor3 = ball_velocity.__config.colors.accent_green
+    Title.TextSize = 13
+    Title.Font = Enum.Font.GothamBold
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.Parent = header
 
-    local Content = Instance.new("Frame")
+    local content = Instance.new("Frame")
     content.Name = "Content"
     content.Size = UDim2.new(1, -18, 1, -34)
     content.Position = UDim2.new(0, 9, 0, 30)
@@ -5287,7 +5293,7 @@ BlatantSection:Slider({
     Callback = WalkableSemiImmortal.setHeight
 })
 
---[[local Invisibilidade = {}
+local Invisibilidade = {}
 
 local Players = game:GetService('Players')
 local RunService = game:GetService('RunService')
@@ -5516,8 +5522,6 @@ DupeSection:Slider({
         constants.velocityThreshold = value
     end
 })
-
-]]
 
 local AboutSection = AboutTab:Section({ Title = "Information", Box = true, Opened = true })
 
