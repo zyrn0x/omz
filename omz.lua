@@ -49,7 +49,8 @@ local System = {
         __parried_balls = {},
         __parry_ball_connections = {},
         __auto_spam_accumulator = 0,
-        __parry_prediction_ms = 0
+        __parry_prediction_ms = 0,
+        __prediction_enabled = false
     },
     
     __config = {
@@ -1016,26 +1017,30 @@ function System.prediction.get_real_target(ball)
     
     local velocity = zoomies.VectorVelocity
     local position = ball.Position
+    local speed = velocity.Magnitude
     
-    if velocity.Magnitude < 0.1 then return ball:GetAttribute("target") end
+    if speed < 0.1 then return ball:GetAttribute("target") end
     
     local ray_direction = velocity.Unit
-    local max_dist = math.huge
     local real_target = nil
+    local min_projection = math.huge
     
     for _, player in pairs(Alive:GetChildren()) do
-        if player:FindFirstChild("HumanoidRootPart") then
-            -- Project player onto the ball's path
-            local to_player = player.HumanoidRootPart.Position - position
+        local root = player:FindFirstChild("HumanoidRootPart")
+        if root then
+            local to_player = root.Position - position
             local projection = to_player:Dot(ray_direction)
             
-            if projection > 0 then -- In front of the ball
+            -- Only consider players in front of the ball
+            if projection > 0 then
                 local closest_point = position + ray_direction * projection
-                local dist_from_line = (player.HumanoidRootPart.Position - closest_point).Magnitude
+                local dist_from_path = (root.Position - closest_point).Magnitude
                 
-                -- Ball Radius/Hitbox is roughly 5-10 studs
-                if dist_from_line < 10 and projection < max_dist then
-                    max_dist = projection
+                -- God-tier Hitbox: Scales with speed (10 studs at base, up to 25 at high speed)
+                local hitbox = math.clamp(10 + (speed / 50), 10, 25)
+                
+                if dist_from_path < hitbox and projection < min_projection then
+                    min_projection = projection
                     real_target = player.Name
                 end
             end
@@ -1170,7 +1175,12 @@ local function autoparry_process_ball(ball, one_ball, ping_threshold, parry_accu
     
     autoparry_ensure_connection(ball)
     
-    local ball_target = System.prediction.get_real_target(ball)
+    -- [DUAL SYSTEM] Choose detection method
+    local ball_target = ball:GetAttribute('target')
+    if System.__properties.__prediction_enabled then
+        local predicted = System.prediction.get_real_target(ball)
+        if predicted then ball_target = predicted end
+    end
     local velocity = zoomies.VectorVelocity
     local speed = velocity.Magnitude
     local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
@@ -1196,13 +1206,15 @@ local function autoparry_process_ball(ball, one_ball, ping_threshold, parry_accu
     
     if ball:FindFirstChild('ComboCounter') then return end
     if LocalPlayer.Character.PrimaryPart:FindFirstChild('SingularityCape') then return end
-    -- [FIX] Infinity Logic: Do NOT return here. Instead, check distance.
-    if System.__config.__detections.__infinity and System.__properties.__infinity_active then 
-        if distance < 25 then
-             System.parry.execute_action()
-             System.__properties.__parried_balls[ball] = tick() + 0.5
-             return
-        end
+    -- [FIX] Enemy Infinity: Detect ANY frozen ball near the player
+    local is_frozen = speed < 0.5
+    if is_frozen and distance < 30 then
+        -- If the ball restarts while we are close, we need to parry next frame or instantly.
+        -- We'll allow the logic to fall through to the target check.
+    else
+        -- Standard high-speed check: Ignore if moving away
+        local forward_speed = velocity:Dot((LocalPlayer.Character.PrimaryPart.Position - ball.Position).Unit)
+        if forward_speed <= 0 then return end
     end
     if System.__config.__detections.__deathslash and System.__properties.__deathslash_active then return end
     if System.__config.__detections.__timehole and System.__properties.__timehole_active then return end
@@ -1292,9 +1304,9 @@ function System.autoparry.start()
         local dm = System.__properties.__divisor_multiplier
         
         local function parry_acc(speed)
-            local capped = math.min(math.max(speed - 9.5, 0), 650)
-            local div = (2.4 + capped * 0.002) * dm
-            return ping_threshold + math.max(speed / div, 9.5)
+            local capped = math.min(math.max(speed - 9.5, 0), 800)
+            local div = (2.1 + capped * 0.0018) * dm
+            return (ping_threshold * 0.8) + math.max(speed / div, 8.5)
         end
         
         for _, ball in pairs(balls) do
@@ -3501,6 +3513,15 @@ ParrySection:Toggle({
                 })
             end
         end
+    end
+})
+
+ParrySection:Toggle({
+    Title = "Predictive Mode",
+    Desc = "Uses physics prediction to detect the target",
+    Default = false,
+    Callback = function(value)
+        System.__properties.__prediction_enabled = value
     end
 })
 
