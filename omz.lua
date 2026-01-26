@@ -125,7 +125,9 @@ local System = {
         __slashesoffury_active = false,
         __slashesoffury_count = 0,
         __is_mobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled,
-        __mobile_guis = {}
+        __mobile_guis = {},
+        __god_twist_enabled = false,
+        __god_twist_distance = 100
     },
     
     __config = {
@@ -1479,7 +1481,22 @@ function System.autoparry.start()
                             ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DeathSlashShootActivation"):FireServer(true)
                             continue
                         end
-                    end
+                end
+            end
+            
+            if System.__properties.__god_twist_enabled and ball_target == LocalPlayer.Name and distance > System.__properties.__god_twist_distance then
+                local char = LocalPlayer.Character
+                local hrp = char and char.PrimaryPart
+                if hrp then
+                    local originalCFrame = hrp.CFrame
+                    local targetPosition = ball.Position + (velocity.Unit * 5)
+                    
+                    hrp.CFrame = CFrame.new(targetPosition, ball.Position)
+                    System.parry.execute_action()
+                    
+                    task.wait()
+                    hrp.CFrame = originalCFrame
+                    System.__properties.__parried = true
                 end
             end
             
@@ -1816,6 +1833,23 @@ ExclusiveSection:Toggle({
     Value = false,
     Callback = function(value)
         System.rage.update_ball_tp(value)
+    end
+})
+
+ExclusiveSection:Toggle({
+    Title = 'God Twist',
+    Description = 'Blinks to ball, parries, and blinks back',
+    Value = false,
+    Callback = function(value)
+        System.__properties.__god_twist_enabled = value
+    end
+})
+
+ExclusiveSection:Slider({
+    Title = 'God Twist Range',
+    Value = { Min = 50, Max = 500, Value = 100 },
+    Callback = function(value)
+        System.__properties.__god_twist_distance = value
     end
 })
 
