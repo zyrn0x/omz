@@ -509,6 +509,8 @@ local Last_Warping = tick()
 local Curving = tick()
 local Lerp_Radians = 0
 
+System.detection = {}
+
 function System.detection.is_curved()
     local ball = System.ball.get()
     
