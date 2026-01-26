@@ -1,35 +1,13 @@
-local function safe_load(url)
-    local success, result = pcall(function()
-        return game:HttpGet(url)
-    end)
-    if not success or not result or result == "" then return nil end
-    
-    local loader = loadstring or (getgenv and getgenv().loadstring)
-    if not loader then return nil end
-    
-    local func, err = loader(result)
-    if not func then return nil end
-    
-    local ok, lib = pcall(func)
-    return ok and lib or nil
+
+--return Library
+
+--[[if _G.Sigma then 
+    return warn'Already loaded.' 
 end
 
-local getinfo = getinfo or (debug and debug.getinfo)
-local getfenv = getfenv or function() return {} end
-local getconnections = getconnections or function() return {} end
-local getupvalues = getupvalues or (debug and debug.getupvalues) or function() return {} end
-local setupvalue = setupvalue or (debug and debug.setupvalue) or function() end
-local getrawmetatable = getrawmetatable or function() return {} end
-local setreadonly = setreadonly or function() end
-local islclosure = islclosure or (debug and debug.islclosure) or function(f) return type(f) == "function" end
-local cloneref = cloneref or function(o) return o end
-local hookmetamethod = hookmetamethod or function(o, m, f) return f end
+_G.Sigma = true]]
 
-local WindUI = safe_load("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua")
-
-if not WindUI then
-    return warn("Omz Hub: Failed to load UI library. Please check your internet or executor.")
-end
+local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 
 local Window = WindUI:CreateWindow({
     Title = "Omz Hub — GOD-TIER",
@@ -125,9 +103,7 @@ local System = {
         __slashesoffury_active = false,
         __slashesoffury_count = 0,
         __is_mobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled,
-        __mobile_guis = {},
-        __god_twist_enabled = false,
-        __god_twist_distance = 100
+        __mobile_guis = {}
     },
     
     __config = {
@@ -165,36 +141,12 @@ if ReplicatedStorage:FindFirstChild("Controllers") then
 end
 
 if LocalPlayer.PlayerGui:FindFirstChild("Hotbar") and LocalPlayer.PlayerGui.Hotbar:FindFirstChild("Block") then
-    local connections = getconnections(LocalPlayer.PlayerGui.Hotbar.Block.Activated)
-    for _, v in next, (type(connections) == "table" and connections or {}) do
-        if v.Function and SC and getfenv(v.Function).script == SC then
+    for _, v in next, getconnections(LocalPlayer.PlayerGui.Hotbar.Block.Activated) do
+        if SC and getfenv(v.Function).script == SC then
             PF = v.Function
             break
         end
     end
-end
-
-local function get_remote(path)
-    local segments = path:split("/")
-    local current = ReplicatedStorage
-    for _, segment in ipairs(segments) do
-        if not current then return nil end
-        current = current:FindFirstChild(segment)
-    end
-    return current
-end
-
-local function safe_net_remote(name)
-    local packages = ReplicatedStorage:FindFirstChild("Packages")
-    local index = packages and packages:FindFirstChild("_Index")
-    for _, child in ipairs(index and index:GetChildren() or {}) do
-        if child.Name:find("sleitnick_net") then
-            local net = child:FindFirstChild("net")
-            local remote = net and net:FindFirstChild(name)
-            if remote then return remote end
-        end
-    end
-    return nil
 end
 
 local function update_divisor()
@@ -529,9 +481,7 @@ function System.parry.keypress()
         return
     end
 
-    if PF then 
-        pcall(PF) 
-    end
+    PF()
 
     if System.__properties.__parries > 10000 then return end
     
@@ -554,17 +504,12 @@ local function linear_predict(a, b, time_volume)
     return a + (b - a) * time_volume
 end
 
-System.detection = {
-    __ball_properties = {
-        __aerodynamic_time = tick(),
-        __last_warping = tick(),
-        __lerp_radians = 0,
-        __curving = tick()
-    }
-}
+local Previous_Velocity = {}
+local Last_Warping = tick()
+local Curving = tick()
+local Lerp_Radians = 0
 
 function System.detection.is_curved()
-    local ball_properties = System.detection.__ball_properties
     local ball = System.ball.get()
     
     if not ball then return false end
@@ -572,79 +517,79 @@ function System.detection.is_curved()
     local zoomies = ball:FindFirstChild('zoomies')
     if not zoomies then return false end
     
+    local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
     local velocity = zoomies.VectorVelocity
     local ball_direction = velocity.Unit
     
-    local direction = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Unit
+    local player_pos = LocalPlayer.Character.PrimaryPart.Position
+    local ball_pos = ball.Position
+    local direction = (player_pos - ball_pos).Unit
     local dot = direction:Dot(ball_direction)
-    
     local speed = velocity.Magnitude
-    local speed_threshold = math.min(speed / 100, 40)
     
-    local direction_difference = (ball_direction - velocity).Unit
-    local direction_similarity = direction:Dot(direction_difference)
+    local reach_time = (player_pos - ball_pos).Magnitude / speed - (ping / 1000)
     
+    table.insert(Previous_Velocity, velocity)
+    if #Previous_Velocity > 4 then
+        table.remove(Previous_Velocity, 1)
+    end
+    
+    if speed < 300 then
+        if (tick() - Curving) < (reach_time / 1.2) then
+            return true
+        end
+    elseif speed >= 300 and speed < 450 then
+        if (tick() - Curving) < (reach_time / 1.21) then
+            return true
+        end
+    elseif speed > 450 and speed < 600 then
+        if (tick() - Curving) < (reach_time / 1.335) then
+            return true
+        end
+    elseif speed > 600 then
+        if (tick() - Curving) < (reach_time / 1.5) then
+            return true
+        end
+    end
+    
+    local dot_threshold = (0.5 - ping / 1000)
+    local direction_difference = (ball_direction - velocity.Unit)
+    local direction_similarity = direction:Dot(direction_difference.Unit)
     local dot_difference = dot - direction_similarity
-    local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
     
-    local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
-    
-    local dot_threshold = 0.5 - (ping / 1000)
-    local reach_time = distance / speed - (ping / 1000)
-    
-    local ball_distance_threshold = 15 - math.min(distance / 1000, 15) + speed_threshold
-    
-    local Clamped_Dot = math.clamp(dot, -1, 1)
-    local Radians = math.rad(math.asin(Clamped_Dot))
-    
-    ball_properties.__lerp_radians = linear_predict(ball_properties.__lerp_radians, Radians, 0.8)
-    
-    if speed > 0 and reach_time > ping / 10 then
-        if speed < 300 then
-            ball_distance_threshold = math.max(ball_distance_threshold - 15, 15)
-        elseif speed >= 300 and speed < 600 then
-            ball_distance_threshold = math.max(ball_distance_threshold - 16, 16)
-        elseif speed >= 600 and speed < 1000 then
-            ball_distance_threshold = math.max(ball_distance_threshold - 17, 17)
-        elseif speed >= 1000 and speed < 1500 then
-            ball_distance_threshold = math.max(ball_distance_threshold - 19, 19)
-        elseif speed >= 1500 then
-            ball_distance_threshold = math.max(ball_distance_threshold - 20, 20)
-        end
-    end
-    
-    if distance < ball_distance_threshold then return false end
-    if dot_difference < dot_threshold then return true end
-
-    local backwardsCurveDetected = false
-    local backwardsAngleThreshold = 85
-    local horizDirection = Vector3.new(LocalPlayer.Character.PrimaryPart.Position.X - ball.Position.X, 0, LocalPlayer.Character.PrimaryPart.Position.Z - ball.Position.Z)
-    if horizDirection.Magnitude > 0 then
-        horizDirection = horizDirection.Unit
-    end
-    local awayFromPlayer = -horizDirection
-    local horizBallDir = Vector3.new(ball_direction.X, 0, ball_direction.Z)
-    if horizBallDir.Magnitude > 0 then
-        horizBallDir = horizBallDir.Unit
-        local backwardsAngle = math.deg(math.acos(math.clamp(awayFromPlayer:Dot(horizBallDir), -1, 1)))
-        if backwardsAngle < backwardsAngleThreshold then
-            backwardsCurveDetected = true
-        end
-    end
-    
-    if ball_properties.__lerp_radians < 0.018 then
-        ball_properties.__last_warping = tick()
-    end
-    
-    if (tick() - ball_properties.__last_warping) < (reach_time / 1.5) then
+    if dot_difference < dot_threshold then
         return true
     end
     
-    if (tick() - ball_properties.__curving) < (reach_time / 1.5) then
-        return true
+    local clamped_dot = math.clamp(dot, -1, 1)
+    local radians = math.deg(math.asin(clamped_dot))
+    
+    Lerp_Radians = Lerp_Radians + (radians - Lerp_Radians) * 0.8
+    if speed < 300 then
+        if Lerp_Radians < 0.02 then
+            Last_Warping = tick()
+        end
+        if (tick() - Last_Warping) < (reach_time / 1.19) then
+            return true
+        end
+    else
+        if Lerp_Radians < 0.018 then
+            Last_Warping = tick()
+        end
+        if (tick() - Last_Warping) < (reach_time / 1.5) then
+            return true
+        end
     end
     
-    return dot < dot_threshold or backwardsCurveDetected
+    if #Previous_Velocity == 4 then
+        local int_diff = (ball_direction - Previous_Velocity[1].Unit).Unit
+        local int_dot = direction:Dot(int_diff)
+        if (dot - int_dot) < dot_threshold then
+            return true
+        end
+    end
+    
+    return dot < dot_threshold
 end
 
 ReplicatedStorage.Remotes.DeathBall.OnClientEvent:Connect(function(c, d)
@@ -655,66 +600,53 @@ ReplicatedStorage.Remotes.InfinityBall.OnClientEvent:Connect(function(a, b)
     System.__properties.__infinity_active = b or false
 end)
 
-local time_hole_activate = safe_net_remote("RE/TimeHoleActivate")
-if time_hole_activate then
-    time_hole_activate.OnClientEvent:Connect(function(...)
-        local args = {...}
-        local player = args[1]
-        if player == LocalPlayer or player == LocalPlayer.Name or (player and player.Name == LocalPlayer.Name) then
-            System.__properties.__timehole_active = true
-        end
-    end)
-end
+ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/TimeHoleActivate"].OnClientEvent:Connect(function(...)
+    local args = {...}
+    local player = args[1]
+    
+    if player == LocalPlayer or player == LocalPlayer.Name or (player and player.Name == LocalPlayer.Name) then
+        System.__properties.__timehole_active = true
+    end
+end)
 
-local time_hole_deactivate = safe_net_remote("RE/TimeHoleDeactivate")
-if time_hole_deactivate then
-    time_hole_deactivate.OnClientEvent:Connect(function()
-        System.__properties.__timehole_active = false
-    end)
-end
+ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/TimeHoleDeactivate"].OnClientEvent:Connect(function()
+    System.__properties.__timehole_active = false
+end)
 
-local slashes_activate = safe_net_remote("RE/SlashesOfFuryActivate")
-if slashes_activate then
-    slashes_activate.OnClientEvent:Connect(function(...)
-        local args = {...}
-        local player = args[1]
-        if player == LocalPlayer or player == LocalPlayer.Name or (player and player.Name == LocalPlayer.Name) then
-            System.__properties.__slashesoffury_active = true
-            System.__properties.__slashesoffury_count = 0
-        end
-    end)
-end
+local maxParryCount = 36
+local parryDelay = 0.05
 
-local slashes_end = safe_net_remote("RE/SlashesOfFuryEnd")
-if slashes_end then
-    slashes_end.OnClientEvent:Connect(function()
-        System.__properties.__slashesoffury_active = false
+ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/SlashesOfFuryActivate"].OnClientEvent:Connect(function(...)
+    local args = {...}
+    local player = args[1]
+    
+    if player == LocalPlayer or player == LocalPlayer.Name or (player and player.Name == LocalPlayer.Name) then
+        System.__properties.__slashesoffury_active = true
         System.__properties.__slashesoffury_count = 0
-    end)
-end
+    end
+end)
 
-local slashes_parry = safe_net_remote("RE/SlashesOfFuryParry")
-if slashes_parry then
-    slashes_parry.OnClientEvent:Connect(function()
-        System.__properties.__slashesoffury_count = System.__properties.__slashesoffury_count + 1
-    end)
-end
+ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/SlashesOfFuryEnd"].OnClientEvent:Connect(function()
+    System.__properties.__slashesoffury_active = false
+    System.__properties.__slashesoffury_count = 0
+end)
 
-local slashes_catch = safe_net_remote("RE/SlashesOfFuryCatch")
-if slashes_catch then
-    slashes_catch.OnClientEvent:Connect(function()
-        task.spawn(function()
-            while System.__properties.__slashesoffury_active and System.__properties.__slashesoffury_count < 36 do
-                if System.__config.__detections.__slashesoffury then
-                    System.parry.execute()
-                    task.wait(0.05)
-                else
-                    break
-                end
+ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/SlashesOfFuryParry"].OnClientEvent:Connect(function()
+    System.__properties.__slashesoffury_count = System.__properties.__slashesoffury_count + 1
+end)
+
+ReplicatedStorage.Packages._Index["sleitnick_net@0.1.0"].net["RE/SlashesOfFuryCatch"].OnClientEvent:Connect(function()
+    spawn(function()
+        while System.__properties.__slashesoffury_active and System.__properties.__slashesoffury_count < maxParryCount do
+            if System.__config.__detections.__slashesoffury then
+                System.parry.execute()
+                task.wait(parryDelay)
+            else
+                break
             end
-        end)
+        end
     end)
-end
+end)
 
 Runtime.ChildAdded:Connect(function(Object)
     if System.__config.__detections.__phantom then
@@ -791,53 +723,35 @@ ReplicatedStorage.Remotes.ParrySuccess.OnClientEvent:Connect(function()
         return
     end
     
-    if System.world.__hit_sound_enabled then
-        System.world.__hit_sound:Play()
-    end
-
     if System.__properties.__grab_animation then
         System.__properties.__grab_animation:Stop()
     end
 end)
 
 ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent:Connect(function(a, b)
-    local Primary_Part = LocalPlayer.Character.PrimaryPart
-    local Ball = System.ball.get()
+    local primary_part = LocalPlayer.Character and LocalPlayer.Character.PrimaryPart
+    local ball = System.ball.get()
 
-    if not Ball then
+    if not ball or not primary_part then
         return
     end
 
-    local Zoomies = Ball:FindFirstChild('zoomies')
+    local zoomies = ball:FindFirstChild('zoomies')
+    if not zoomies then return end
 
-    if not Zoomies then
-        return
+    local speed = zoomies.VectorVelocity.Magnitude
+    local distance = (primary_part.Position - ball.Position).Magnitude
+    local pings = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
+    local reach_time = distance / speed - (pings / 1000)
+
+    local ball_distance_threshold = 15 - math.min(distance / 1000, 15) + math.min(speed / 100, 40)
+
+    if speed > 1 and reach_time > pings / 10 then
+        ball_distance_threshold = math.max(ball_distance_threshold - 15, 15)
     end
 
-    local Speed = Zoomies.VectorVelocity.Magnitude
-
-    local Distance = (LocalPlayer.Character.PrimaryPart.Position - Ball.Position).Magnitude
-    local Velocity = Zoomies.VectorVelocity
-
-    local Ball_Direction = Velocity.Unit
-
-    local Direction = (LocalPlayer.Character.PrimaryPart.Position - Ball.Position).Unit
-    local Dot = Direction:Dot(Ball_Direction)
-
-    local Pings = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
-
-    local Speed_Threshold = math.min(Speed / 100, 40)
-    local Reach_Time = Distance / Speed - (Pings / 1000)
-
-    local Enough_Speed = Speed > 1
-    local Ball_Distance_Threshold = 15 - math.min(Distance / 1000, 15) + Speed_Threshold
-
-    if Enough_Speed and Reach_Time > Pings / 10 then
-        Ball_Distance_Threshold = math.max(Ball_Distance_Threshold - 15, 15)
-    end
-
-    if b ~= Primary_Part and Distance > Ball_Distance_Threshold then
-        System.detection.__ball_properties.__curving = tick()
+    if b ~= primary_part and distance > ball_distance_threshold then
+        Curving = tick()
     end
 end)
 
@@ -898,148 +812,6 @@ function System.triggerbot.loop()
         if ball:IsA('BasePart') and ball:GetAttribute('target') == LocalPlayer.Name then
             System.triggerbot.trigger(ball)
             break
-        end
-    end
-end
-
-System.visuals = {
-    __visual_part = nil,
-    __stats_ui = nil,
-    __heartbeat = nil,
-    __ball_peaks = {}
-}
-
-function System.visuals.update_visualiser(enabled)
-    if enabled then
-        if not System.visuals.__visual_part then
-            System.visuals.__visual_part = Instance.new("Part")
-            System.visuals.__visual_part.Name = "OmzVisualiser"
-            System.visuals.__visual_part.Shape = Enum.PartType.Ball
-            System.visuals.__visual_part.Material = Enum.Material.ForceField
-            System.visuals.__visual_part.Color = Color3.fromRGB(255, 255, 255)
-            System.visuals.__visual_part.Transparency = 0
-            System.visuals.__visual_part.CastShadow = false
-            System.visuals.__visual_part.Anchored = true
-            System.visuals.__visual_part.CanCollide = false
-            System.visuals.__visual_part.Parent = workspace
-        end
-        
-        System.__properties.__connections.__visualiser = RunService.RenderStepped:Connect(function()
-            local char = LocalPlayer.Character
-            local root = char and char:FindFirstChild("HumanoidRootPart")
-            if root and System.visuals.__visual_part then
-                System.visuals.__visual_part.CFrame = root.CFrame
-                
-                if getgenv().VisualiserRainbow then
-                    System.visuals.__visual_part.Color = Color3.fromHSV((tick() % 5) / 5, 1, 1)
-                else
-                    System.visuals.__visual_part.Color = Color3.fromHSV((getgenv().VisualiserHue or 0) / 360, 1, 1)
-                end
-                
-                local balls = System.ball.get_all()
-                local max_accuracy = 15 -- base
-                for _, ball in pairs(balls) do
-                    local zoomies = ball:FindFirstChild('zoomies')
-                    if zoomies then
-                        local speed = zoomies.VectorVelocity.Magnitude
-                        local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue() / 10
-                        local ping_threshold = math.clamp(ping / 10, 5, 17)
-                        local capped_speed_diff = math.min(math.max(speed - 9.5, 0), 650)
-                        local speed_divisor = (2.4 + capped_speed_diff * 0.002) * System.__properties.__divisor_multiplier
-                        local accuracy = ping_threshold + math.max(speed / speed_divisor, 9.5)
-                        max_accuracy = math.max(max_accuracy, accuracy)
-                    end
-                end
-                System.visuals.__visual_part.Size = Vector3.new(max_accuracy * 2, max_accuracy * 2, max_accuracy * 2)
-            end
-        end)
-    else
-        if System.__properties.__connections.__visualiser then
-            System.__properties.__connections.__visualiser:Disconnect()
-            System.__properties.__connections.__visualiser = nil
-        end
-        if System.visuals.__visual_part then
-            System.visuals.__visual_part:Destroy()
-            System.visuals.__visual_part = nil
-        end
-    end
-end
-
-function System.visuals.update_stats_ui(enabled)
-    if enabled then
-        if not System.visuals.__stats_ui then
-            local main = Instance.new(\"ScreenGui\")
-            main.Name = \"OmzBallStats\"
-            main.Parent = CoreGui
-            
-            local frame = Instance.new(\"Frame\")
-            frame.Size = UDim2.new(0, 200, 0, 80)
-            frame.Position = UDim2.new(0.5, -100, 0.2, 0)
-            frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-            frame.BackgroundTransparency = 0.3
-            frame.Parent = main
-            
-            local corner = Instance.new(\"UICorner\")
-            corner.CornerRadius = UDim.new(0, 10)
-            corner.Parent = frame
-            
-            local stroke = Instance.new(\"UIStroke\")
-            stroke.Color = Color3.fromRGB(0, 255, 100)
-            stroke.Thickness = 2
-            stroke.Parent = frame
-            
-            local vel_label = Instance.new(\"TextLabel\")
-            vel_label.Size = UDim2.new(1, 0, 0.5, 0)
-            vel_label.BackgroundTransparency = 1
-            vel_label.Text = \"Velocity: 0.00\"
-            vel_label.Font = Enum.Font.GothamBold
-            vel_label.TextSize = 18
-            vel_label.TextColor3 = Color3.fromRGB(255, 255, 255)
-            vel_label.Parent = frame
-            
-            local peak_label = Instance.new(\"TextLabel\")
-            peak_label.Size = UDim2.new(1, 0, 0.5, 0)
-            peak_label.Position = UDim2.new(0, 0, 0.5, 0)
-            peak_label.BackgroundTransparency = 1
-            peak_label.Text = \"Peak: 0.00\"
-            peak_label.Font = Enum.Font.GothamBold
-            peak_label.TextSize = 18
-            peak_label.TextColor3 = Color3.fromRGB(0, 255, 100)
-            peak_label.Parent = frame
-            
-            System.visuals.__stats_ui = {gui = main, vel = vel_label, peak = peak_label}
-        end
-        
-        System.visuals.__heartbeat = RunService.Heartbeat:Connect(function()
-            local balls = System.ball.get_all()
-            for _, ball in pairs(balls) do
-                local zoomies = ball:FindFirstChild('zoomies')
-                if zoomies then
-                    local speed = zoomies.VectorVelocity.Magnitude
-                    System.visuals.__ball_peaks[ball] = math.max(System.visuals.__ball_peaks[ball] or 0, speed)
-                    
-                    if System.visuals.__stats_ui then
-                        System.visuals.__stats_ui.vel.Text = string.format(\"Velocity: %.2f\", speed)
-                        System.visuals.__stats_ui.peak.Text = string.format(\"Peak: %.2f\", System.visuals.__ball_peaks[ball])
-                    end
-                end
-            end
-            
-            -- Cleanup peaks for deleted balls
-            for ball, _ in pairs(System.visuals.__ball_peaks) do
-                if not ball.Parent then
-                    System.visuals.__ball_peaks[ball] = nil
-                end
-            end
-        end)
-    else
-        if System.visuals.__heartbeat then
-            System.visuals.__heartbeat:Disconnect()
-            System.visuals.__heartbeat = nil
-        end
-        if System.visuals.__stats_ui then
-            System.visuals.__stats_ui.gui:Destroy()
-            System.visuals.__stats_ui = nil
         end
     end
 end
@@ -1187,7 +959,6 @@ function System.auto_spam.start()
     System.__properties.__auto_spam_enabled = true
     System.__properties.__connections.__auto_spam = RunService.PreSimulation:Connect(function()
         local ball = System.ball.get()
-        
         if not ball then return end
         
         if System.__properties.__slashesoffury_active then return end
@@ -1195,186 +966,36 @@ function System.auto_spam.start()
         local zoomies = ball:FindFirstChild('zoomies')
         if not zoomies then return end
         
-        System.player.get_closest()
-        
         local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
-        local ping_threshold = math.clamp(ping / 10, 1, 16)
+        local speed = zoomies.VectorVelocity.Magnitude
+        local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
         
-        local ball_target = ball:GetAttribute('target')
+        local entity = System.player.get_closest()
+        if not entity or not entity.PrimaryPart then return end
+        local entity_distance = (LocalPlayer.Character.PrimaryPart.Position - entity.PrimaryPart.Position).Magnitude
         
-        local ball_properties = System.auto_spam:get_ball_properties()
-        local entity_properties = System.auto_spam:get_entity_properties()
+        local spam_threshold = ping / 10 + math.min(speed / 6, 255)
         
-        if not ball_properties or not entity_properties then return end
-        
-        local spam_accuracy = System.auto_spam.spam_service({
-            Ball_Properties = ball_properties,
-            Entity_Properties = entity_properties,
-            Ping = ping_threshold
-        })
-        
-        local target_position = Closest_Entity.PrimaryPart.Position
-        local target_distance = LocalPlayer:DistanceFromCharacter(target_position)
-        
-        local direction = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Unit
-        local ball_direction = zoomies.VectorVelocity.Unit
-        
-        local dot = direction:Dot(ball_direction)
-        local distance = LocalPlayer:DistanceFromCharacter(ball.Position)
-        
-        if not ball_target then return end
-        if target_distance > spam_accuracy or distance > spam_accuracy then return end
-        
-        local pulsed = LocalPlayer.Character:GetAttribute('Pulsed')
-        if pulsed then return end
-        
-        if ball_target == LocalPlayer.Name and target_distance > 30 and distance > 30 then return end
-        
-                    if distance <= spam_accuracy and System.__properties.__parries > System.__properties.__spam_threshold then
-            if getgenv().AutoSpamMode == "Keypress" then
-                if PF then PF() end
-            else
-                System.parry.execute()
-                if getgenv().AutoSpamAnimationFix and PF then
-                    PF()
+        if distance <= spam_threshold and entity_distance <= spam_threshold then
+            if System.__properties.__parries > System.__properties.__spam_threshold then
+                if getgenv().AutoSpamMode == "Keypress" then
+                    if PF then PF() end
+                else
+                    System.parry.execute()
+                    if getgenv().AutoSpamAnimationFix and PF then
+                        PF()
+                    end
                 end
             end
         end
     end)
 end
 
-System.world = {
-    __current_sound = nil,
-    __hit_sound = nil,
-    __hit_sound_enabled = false,
-    __selected_sound = "Eeyuh",
-    __sound_options = {
-        ["Eeyuh"] = "rbxassetid://16190782181",
-        ["Sweep"] = "rbxassetid://103508936658553",
-        ["Bounce"] = "rbxassetid://134818882821660",
-        ["Everybody Wants To Rule The World"] = "rbxassetid://87209527034670",
-        ["Missing Money"] = "rbxassetid://134668194128037",
-        ["Sour Grapes"] = "rbxassetid://117820392172291",
-        ["Erwachen"] = "rbxassetid://124853612881772",
-        ["Grasp the Light"] = "rbxassetid://89549155689397",
-        ["Beyond the Shadows"] = "rbxassetid://120729792529978",
-        ["Rise to the Horizon"] = "rbxassetid://72573266268313",
-        ["Echoes of the Candy Kingdom"] = "rbxassetid://103040477333590",
-        ["Speed"] = "rbxassetid://125550253895893",
-        ["Lo-fi Chill A"] = "rbxassetid://9043887091",
-        ["Lo-fi Ambient"] = "rbxassetid://129775776987523",
-        ["Tears in the Rain"] = "rbxassetid://129710845038263"
-    },
-    __hit_sound_ids = {
-        Medal = "rbxassetid://6607336718",
-        Fatality = "rbxassetid://6607113255",
-        Skeet = "rbxassetid://6607204501",
-        Switches = "rbxassetid://6607173363",
-        ["Rust Headshot"] = "rbxassetid://138750331387064",
-        ["Neverlose Sound"] = "rbxassetid://110168723447153",
-        Bubble = "rbxassetid://6534947588",
-        Laser = "rbxassetid://7837461331",
-        Steve = "rbxassetid://4965083997",
-        ["Call of Duty"] = "rbxassetid://5952120301",
-        Bat = "rbxassetid://3333907347",
-        ["TF2 Critical"] = "rbxassetid://296102734",
-        Saber = "rbxassetid://8415678813",
-        Bameware = "rbxassetid://3124331820"
-    },
-    __skyboxes = {
-        ["Default"] = {"591058823", "591059876", "591058104", "591057861", "591057625", "591059642"},
-        ["Vaporwave"] = {"1417494030", "1417494146", "1417494253", "1417494402", "1417494499", "1417494643"},
-        ["Redshift"] = {"401664839", "401664862", "401664960", "401664881", "401664901", "401664936"},
-        ["Desert"] = {"1013852", "1013853", "1013850", "1013851", "1013849", "1013854"},
-        ["Minecraft"] = {"1876545003", "1876544331", "1876542941", "1876543392", "1876543764", "1876544642"},
-        ["Blaze"] = {"150939022", "150939038", "150939047", "150939056", "150939063", "150939082"},
-        ["Space Wave"] = {"16262356578", "16262358026", "16262360469", "16262362003", "16262363873", "16262366016"},
-        ["Dark Night"] = {"6285719338", "6285721078", "6285722964", "6285724682", "6285726335", "6285730635"},
-        ["White Galaxy"] = {"5540798456", "5540799894", "5540801779", "5540801192", "5540799108", "5540800635"}
-    }
-}
-
-function System.world.init()
-    local sound_service = cloneref(game:GetService("SoundService"))
-    System.world.__current_sound = Instance.new("Sound")
-    System.world.__current_sound.Volume = 3
-    System.world.__current_sound.Parent = sound_service
-    
-    local folder = workspace:FindFirstChild("OmzUtility") or Instance.new("Folder", workspace)
-    folder.Name = "OmzUtility"
-    System.world.__hit_sound = Instance.new("Sound", folder)
-    System.world.__hit_sound.Volume = 5
-end
-
-function System.world.play_music(id)
-    if System.world.__current_sound then
-        System.world.__current_sound:Stop()
-        pcall(function()
-            System.world.__current_sound.SoundId = id
-        end)
-        System.world.__current_sound:Play()
-    end
-end
-
-function System.world.set_skybox(name)
-    local lighting = cloneref(game:GetService("Lighting"))
-    local data = System.world.__skyboxes[name]
-    if not data then return end
-    
-    local sky = lighting:FindFirstChildOfClass("Sky") or Instance.new("Sky", lighting)
-    local faces = {"SkyboxBk", "SkyboxDn", "SkyboxFt", "SkyboxLf", "SkyboxRt", "SkyboxUp"}
-    for i, face in ipairs(faces) do
-        sky[face] = "rbxassetid://" .. data[i]
-    end
-    lighting.GlobalShadows = (name == "Default")
-end
-
-System.world.init()
-
-System.rage = {
-    __ball_tp_enabled = false,
-    __original_subject = nil
-}
-
-function System.rage.update_ball_tp(enabled)
-    System.rage.__ball_tp_enabled = enabled
-    local camera = workspace.CurrentCamera
-    
-    if enabled then
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild(\"Humanoid\") then
-            System.rage.__original_subject = camera.CameraSubject
-        end
-        
-        System.__properties.__connections.__ball_tp = RunService.Heartbeat:Connect(function()
-            local ball = System.ball.get()
-            local char = LocalPlayer.Character
-            local hrp = char and char:FindFirstChild("HumanoidRootPart")
-            
-            if ball and hrp then
-                local zoomies = ball:FindFirstChild("zoomies")
-                local velocity = (zoomies and zoomies:IsA("LinearVelocity")) and zoomies.VectorVelocity or Vector3.zero
-                
-                -- Teleport logic from reference
-                if ball:GetAttribute("target") == LocalPlayer.Name then
-                    if math.abs(velocity.X) > math.abs(velocity.Z) then
-                        hrp.CFrame = ball.CFrame + Vector3.new(0, 5, 10)
-                    else
-                        hrp.CFrame = ball.CFrame + Vector3.new(10, 5, 0)
-                    end
-                    camera.CameraSubject = ball
-                else
-                    camera.CameraSubject = char:FindFirstChildOfClass(\"Humanoid\") or System.rage.__original_subject
-                end
-            end
-        end)
-    else
-        if System.__properties.__connections.__ball_tp then
-            System.__properties.__connections.__ball_tp:Disconnect()
-            System.__properties.__connections.__ball_tp = nil
-        end
-        if System.rage.__original_subject then
-            camera.CameraSubject = System.rage.__original_subject
-        end
+function System.auto_spam.stop()
+    System.__properties.__auto_spam_enabled = false
+    if System.__properties.__connections.__auto_spam then
+        System.__properties.__connections.__auto_spam:Disconnect()
+        System.__properties.__connections.__auto_spam = nil
     end
 end
 
@@ -1392,18 +1013,7 @@ function System.autoparry.start()
         end
         
         local balls = System.ball.get_all()
-        local one_ball = System.ball.get()
         
-        local training_ball = nil
-        if workspace:FindFirstChild("TrainingBalls") then
-            for _, Instance in pairs(workspace.TrainingBalls:GetChildren()) do
-                if Instance:GetAttribute("realBall") then
-                    training_ball = Instance
-                    break
-                end
-            end
-        end
-
         for _, ball in pairs(balls) do
             if System.__triggerbot.__enabled then return end
             if getgenv().BallVelocityAbove800 then return end
@@ -1412,52 +1022,47 @@ function System.autoparry.start()
             local zoomies = ball:FindFirstChild('zoomies')
             if not zoomies then continue end
             
-            ball:GetAttributeChangedSignal('target'):Once(function()
-                System.__properties.__parried = false
-            end)
+            local velocity = zoomies.VectorVelocity
+            local speed = velocity.Magnitude
+            if speed < 1 then continue end
+
+            local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
+            local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
+            local reach_time = distance / speed - (ping / 1000)
             
+            local ball_dist_threshold = 15 - math.min(distance/1000, 15) + math.min(speed/100, 40)
+            
+            if reach_time > ping / 10 then
+                if speed < 300 then
+                    ball_dist_threshold = math.max(ball_dist_threshold - 15, 15)
+                elseif speed >= 300 and speed < 600 then
+                    ball_dist_threshold = math.max(ball_dist_threshold - 16, 16)
+                elseif speed >= 600 and speed < 1000 then
+                    ball_dist_threshold = math.max(ball_dist_threshold - 17, 17)
+                elseif speed >= 1000 and speed < 1500 then
+                    ball_dist_threshold = math.max(ball_dist_threshold - 19, 19)
+                elseif speed >= 1500 then
+                    ball_dist_threshold = math.max(ball_dist_threshold - 20, 20)
+                end
+            end
+
             if System.__properties.__parried then continue end
             
             local ball_target = ball:GetAttribute('target')
-            local velocity = zoomies.VectorVelocity
-            local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
             
-            local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue() / 10
-            local ping_threshold = math.clamp(ping / 10, 5, 17)
-            local speed = velocity.Magnitude
-            
-            local capped_speed_diff = math.min(math.max(speed - 9.5, 0), 650)
-            local speed_divisor = (2.4 + capped_speed_diff * 0.002) * System.__properties.__divisor_multiplier
-            local parry_accuracy = ping_threshold + math.max(speed / speed_divisor, 9.5)
-            
-            local curved = System.detection.is_curved()
-            
-            if ball:FindFirstChild('AeroDynamicSlashVFX') then
-                ball.AeroDynamicSlashVFX:Destroy()
-                System.__properties.__tornado_time = tick()
-            end
-            
-            if Runtime:FindFirstChild('Tornado') then
-                if (tick() - System.__properties.__tornado_time) < 
-                   (Runtime.Tornado:GetAttribute('TornadoTime') or 1) + 0.314159 then
+            if ball_target == LocalPlayer.Name and distance <= ball_dist_threshold then
+                if System.detection.is_curved() then
                     continue
                 end
-            end
-            
-            if one_ball and one_ball:GetAttribute('target') == LocalPlayer.Name and curved then
-                continue
-            end
-            
-            if ball:FindFirstChild('ComboCounter') then continue end
-            
-            if LocalPlayer.Character.PrimaryPart:FindFirstChild('SingularityCape') then continue end
-            
-            if System.__config.__detections.__infinity and System.__properties.__infinity_active then continue end
-            if System.__config.__detections.__deathslash and System.__properties.__deathslash_active then continue end
-            if System.__config.__detections.__timehole and System.__properties.__timehole_active then continue end
-            if System.__config.__detections.__slashesoffury and System.__properties.__slashesoffury_active then continue end
-            
-            if ball_target == LocalPlayer.Name and distance <= parry_accuracy then
+
+                if ball:FindFirstChild('ComboCounter') then continue end
+                if LocalPlayer.Character.PrimaryPart:FindFirstChild('SingularityCape') then continue end
+                
+                if System.__config.__detections.__infinity and System.__properties.__infinity_active then continue end
+                if System.__config.__detections.__deathslash and System.__properties.__deathslash_active then continue end
+                if System.__config.__detections.__timehole and System.__properties.__timehole_active then continue end
+                if System.__config.__detections.__slashesoffury and System.__properties.__slashesoffury_active then continue end
+
                 if getgenv().CooldownProtection then
                     local ParryCD = LocalPlayer.PlayerGui.Hotbar.Block.UIGradient
                     if ParryCD.Offset.Y < 0.4 then
@@ -1466,91 +1071,18 @@ function System.autoparry.start()
                     end
                 end
                 
-                if getgenv().AutoAbility then
-                    local AbilityCD = LocalPlayer.PlayerGui.Hotbar.Ability.UIGradient
-                    if AbilityCD.Offset.Y == 0.5 then
-                        if LocalPlayer.Character.Abilities:FindFirstChild("Raging Deflection") and LocalPlayer.Character.Abilities["Raging Deflection"].Enabled or
-                           LocalPlayer.Character.Abilities:FindFirstChild("Rapture") and LocalPlayer.Character.Abilities["Rapture"].Enabled or
-                           LocalPlayer.Character.Abilities:FindFirstChild("Calming Deflection") and LocalPlayer.Character.Abilities["Calming Deflection"].Enabled or
-                           LocalPlayer.Character.Abilities:FindFirstChild("Aerodynamic Slash") and LocalPlayer.Character.Abilities["Aerodynamic Slash"].Enabled or
-                           LocalPlayer.Character.Abilities:FindFirstChild("Fracture") and LocalPlayer.Character.Abilities["Fracture"].Enabled or
-                           LocalPlayer.Character.Abilities:FindFirstChild("Death Slash") and LocalPlayer.Character.Abilities["Death Slash"].Enabled then
-                            System.__properties.__parried = true
-                            ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
-                            task.wait(2.432)
-                            ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DeathSlashShootActivation"):FireServer(true)
-                            continue
-                        end
-                end
-            end
-            
-            if System.__properties.__god_twist_enabled and ball_target == LocalPlayer.Name and distance > System.__properties.__god_twist_distance then
-                local char = LocalPlayer.Character
-                local hrp = char and char.PrimaryPart
-                if hrp then
-                    local originalCFrame = hrp.CFrame
-                    local targetPosition = ball.Position + (velocity.Unit * 5)
-                    
-                    hrp.CFrame = CFrame.new(targetPosition, ball.Position)
-                    System.parry.execute_action()
-                    
-                    task.wait()
-                    hrp.CFrame = originalCFrame
-                    System.__properties.__parried = true
-                end
-            end
-            
-            if ball_target == LocalPlayer.Name and distance <= parry_accuracy then
                 if getgenv().AutoParryMode == "Keypress" then
                     System.parry.keypress()
                 else
                     System.parry.execute_action()
                 end
                 System.__properties.__parried = true
-            end
-            
-            local last_parrys = tick()
-            repeat
-                RunService.Stepped:Wait()
-            until (tick() - last_parrys) >= 1 or not System.__properties.__parried
-            System.__properties.__parried = false
-        end
-
-        if training_ball then
-            local zoomies = training_ball:FindFirstChild('zoomies')
-            if zoomies then
-                training_ball:GetAttributeChangedSignal('target'):Once(function()
-                    System.__properties.__training_parried = false
-                end)
                 
-                if not System.__properties.__training_parried then
-                    local ball_target = training_ball:GetAttribute('target')
-                    local velocity = zoomies.VectorVelocity
-                    local distance = LocalPlayer:DistanceFromCharacter(training_ball.Position)
-                    local speed = velocity.Magnitude
-                    
-                    local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue() / 10
-                    local ping_threshold = math.clamp(ping / 10, 5, 17)
-                    
-                    local capped_speed_diff = math.min(math.max(speed - 9.5, 0), 650)
-                    local speed_divisor = (2.4 + capped_speed_diff * 0.002) * System.__properties.__divisor_multiplier
-                    local parry_accuracy = ping_threshold + math.max(speed / speed_divisor, 9.5)
-                    
-                    if ball_target == LocalPlayer.Name and distance <= parry_accuracy then
-                        if getgenv().AutoParryMode == "Keypress" then
-                            System.parry.keypress()
-                        else
-                            System.parry.execute_action()
-                        end
-                        System.__properties.__training_parried = true
-                        
-                        local last_parrys = tick()
-                        repeat
-                            RunService.Stepped:Wait()
-                        until (tick() - last_parrys) >= 1 or not System.__properties.__training_parried
-                        System.__properties.__training_parried = false
-                    end
-                end
+                local last_parrys = tick()
+                repeat
+                    RunService.Heartbeat:Wait()
+                until (tick() - last_parrys) >= 1 or not System.__properties.__parried
+                System.__properties.__parried = false
             end
         end
     end)
@@ -1821,35 +1353,18 @@ BotSection:Toggle({
                 destroy_mobile_gui(System.__properties.__mobile_guis.triggerbot)
                 System.__properties.__mobile_guis.triggerbot = nil
             end
+        else
+            System.__properties.__triggerbot_enabled = value
+            System.triggerbot.enable(value)
+            
+            if getgenv().TriggerbotNotify then
+                WindUI:Notify({
+                    Title = "Triggerbot",
+                    Content = value and "ON" or "OFF",
+                    Duration = 2
+                })
+            end
         end
-    end
-})
-
-local ExclusiveSection = ExclusiveTab:Section({ Title = "Rage Features", Side = "Left", Box = true, Opened = true })
-
-ExclusiveSection:Toggle({
-    Title = "Ball TP",
-    Description = "Teleports to the ball when targeted",
-    Value = false,
-    Callback = function(value)
-        System.rage.update_ball_tp(value)
-    end
-})
-
-ExclusiveSection:Toggle({
-    Title = 'God Twist',
-    Description = 'Blinks to ball, parries, and blinks back',
-    Value = false,
-    Callback = function(value)
-        System.__properties.__god_twist_enabled = value
-    end
-})
-
-ExclusiveSection:Slider({
-    Title = 'God Twist Range',
-    Value = { Min = 50, Max = 500, Value = 100 },
-    Callback = function(value)
-        System.__properties.__god_twist_distance = value
     end
 })
 
@@ -2066,11 +1581,11 @@ local function create_curve_selector_mobile()
                 
                 current_selected = buttons[i]
                 
-                if getgenv().AutoParryNotify then
-                    WindUI:Notify({
-                        Title = "Module Notification",
-                        Content = value and "Auto Parry has been turned ON" or "Auto Parry has been turned OFF",
-                        Duration = 3
+                if getgenv().AutoCurveHotkeyNotify then
+                    Library.SendNotification({
+                        Title = "AutoCurve",
+                        text = curve_data.name,
+                        Duration = 2
                     })
                 end
             end
@@ -2151,9 +1666,9 @@ local function updateCurveType(newType)
     end
     
     if getgenv().AutoCurveHotkeyNotify then
-        WindUI:Notify({
+        Library.SendNotification({
             Title = "AutoCurve",
-            Content = newType,
+            text = newType,
             Duration = 2
         })
     end
@@ -2229,9 +1744,9 @@ end
 local function sendNotification(title, text)
     if not state.notificationsEnabled then return end
     
-    WindUI:Notify({
+    Library.SendNotification({
         Title = title,
-        Content = text,
+        text = text,
         Duration = config.notificationDuration
     })
 end
@@ -3987,7 +3502,7 @@ PerformSection:Toggle({
     end
 })
 
-local ParticleSystem = {
+--[[local ParticleSystem = {
     Particles = {},
     MaxParticles = 5000,
     SpawnArea = 500,
@@ -4482,131 +3997,7 @@ TrailSection:Colorpicker({
     end,
 })
 
-TrailSection:Toggle({
-    Title = "Rainbow Trail",
-    Value = false,
-    Callback = function(value)
-        getgenv().BallTrailRainbowEnabled = value
-        if value then
-            task.spawn(function()
-                while getgenv().BallTrailRainbowEnabled do
-                    local hue = (tick() % 5) / 5
-                    local color = Color3.fromHSV(hue, 1, 1)
-                    PlasmaTrails.TrailColor = color
-                    if last_ball then
-                        Plasma.update_trail_colors(last_ball)
-                    end
-                    task.wait()
-                end
-            end)
-        end
-    end
-})
-
-TrailSection:Toggle({
-    Title = "Particle Emitter",
-    Value = false,
-    Callback = function(value)
-        getgenv().BallTrailParticleEnabled = value
-    end
-})
-
-TrailSection:Toggle({
-    Title = "Glow Effect",
-    Value = false,
-    Callback = function(value)
-        getgenv().BallTrailGlowEnabled = value
-    end
-})
-
-local WorldSection = VisualsTab:Section({ Title = "World Effects", Side = "Right", Box = true, Opened = true })
-
-WorldSection:Toggle({
-    Title = "Custom Skybox",
-    Value = false,
-    Callback = function(value)
-        if value then
-            System.world.set_skybox(getgenv().SelectedSky or "Vaporwave")
-        else
-            System.world.set_skybox("Default")
-        end
-    end
-})
-
-WorldSection:Dropdown({
-    Title = "Select Sky",
-    Values = {"Vaporwave", "Redshift", "Desert", "Minecraft", "Blaze", "Space Wave", "Dark Night", "White Galaxy"},
-    Value = "Vaporwave",
-    Callback = function(value)
-        getgenv().SelectedSky = value
-        System.world.set_skybox(value)
-    end
-})
-
-local FilterSection = VisualsTab:Section({ Title = "Filters", Side = "Right", Box = true, Opened = true })
-
-FilterSection:Slider({
-    Title = "Atmosphere Density",
-    Value = { Min = 0, Max = 1, Value = 0 },
-    Callback = function(value)
-        local lighting = game:GetService("Lighting")
-        local atm = lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere", lighting)
-        atm.Density = value
-    end
-})
-
-FilterSection:Slider({
-    Title = "Fog Distance",
-    Value = { Min = 50, Max = 10000, Value = 10000 },
-    Callback = function(value)
-        game:GetService("Lighting").FogEnd = value
-    end
-})
-
-local MusicSection = MiscTab:Section({ Title = "Music Player", Side = "Right", Box = true, Opened = true })
-
-MusicSection:Toggle({
-    Title = "Enable Music",
-    Value = false,
-    Callback = function(value)
-        if value then
-            System.world.play_music(System.world.__sound_options[getgenv().SelectedSong or "Eeyuh"])
-        else
-            System.world.__current_sound:Stop()
-        end
-    end
-})
-
-MusicSection:Dropdown({
-    Title = "Select Song",
-    Values = {"Eeyuh", "Sweep", "Bounce", "Sour Grapes", "Erwachen", "Speed", "Lo-fi Chill A"},
-    Value = "Eeyuh",
-    Callback = function(value)
-        getgenv().SelectedSong = value
-        System.world.play_music(System.world.__sound_options[value])
-    end
-})
-
-local SoundSection = MiscTab:Section({ Title = "Hit Sounds", Side = "Left", Box = true, Opened = true })
-
-SoundSection:Toggle({
-    Title = "Enable Hit Sound",
-    Value = false,
-    Callback = function(value)
-        System.world.__hit_sound_enabled = value
-    end
-})
-
-SoundSection:Dropdown({
-    Title = "Sound Type",
-    Values = {"Medal", "Fatality", "Skeet", "Rust Headshot", "Neverlose Sound", "Bubble", "Laser"},
-    Value = "Medal",
-    Callback = function(value)
-        pcall(function()
-            System.world.__hit_sound.SoundId = System.world.__hit_sound_ids[value]
-        end)
-    end
-})
+]]
 
 local swordInstancesInstance = ReplicatedStorage:WaitForChild("Shared",9e9):WaitForChild("ReplicatedInstances",9e9):WaitForChild("Swords",9e9)
 local swordInstances = require(swordInstancesInstance)
@@ -4614,8 +4005,7 @@ local swordInstances = require(swordInstancesInstance)
 local swordsController
 
 while task.wait() and (not swordsController) do
-    local conns = getconnections(ReplicatedStorage.Remotes.FireSwordInfo.OnClientEvent)
-    for _, v in ipairs(type(conns) == "table" and conns or {}) do
+    for i,v in getconnections(ReplicatedStorage.Remotes.FireSwordInfo.OnClientEvent) do
         if v.Function and islclosure(v.Function) then
             local upvalues = getupvalues(v.Function)
             if #upvalues == 1 and type(upvalues[1]) == "table" then
@@ -4649,9 +4039,8 @@ local playParryFunc
 local parrySuccessAllConnection
 
 while task.wait() and not parrySuccessAllConnection do
-    local conns = getconnections(ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent)
-    for _, v in ipairs(type(conns) == "table" and conns or {}) do
-        if v.Function and getinfo and getinfo(v.Function) and getinfo(v.Function).name == "parrySuccessAll" then
+    for i,v in getconnections(ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent) do
+        if v.Function and getinfo(v.Function).name == "parrySuccessAll" then
             parrySuccessAllConnection = v
             playParryFunc = v.Function
             v:Disable()
@@ -4661,9 +4050,8 @@ end
 
 local parrySuccessClientConnection
 while task.wait() and not parrySuccessClientConnection do
-    local conns = getconnections(ReplicatedStorage.Remotes.ParrySuccessClient.Event)
-    for _, v in ipairs(type(conns) == "table" and conns or {}) do
-        if v.Function and getinfo and getinfo(v.Function) and getinfo(v.Function).name == "parrySuccessAll" then
+    for i,v in getconnections(ReplicatedStorage.Remotes.ParrySuccessClient.Event) do
+        if v.Function and getinfo(v.Function).name == "parrySuccessAll" then
             parrySuccessClientConnection = v
             v:Disable()
         end
@@ -5724,10 +5112,10 @@ local function performDesync()
 end
 
 local function sendNotification(text)
-    if state.notify then
-        WindUI:Notify({
+    if state.notify and Library then
+        Library.SendNotification({
             Title = "Walkable Semi-Immortal",
-            Content = text
+            text = text
         })
     end
 end
@@ -5941,10 +5329,10 @@ local function performDesync()
 end
 
 local function sendNotification(text)
-    if state.notify then
-        WindUI:Notify({
+    if state.notify and Library then
+        Library.SendNotification({
             Title = "IDK???",
-            Content = text
+            text = text
         })
     end
 end
