@@ -123,7 +123,9 @@ local System = {
         __parries = 0,
         __max_parries = 10000,
         __parry_delay = 0.5
-    }
+    },
+    
+    detection = {}
 }
 
 local revertedRemotes = {}
@@ -509,7 +511,7 @@ local Last_Warping = tick()
 local Curving = tick()
 local Lerp_Radians = 0
 
-System.detection = {}
+
 
 function System.detection.is_curved()
     local ball = System.ball.get()
