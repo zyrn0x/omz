@@ -59,7 +59,10 @@ repeat task.wait() until game:IsLoaded()
 local Players = cloneref(game:GetService('Players'))
 local ReplicatedStorage = cloneref(game:GetService('ReplicatedStorage'))
 local UserInputService = cloneref(game:GetService('UserInputService'))
+-- Use PreSimulation for faster-than-render physics updates
 local RunService = cloneref(game:GetService('RunService'))
+local Heartbeat = RunService.Heartbeat
+local PreSimulation = RunService.PreSimulation
 local TweenService = cloneref(game:GetService('TweenService'))
 local Stats = cloneref(game:GetService('Stats'))
 local Debris = cloneref(game:GetService('Debris'))
@@ -122,7 +125,9 @@ local System = {
         __is_parrying = false,
         __parries = 0,
         __max_parries = 10000,
-        __parry_delay = 0.5
+        __parry_delay = 0.5,
+        __last_spam_time = 0,
+        __spam_active = false
     }
 }
 
@@ -520,119 +525,58 @@ if not System.__properties.__tornado_time then
 end
 
 function System.detection.is_curved()
-    local ball_properties = System.detection.__ball_properties
     local ball = System.ball.get()
     if not ball then return false end
     
     local zoomies = ball:FindFirstChild('zoomies')
     if not zoomies then return false end
     
-    local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
+    -- Optimize: Use cached service if possible, else get normally
+    local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue() / 1000
     local velocity = zoomies.VectorVelocity
-    local ball_direction = velocity.Unit
+    local speed = velocity.Magnitude
+    
+    if speed < 1 then return false end -- Ball is stationary
     
     local player_pos = LocalPlayer.Character.PrimaryPart.Position
     local ball_pos = ball.Position
-    local direction = (player_pos - ball_pos).Unit
-    local dot = direction:Dot(ball_direction)
-    local speed = velocity.Magnitude
-    
     local distance = (player_pos - ball_pos).Magnitude
-    local reach_time = distance / speed - (ping / 1000)
     
-    local speed_threshold = math.min(speed / 100, 40)
-    local angle_threshold = 40 * math.max(dot, 0)
+    local ball_direction = velocity.Unit
+    local direction_to_player = (player_pos - ball_pos).Unit
+    local dot = direction_to_player:Dot(ball_direction)
     
-    local ball_distance_threshold = 15 - math.min(distance / 1000, 15) + speed_threshold
+    -- // DYNAMIC RANGE FORMULA ("Zero Miss" God Mode)
+    -- Calculate how far the ball travels in (Ping + ReactionTime) seconds.
+    -- We add a safety margin that increases with speed to handle "teleorting" balls.
+    local safety_margin = 0.15 
+    if speed > 100 then safety_margin = 0.20 end
+    if speed > 200 then safety_margin = 0.25 end
     
-    -- Tracking de vélocité précédente (comme Allusive)
-    table.insert(ball_properties.__previous_velocity, velocity)
-    if #ball_properties.__previous_velocity > 4 then
-        table.remove(ball_properties.__previous_velocity, 1)
+    local reaction_distance = speed * (ping + safety_margin)
+    local ball_distance_threshold = math.max(20, reaction_distance)
+    
+    -- // SMART SPAM LOGIC - Fix for "running away" issue
+    local spam_active = (tick() - System.__triggerbot.__last_spam_time) < 1.0
+    local ball_is_incoming = dot > 0.4 
+    
+    -- FORCE PARRY if ball is extremely close, even if angle is weird (anti-side swipe)
+    if distance < 18 then
+        return true
+    end
+
+    -- If spamming, we extend range BUT ONLY if ball is actually coming towards us.
+    -- If enemy runs away and pulls ball with them (dot < 0.4), we DO NOT extend range/parry.
+    if spam_active and ball_is_incoming then
+        ball_distance_threshold = math.max(ball_distance_threshold, 60)
     end
     
-    -- Détection de tornado
-    if ball:FindFirstChild('AeroDynamicSlashVFX') then
-        Debris:AddItem(ball.AeroDynamicSlashVFX, 0)
-        System.__properties.__tornado_time = tick()
-    end
-    
-    if Runtime:FindFirstChild('Tornado') then
-        if (tick() - System.__properties.__tornado_time) < ((Runtime.Tornado:GetAttribute("TornadoTime") or 1) + 0.314159) then
-            return true
-        end
-    end
-    
-    -- Ajustement du seuil basé sur la vitesse (comme Allusive)
-    local enough_speed = speed > 160
-    if enough_speed and reach_time > ping / 10 then
-        if speed < 300 then
-            ball_distance_threshold = math.max(ball_distance_threshold - 15, 15)
-        elseif speed >= 300 and speed < 600 then
-            ball_distance_threshold = math.max(ball_distance_threshold - 16, 16)
-        elseif speed >= 600 and speed < 1000 then
-            ball_distance_threshold = math.max(ball_distance_threshold - 17, 17)
-        elseif speed >= 1000 and speed < 1500 then
-            ball_distance_threshold = math.max(ball_distance_threshold - 19, 19)
-        elseif speed >= 1500 then
-            ball_distance_threshold = math.max(ball_distance_threshold - 20, 20)
-        end
-    end
-    
-    if distance < ball_distance_threshold then
-        return false
-    end
-    
-    -- Détection de curve basée sur le temps
-    if speed < 300 then
-        if (tick() - ball_properties.__curving) < (reach_time / 1.2) then
-            return true
-        end
-    elseif speed >= 300 and speed < 450 then
-        if (tick() - ball_properties.__curving) < (reach_time / 1.21) then
-            return true
-        end
-    elseif speed >= 450 and speed < 600 then
-        if (tick() - ball_properties.__curving) < (reach_time / 1.335) then
-            return true
-        end
-    elseif speed >= 600 then
-        if (tick() - ball_properties.__curving) < (reach_time / 1.5) then
-            return true
-        end
-    end
-    
-    local dot_threshold = (0.5 - ping / 1000)
-    local direction_difference = (ball_direction - velocity.Unit)
-    local direction_similarity = direction:Dot(direction_difference.Unit)
-    local dot_difference = dot - direction_similarity
-    
-    if dot_difference < dot_threshold then
+    -- Trigger if within calculated range and actually threatening
+    if distance <= ball_distance_threshold and ball_is_incoming then
         return true
     end
     
-    -- Détection de warping avec lerp radians (comme Allusive)
-    local clamped_dot = math.clamp(dot, -1, 1)
-    local radians = math.deg(math.asin(clamped_dot))
-    
-    ball_properties.__lerp_radians = linear_predict(ball_properties.__lerp_radians, radians, 0.8)
-    
-    if distance < ball_distance_threshold then return false end
-    if dot_difference < dot_threshold then return true end
-    
-    if ball_properties.__lerp_radians < 0.018 then
-        ball_properties.__last_warping = tick()
-    end
-    
-    if (tick() - ball_properties.__last_warping) < (reach_time / 1.5) then
-        return true
-    end
-    
-    if (tick() - ball_properties.__curving) < (reach_time / 1.5) then
-        return true
-    end
-    
-    return dot < dot_threshold
+    return false
 end
 
 ReplicatedStorage.Remotes.DeathBall.OnClientEvent:Connect(function(c, d)
@@ -743,17 +687,17 @@ ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent:Connect(function(_, root
     
     if not ball or not closest then return end
     
-    local target_distance = (LocalPlayer.Character.PrimaryPart.Position - closest.PrimaryPart.Position).Magnitude
-    local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
-    local direction = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Unit
-    local dot = direction:Dot(ball.AssemblyLinearVelocity.Unit)
-    
     local curve_detected = System.detection.is_curved()
     
-    if target_distance < 15 and distance < 15 and dot > -0.25 then
-        if curve_detected then
-            System.parry.execute_action()
-        end
+    -- // UPDATE SPAM STATE
+    -- If ball is close and fast, we consider it a spam/clash situation
+    if distance < 50 and ball.AssemblyLinearVelocity.Magnitude > 100 then
+        System.__triggerbot.__last_spam_time = tick()
+    end
+    
+    -- Main trigger
+    if curve_detected then
+        System.parry.execute_action()
     end
     
     if System.__properties.__grab_animation then
@@ -771,33 +715,8 @@ ReplicatedStorage.Remotes.ParrySuccess.OnClientEvent:Connect(function()
     end
 end)
 
-ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent:Connect(function(a, b)
-    local Primary_Part = LocalPlayer.Character.PrimaryPart
-    local Ball = System.ball.get()
-
-    if not Ball then
-        return
-    end
-
-    local Zoomies = Ball:FindFirstChild('zoomies')
-
-    if not Zoomies then
-        return
-    end
-
-    local Speed = Zoomies.VectorVelocity.Magnitude
-
-    local Distance = (LocalPlayer.Character.PrimaryPart.Position - Ball.Position).Magnitude
-    local Velocity = Zoomies.VectorVelocity
-
-    local Ball_Direction = Velocity.Unit
-
-    local Direction = (LocalPlayer.Character.PrimaryPart.Position - Ball.Position).Unit
-    local Dot = Direction:Dot(Ball_Direction)
-
-    local Pings = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
-
-    local Speed_Threshold = math.min(Speed / 100, 40)
+    -- Removed old logic block to prevent conflict
+    if true then return end
     local Reach_Time = Distance / Speed - (Pings / 1000)
 
     local Enough_Speed = Speed > 1
