@@ -7,7 +7,17 @@ end
 
 _G.Sigma = true]]
 
-local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+local WindUI
+local success, result = pcall(function()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+end)
+
+if success and result then
+    WindUI = result
+else
+    warn("WindUI failed to load: " .. tostring(result))
+    return -- Stop execution if UI fails
+end
 
 local Window = WindUI:CreateWindow({
     Title = "Omz Hub — GOD-TIER",
