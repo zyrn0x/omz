@@ -170,23 +170,25 @@ function hookRemote(remote)
         if not originalMetatables[getrawmetatable(remote)] then
             originalMetatables[getrawmetatable(remote)] = true
             local meta = getrawmetatable(remote)
-            setreadonly(meta, false)
-
             local oldIndex = meta.__index
-            meta.__index = function(self, key)
-                if (key == "FireServer" and self:IsA("RemoteEvent")) or
-                   (key == "InvokeServer" and self:IsA("RemoteFunction")) then
-                    return function(_, ...)
-                        local args = {...}
-                        if isValidRemoteArgs(args) and not revertedRemotes[self] then
-                            revertedRemotes[self] = args
-                            Parry_Key = args[2]
+            
+            setreadonly(meta, false)
+            meta.__index = newcclosure(function(self, key)
+                if not checkcaller() then
+                    if (key == "FireServer" and self:IsA("RemoteEvent")) or
+                       (key == "InvokeServer" and self:IsA("RemoteFunction")) then
+                        return function(_, ...)
+                            local args = {...}
+                            if isValidRemoteArgs(args) and not revertedRemotes[self] then
+                                revertedRemotes[self] = args
+                                Parry_Key = args[2]
+                            end
+                            return oldIndex(self, key)(_, unpack(args))
                         end
-                        return oldIndex(self, key)(_, unpack(args))
                     end
                 end
                 return oldIndex(self, key)
-            end
+            end)
             setreadonly(meta, true)
         end
     end
