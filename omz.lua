@@ -1,41 +1,25 @@
-local script_state = {
-    GG = {
-        Language = {
-            CheckboxEnabled = "Enabled",
-            CheckboxDisabled = "Disabled",
-            SliderValue = "Value",
-            DropdownSelect = "Select",
-            DropdownNone = "None",
-            DropdownSelected = "Selected",
-            ButtonClick = "Click",
-            TextboxEnter = "Enter",
-            ModuleEnabled = "Enabled",
-            ModuleDisabled = "Disabled",
-            TabGeneral = "General",
-            TabSettings = "Settings",
-            Loading = "Loading...",
-            Error = "Error",
-            Success = "Success"
-        }
+getgenv().GG = {
+    Language = {
+        CheckboxEnabled = "Enabled",
+        CheckboxDisabled = "Disabled",
+        SliderValue = "Value",
+        DropdownSelect = "Select",
+        DropdownNone = "None",
+        DropdownSelected = "Selected",
+        ButtonClick = "Click",
+        TextboxEnter = "Enter",
+        ModuleEnabled = "Enabled",
+        ModuleDisabled = "Disabled",
+        TabGeneral = "General",
+        TabSettings = "Settings",
+        Loading = "Loading...",
+        Error = "Error",
+        Success = "Success"
     }
 }
 
-local function generate_random_name(length)
-    local chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    local name = ""
-    for i = 1, length or math.random(8, 15) do
-        local rand = math.random(1, #chars)
-        name = name .. string.sub(chars, rand, rand)
-    end
-    return name
-end
-
-local SESSION_FOLDER_NAME = generate_random_name(10)
-local UI_TITLE_RANDOM = generate_random_name(8)
-local UI_NAME_RANDOM = generate_random_name(12)
-
--- Replace the SelectedLanguage with a reference to script_state.GG.Language
-local SelectedLanguage = script_state.GG.Language
+-- Replace the SelectedLanguage with a reference to GG.Language
+local SelectedLanguage = GG.Language
 
 function convertStringToTable(inputString)
     local result = {}
@@ -51,49 +35,26 @@ function convertTableToString(inputTable)
     return table.concat(inputTable, ", ")
 end
 
-local UserInputService = (cloneref or function(...) return ... end)(game:GetService('UserInputService'))
-local ContentProvider = (cloneref or function(...) return ... end)(game:GetService('ContentProvider'))
-local TweenService = (cloneref or function(...) return ... end)(game:GetService('TweenService'))
-local HttpService = (cloneref or function(...) return ... end)(game:GetService('HttpService'))
-local TextService = (cloneref or function(...) return ... end)(game:GetService('TextService'))
-local RunService = (cloneref or function(...) return ... end)(game:GetService('RunService'))
-local Lighting = (cloneref or function(...) return ... end)(game:GetService('Lighting'))
-local Players = (cloneref or function(...) return ... end)(game:GetService('Players'))
-local CoreGui = (cloneref or function(...) return ... end)(game:GetService('CoreGui'))
-local Debris = (cloneref or function(...) return ... end)(game:GetService('Debris'))
-local ReplicatedStorage = (cloneref or function(...) return ... end)(game:GetService('ReplicatedStorage'))
-
--- Localize executor functions for stealth
-local getgc = getgc
-local getrenv = getrenv
-local getfenv = getfenv
-local getgenv = getgenv
-local getrawmetatable = getrawmetatable
-local setrawmetatable = setrawmetatable
-local hookfunction = hookfunction
-local hookmetamethod = hookmetamethod
-local checkcaller = checkcaller
-local islclosure = islclosure
-local iscclosure = iscclosure
-local getinfo = getinfo or debug.info
-local getupvalues = getupvalues or debug.getupvalues
-local setupvalue = setupvalue or debug.setupvalue
-local getconstants = getconstants or debug.getconstants
-local getconstant = getconstant or debug.getconstant
-local getconnections = getconnections
-local cloneref = cloneref or function(...) return ... end
-local gethui = gethui
-local protect_gui = protect_gui
+local UserInputService = cloneref(game:GetService('UserInputService'))
+local ContentProvider = cloneref(game:GetService('ContentProvider'))
+local TweenService = cloneref(game:GetService('TweenService'))
+local HttpService = cloneref(game:GetService('HttpService'))
+local TextService = cloneref(game:GetService('TextService'))
+local RunService = cloneref(game:GetService('RunService'))
+local Lighting = cloneref(game:GetService('Lighting'))
+local Players = cloneref(game:GetService('Players'))
+local CoreGui = cloneref(game:GetService('CoreGui'))
+local Debris = cloneref(game:GetService('Debris'))
 
 local mouse = Players.LocalPlayer:GetMouse()
-local old_container = CoreGui:FindFirstChild(UI_NAME_RANDOM)
+local old_March = CoreGui:FindFirstChild('March')
 
-if old_container then
-    Debris:AddItem(old_container, 0)
+if old_March then
+    Debris:AddItem(old_March, 0)
 end
 
-if not isfolder(SESSION_FOLDER_NAME) then
-    makefolder(SESSION_FOLDER_NAME)
+if not isfolder("March") then
+    makefolder("March")
 end
 
 
@@ -322,7 +283,7 @@ local Config = setmetatable({
     save = function(self: any, file_name: any, config: any)
         local success_save, result = pcall(function()
             local flags = HttpService:JSONEncode(config)
-            writefile(SESSION_FOLDER_NAME .. '/'..file_name..'.json', flags)
+            writefile('March/'..file_name..'.json', flags)
         end)
     
         if not success_save then
@@ -331,13 +292,13 @@ local Config = setmetatable({
     end,
     load = function(self: any, file_name: any, config: any)
         local success_load, result = pcall(function()
-            if not isfile(SESSION_FOLDER_NAME .. '/'..file_name..'.json') then
+            if not isfile('March/'..file_name..'.json') then
                 self:save(file_name, config)
         
                 return
             end
         
-            local flags = readfile(SESSION_FOLDER_NAME .. '/'..file_name..'.json')
+            local flags = readfile('March/'..file_name..'.json')
         
             if not flags then
                 self:save(file_name, config)
@@ -554,30 +515,30 @@ end
 
 
 function Library:create_ui()
-    local old_container = CoreGui:FindFirstChild(UI_NAME_RANDOM)
+    local old_March = CoreGui:FindFirstChild('March')
 
-    if old_container then
-        Debris:AddItem(old_container, 0)
+    if old_March then
+        Debris:AddItem(old_March, 0)
     end
 
-    local UI_CONTAINER = Instance.new('ScreenGui')
-    UI_CONTAINER.ResetOnSpawn = false
-    UI_CONTAINER.Name = UI_NAME_RANDOM
-    UI_CONTAINER.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    UI_CONTAINER.Parent = (gethui and gethui()) or (protect_gui and protect_gui(UI_CONTAINER) and CoreGui) or CoreGui
+    local March = Instance.new('ScreenGui')
+    March.ResetOnSpawn = false
+    March.Name = 'March'
+    March.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    March.Parent = CoreGui
     
     local Container = Instance.new('Frame')
     Container.ClipsDescendants = true
     Container.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Container.AnchorPoint = Vector2.new(0.5, 0.5)
-    Container.Name = generate_random_name(10)
+    Container.Name = 'Container'
     Container.BackgroundTransparency = 0.05000000074505806
     Container.BackgroundColor3 = Color3.fromRGB(12, 13, 15)
     Container.Position = UDim2.new(0.5, 0, 0.5, 0)
     Container.Size = UDim2.new(0, 0, 0, 0)
     Container.Active = true
     Container.BorderSizePixel = 0
-    Container.Parent = UI_CONTAINER
+    Container.Parent = March
     
     local UICorner = Instance.new('UICorner')
     UICorner.CornerRadius = UDim.new(0, 10)
@@ -591,7 +552,7 @@ function Library:create_ui()
     
     local Handler = Instance.new('Frame')
     Handler.BackgroundTransparency = 1
-    Handler.Name = generate_random_name(7)
+    Handler.Name = 'Handler'
     Handler.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Handler.Size = UDim2.new(0, 698, 0, 479)
     Handler.BorderSizePixel = 0
@@ -601,7 +562,7 @@ function Library:create_ui()
     local Tabs = Instance.new('ScrollingFrame')
     Tabs.ScrollBarImageTransparency = 1
     Tabs.ScrollBarThickness = 0
-    Tabs.Name = generate_random_name(4)
+    Tabs.Name = 'Tabs'
     Tabs.Size = UDim2.new(0, 129, 0, 401)
     Tabs.Selectable = false
     Tabs.AutomaticCanvasSize = Enum.AutomaticSize.XY
@@ -622,8 +583,8 @@ function Library:create_ui()
     ClientName.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
     ClientName.TextColor3 = Color3.fromRGB(152, 181, 255)
     ClientName.TextTransparency = 0.20000000298023224
-    ClientName.Text = UI_TITLE_RANDOM
-    ClientName.Name = generate_random_name(10)
+    ClientName.Text = 'March'
+    ClientName.Name = 'ClientName'
     ClientName.Size = UDim2.new(0, 31, 0, 13)
     ClientName.AnchorPoint = Vector2.new(0, 0.5)
     ClientName.Position = UDim2.new(0.0560000017285347, 0, 0.054999999701976776, 0)
@@ -2890,16 +2851,16 @@ type tableInfo = {
     highEntropyTableIndex: string,
 }
 
-script_state.skinChanger = false
-script_state.swordModel = ""
-script_state.swordAnimations = ""
-script_state.swordFX = ""
+getgenv().skinChanger = false
+getgenv().swordModel = ""
+getgenv().swordAnimations = ""
+getgenv().swordFX = ""
 
 
 local print = function() end
 
-if script_state.updateSword and script_state.skinChanger then
-    script_state.updateSword()
+if getgenv().updateSword and getgenv().skinChanger then
+    getgenv().updateSword()
     return
 end
 
@@ -2960,12 +2921,12 @@ function getSlashName(swordName)
 end
 
 function setSword()
-    if not script_state.skinChanger then return end
+    if not getgenv().skinChanger then return end
     
     setupvalue(rawget(swordInstances,"EquipSwordTo"),2,false)
     
-    swordInstances:EquipSwordTo(plr.Character, script_state.swordModel)
-    swordsController:SetSword(script_state.swordAnimations)
+    swordInstances:EquipSwordTo(plr.Character, getgenv().swordModel)
+    swordsController:SetSword(getgenv().swordAnimations)
 end
 
 local playParryFunc
@@ -2991,7 +2952,7 @@ while task.wait() and not parrySuccessClientConnection do
     end
 end
 
-script_state.slashName = getSlashName(script_state.swordFX)
+getgenv().slashName = getSlashName(getgenv().swordFX)
 
 local lastOtherParryTimestamp = 0
 local clashConnections = {}
@@ -3001,32 +2962,32 @@ rs.Remotes.ParrySuccessAll.OnClientEvent:Connect(function(...)
     local args = {...}
     if tostring(args[4]) ~= plr.Name then
         lastOtherParryTimestamp = tick()
-    elseif script_state.skinChanger then
-        args[1] = script_state.slashName
-        args[3] = script_state.swordFX
+    elseif getgenv().skinChanger then
+        args[1] = getgenv().slashName
+        args[3] = getgenv().swordFX
     end
     return playParryFunc(unpack(args))
 end)
 
 table.insert(clashConnections, getconnections(rs.Remotes.ParrySuccessAll.OnClientEvent)[1])
 
-script_state.updateSword = function()
-    script_state.slashName = getSlashName(script_state.swordFX)
+getgenv().updateSword = function()
+    getgenv().slashName = getSlashName(getgenv().swordFX)
     setSword()
 end
 
 task.spawn(function()
     while task.wait(1) do
-        if script_state.skinChanger then
+        if getgenv().skinChanger then
             local char = plr.Character or plr.CharacterAdded:Wait()
-            if plr:GetAttribute("CurrentlyEquippedSword") ~= script_state.swordModel then
+            if plr:GetAttribute("CurrentlyEquippedSword") ~= getgenv().swordModel then
                 setSword()
             end
-            if char and (not char:FindFirstChild(script_state.swordModel)) then
+            if char and (not char:FindFirstChild(getgenv().swordModel)) then
                 setSword()
             end
             for _,v in (char and char:GetChildren()) or {} do
-                if v:IsA("Model") and v.Name ~= script_state.swordModel then
+                if v:IsA("Model") and v.Name ~= getgenv().swordModel then
                     v:Destroy()
                 end
                 task.wait()
@@ -3632,7 +3593,7 @@ end
 
 Balls.ChildAdded:Connect(function(Value)
     Value.ChildAdded:Connect(function(Child)
-        if script_state.SlashOfFuryDetection and Child.Name == 'ComboCounter' then
+        if getgenv().SlashOfFuryDetection and Child.Name == 'ComboCounter' then
             local Sof_Label = Child:FindFirstChildOfClass('TextLabel')
 
             if Sof_Label then
@@ -3660,7 +3621,7 @@ if not player10239123 then return end
 
 RunTime.ChildAdded:Connect(function(Object)
     local Name = Object.Name
-    if script_state.PhantomV2Detection then
+    if getgenv().PhantomV2Detection then
         if Name == "maxTransmission" or Name == "transmissionpart" then
             local Weld = Object:FindFirstChildWhichIsA("WeldConstraint")
             if Weld then
@@ -3761,7 +3722,7 @@ do
         description = 'Automatically parries ball',
         section = 'left',
         callback = function(value: boolean)
-            if script_state.AutoParryNotify then
+            if getgenv().AutoParryNotify then
                 if value then
                     Library.SendNotification({
                         title = "Module Notification",
@@ -3817,7 +3778,7 @@ do
                         local speed_divisor_base = 2.4 + cappedSpeedDiff * 0.002
 
                         local effectiveMultiplier = Speed_Divisor_Multiplier
-                        if script_state.RandomParryAccuracyEnabled then
+                        if getgenv().RandomParryAccuracyEnabled then
                             if Speed < 200 then
                                 effectiveMultiplier = 0.7 + (math.random(40, 100) - 1) * (0.35 / 99)
                             else
@@ -3854,26 +3815,26 @@ do
                             return
                         end 
 
-                        if script_state.InfinityDetection and Infinity then
+                        if getgenv().InfinityDetection and Infinity then
                             return
                         end
 
-                        if script_state.DeathSlashDetection and deathshit then
+                        if getgenv().DeathSlashDetection and deathshit then
                             return
                         end
 
-                        if script_state.TimeHoleDetection and timehole then
+                        if getgenv().TimeHoleDetection and timehole then
                             return
                         end
 
                         if Ball_Target == tostring(Player) and Distance <= Parry_Accuracy then
-                            if script_state.AutoAbility and AutoAbility() then
+                            if getgenv().AutoAbility and AutoAbility() then
                                 return
                             end
                         end
 
                         if Ball_Target == tostring(Player) and Distance <= Parry_Accuracy then
-                            if script_state.CooldownProtection and cooldownProtection() then
+                            if getgenv().CooldownProtection and cooldownProtection() then
                                 return
                             end
 
@@ -3883,7 +3844,7 @@ do
                                 Auto_Parry.Parry_Animation()
                             end
 
-                            if script_state.AutoParryKeypress then
+                            if getgenv().AutoParryKeypress then
                                 VirtualInputService:SendKeyEvent(true, Enum.KeyCode.F, false, nil)
                             else
                                 Auto_Parry.Parry(Selected_Parry_Type)
@@ -3979,7 +3940,7 @@ do
             return 
         end
 
-        if not script_state.HotkeyParryType then
+        if not getgenv().HotkeyParryType then
             return
         end
 
@@ -3987,7 +3948,7 @@ do
         if newType then
             Selected_Parry_Type = parryTypeMap[newType] or newType
             dropdown:update(newType)
-            if script_state.HotkeyParryTypeNotify then
+            if getgenv().HotkeyParryTypeNotify then
                 Library.SendNotification({
                     title = "Module Notification",
                     text = "Parry Type changed to " .. newType,
@@ -4019,9 +3980,9 @@ do
         title = "Randomized Parry Accuracy",
         flag = "Random_Parry_Accuracy",
         callback = function(value: boolean)
-            script_state.RandomParryAccuracyEnabled = value
+            getgenv().RandomParryAccuracyEnabled = value
             if value then
-                script_state.RandomParryAccuracyEnabled = value
+                getgenv().RandomParryAccuracyEnabled = value
             end
         end
     })
@@ -4031,7 +3992,7 @@ do
         flag = "Infinity_Detection",
         callback = function(value: boolean)
             if value then
-                script_state.InfinityDetection = value
+                getgenv().InfinityDetection = value
             end
         end
     })
@@ -4040,7 +4001,7 @@ do
         title = "Death Slash Detection",
         flag = "DeathSlash_Detection",
         callback = function(value: boolean)
-            script_state.DeathSlashDetection = value
+            getgenv().DeathSlashDetection = value
         end
     })
 
@@ -4048,7 +4009,7 @@ do
         title = "Time Hole Detection",
         flag = "TimeHole_Detection",
         callback = function(value: boolean)
-            script_state.TimeHoleDetection = value
+            getgenv().TimeHoleDetection = value
         end
     })
 
@@ -4056,7 +4017,7 @@ do
         title = "Slash Of Fury Detection",
         flag = "SlashOfFuryDetection",
         callback = function(value: boolean)
-            script_state.SlashOfFuryDetection = value
+            getgenv().SlashOfFuryDetection = value
         end
     })
 
@@ -4064,7 +4025,7 @@ do
         title = "Anti Phantom",
         flag = "Anti_Phantom",
         callback = function(value: boolean)
-            script_state.PhantomV2Detection = value
+            getgenv().PhantomV2Detection = value
         end
     })
 
@@ -4072,7 +4033,7 @@ do
         title = "Cooldown Protection",
         flag = "CooldownProtection",
         callback = function(value: boolean)
-            script_state.CooldownProtection = value
+            getgenv().CooldownProtection = value
         end
     })
 
@@ -4080,7 +4041,7 @@ do
         title = "Auto Ability",
         flag = "AutoAbility",
         callback = function(value: boolean)
-            script_state.AutoAbility = value
+            getgenv().AutoAbility = value
         end
     })
 
@@ -4088,7 +4049,7 @@ do
         title = "Keypress",
         flag = "Auto_Parry_Keypress",
         callback = function(value: boolean)
-            script_state.AutoParryKeypress = value
+            getgenv().AutoParryKeypress = value
         end
     })
 
@@ -4097,7 +4058,7 @@ do
         title = "Notify",
         flag = "Auto_Parry_Notify",
         callback = function(value: boolean)
-            script_state.AutoParryNotify = value
+            getgenv().AutoParryNotify = value
         end
     })
 
@@ -4107,7 +4068,7 @@ do
         description = 'Automatically spam parries ball',
         section = 'right',
         callback = function(value: boolean)
-            if script_state.AutoSpamNotify then
+            if getgenv().AutoSpamNotify then
                 if value then
                     Library.SendNotification({
                         title = "Module Notification",
@@ -4185,7 +4146,7 @@ do
                     local threshold = ParryThreshold
 
                     if Distance <= Spam_Accuracy and Parries > threshold then
-                        if script_state.SpamParryKeypress then
+                        if getgenv().SpamParryKeypress then
                             VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game) 
                         else
                             Auto_Parry.Parry(Selected_Parry_Type)
@@ -4318,7 +4279,7 @@ do
         title = "Keypress",
         flag = "Auto_Spam_Parry_Keypress",
         callback = function(value: boolean)
-            script_state.SpamParryKeypress = value
+            getgenv().SpamParryKeypress = value
         end
     })
 
@@ -4326,7 +4287,7 @@ do
         title = "Notify",
         flag = "Auto_Spam_Parry_Notify",
         callback = function(value: boolean)
-            script_state.AutoSpamNotify = value
+            getgenv().AutoSpamNotify = value
         end
     })
 
@@ -4336,7 +4297,7 @@ do
         description = 'Manually Spams Parry',
         section = 'right',
         callback = function(value: boolean)
-            if script_state.ManualSpamNotify then
+            if getgenv().ManualSpamNotify then
                 if value then
                     Library.SendNotification({
                         title = "Module Notification",
@@ -4353,11 +4314,11 @@ do
             end
             if value then
                 Connections_Manager['Manual Spam'] = RunService.PreSimulation:Connect(function()
-                    if script_state.spamui then
+                    if getgenv().spamui then
                         return
                     end
 
-                    if script_state.ManualSpamKeypress then
+                    if getgenv().ManualSpamKeypress then
                         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game) 
                     else
                         Auto_Parry.Parry(Selected_Parry_Type)
@@ -4380,7 +4341,7 @@ do
             title = "UI",
             flag = "Manual_Spam_UI",
             callback = function(value: boolean)
-                script_state.spamui = value
+                getgenv().spamui = value
         
                 if value then
                     local gui = Instance.new("ScreenGui")
@@ -4456,7 +4417,7 @@ do
         title = "Keypress",
         flag = "Manual_Spam_Keypress",
         callback = function(value: boolean)
-            script_state.ManualSpamKeypress = value
+            getgenv().ManualSpamKeypress = value
         end
     })
     
@@ -4464,7 +4425,7 @@ do
         title = "Notify",
         flag = "Manual_Spam_Parry_Notify",
         callback = function(value: boolean)
-            script_state.ManualSpamNotify = value
+            getgenv().ManualSpamNotify = value
         end
     })
 
@@ -4474,7 +4435,7 @@ do
         description = 'Instantly hits ball when targeted',
         section = 'left',
         callback = function(value: boolean)
-            if script_state.TriggerbotNotify then
+            if getgenv().TriggerbotNotify then
                 if value then
                     Library.SendNotification({
                         title = "Module Notification",
@@ -4513,12 +4474,12 @@ do
                             return
                         end 
                     
-                        if script_state.TriggerbotInfinityDetection and Infinity then
+                        if getgenv().TriggerbotInfinityDetection and Infinity then
                             return
                         end
         
                         if Ball_Target == tostring(Player) then
-                            if script_state.TriggerbotKeypress then
+                            if getgenv().TriggerbotKeypress then
                                 VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game) 
                             else
                                 Auto_Parry.Parry(Selected_Parry_Type)
@@ -4546,7 +4507,7 @@ do
         title = "Infinity Detection",
         flag = "Infinity_Detection",
         callback = function(value: boolean)
-            script_state.TriggerbotInfinityDetection = value
+            getgenv().TriggerbotInfinityDetection = value
         end
     })
 
@@ -4554,7 +4515,7 @@ do
         title = "Keypress",
         flag = "Triggerbot_Keypress",
         callback = function(value: boolean)
-            script_state.TriggerbotKeypress = value
+            getgenv().TriggerbotKeypress = value
         end
     })
 
@@ -4562,7 +4523,7 @@ do
         title = "Notify",
         flag = "TriggerbotNotify",
         callback = function(value: boolean)
-            script_state.TriggerbotNotify = value
+            getgenv().TriggerbotNotify = value
         end
     })
 
@@ -4572,7 +4533,7 @@ do
         description = 'Allows Hotkey Parry Type',
         section = 'left',
         callback = function(value: boolean)
-            script_state.HotkeyParryType = value
+            getgenv().HotkeyParryType = value
         end
     })
 
@@ -4580,7 +4541,7 @@ do
         title = "Notify",
         flag = "HotkeyParryTypeNotify",
         callback = function(value: boolean)
-            script_state.HotkeyParryTypeNotify = value
+            getgenv().HotkeyParryTypeNotify = value
         end
     })
 
@@ -4590,7 +4551,7 @@ do
         description = 'Auto parries ball in lobby',
         section = 'right',
         callback = function(state)
-            if script_state.LobbyAPNotify then
+            if getgenv().LobbyAPNotify then
                 if state then
                     Library.SendNotification({
                         title = "Module Notification",
@@ -4635,7 +4596,7 @@ do
                     local LobbyAPspeed_divisor_base = 2.4 + LobbyAPcappedSpeedDiff * 0.002
     
                     local LobbyAPeffectiveMultiplier = LobbyAP_Speed_Divisor_Multiplier
-                    if script_state.LobbyAPRandomParryAccuracyEnabled then
+                    if getgenv().LobbyAPRandomParryAccuracyEnabled then
                         LobbyAPeffectiveMultiplier = 0.7 + (math.random(1, 100) - 1) * (0.35 / 99)
                     end
     
@@ -4643,7 +4604,7 @@ do
                     local LobbyAPParry_Accuracys = Ping + math.max(Speed / LobbyAPspeed_divisor, 9.5)
     
                     if Ball_Target == tostring(Player) and Distance <= LobbyAPParry_Accuracys then
-                            if script_state.LobbyAPKeypress then
+                            if getgenv().LobbyAPKeypress then
                                 VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game) 
                             else
                                 Auto_Parry.Parry(Selected_Parry_Type)
@@ -4684,7 +4645,7 @@ do
         title = "Randomized Parry Accuracy",
         flag = "Random_Parry_Accuracy",
         callback = function(value: boolean)
-            script_state.LobbyAPRandomParryAccuracyEnabled = value
+            getgenv().LobbyAPRandomParryAccuracyEnabled = value
         end
     })
 
@@ -4692,7 +4653,7 @@ do
         title = "Keypress",
         flag = "Lobby_AP_Keypress",
         callback = function(value: boolean)
-            script_state.LobbyAPKeypress = value
+            getgenv().LobbyAPKeypress = value
         end
     })
 
@@ -4700,7 +4661,7 @@ do
         title = "Notify",
         flag = "Lobby_AP_Notify",
         callback = function(value: boolean)
-            script_state.LobbyAPNotify = value
+            getgenv().LobbyAPNotify = value
         end
     })
 
@@ -4708,7 +4669,7 @@ do
     local cam = workspace.CurrentCamera
     local hit = game.ReplicatedStorage.Remotes.ParryAttempt
     
-    script_state.originalCameraSubject = nil
+    getgenv().originalCameraSubject = nil
     
     function getspeed(ball)
         if ball then
@@ -4738,10 +4699,10 @@ do
         description = "Teleports to the ball",
         section = "left",
         callback = function(value)
-            script_state.BallTPEnabled = value
+            getgenv().BallTPEnabled = value
             if value then
                 if plr.Character and plr.Character:FindFirstChild("Humanoid") then
-                    script_state.originalCameraSubject = cam.CameraSubject
+                    getgenv().originalCameraSubject = cam.CameraSubject
                 end
                 
                 Connections_Manager['BallTP_Added'] = workspace.Balls.ChildAdded:Connect(function(v)
@@ -4795,14 +4756,14 @@ do
         description = "Instantly teleports to the ball and back.",
         section = "right",
         callback = function(value)
-            script_state.InstantBallTPEnabled = value
+            getgenv().InstantBallTPEnabled = value
             
             if value then
                 if plr.Character and plr.Character:FindFirstChild("Humanoid") then
-                    script_state.originalCameraSubject = cam.CameraSubject
+                    getgenv().originalCameraSubject = cam.CameraSubject
                 end
                 
-                script_state.originalCFrame = nil
+                getgenv().originalCFrame = nil
                 
                 for _, ball in ipairs(workspace.Balls:GetChildren()) do
                     if ball:IsA("BasePart") then
@@ -4833,19 +4794,19 @@ do
                     end
                 end
                 
-                if script_state.originalCFrame then
+                if getgenv().originalCFrame then
                     local c = plr.Character
                     if c then
                         local hrp = c:FindFirstChild("HumanoidRootPart")
                         local hum = c:FindFirstChild("Humanoid")
                         if hrp and hum then
                             hum.PlatformStand = true
-                            hrp:PivotTo(script_state.originalCFrame)
+                            hrp:PivotTo(getgenv().originalCFrame)
                             task.wait(0.1)
                             hum.PlatformStand = false
                         end
                     end
-                    script_state.originalCFrame = nil
+                    getgenv().originalCFrame = nil
                 end
                 
                 restoreCamera()
@@ -4862,8 +4823,8 @@ do
         if not hrp or not hum then return end
         
         if target == plr.Name then
-            if not script_state.originalCFrame then
-                script_state.originalCFrame = hrp.CFrame
+            if not getgenv().originalCFrame then
+                getgenv().originalCFrame = hrp.CFrame
             end
             
             local speed = getspeed(ball)
@@ -4880,12 +4841,12 @@ do
             
             cam.CameraSubject = ball
         else
-            if script_state.originalCFrame then
+            if getgenv().originalCFrame then
                 hum.PlatformStand = true
-                hrp:PivotTo(script_state.originalCFrame)
+                hrp:PivotTo(getgenv().originalCFrame)
                 task.wait(0.1)
                 hum.PlatformStand = false
-                script_state.originalCFrame = nil
+                getgenv().originalCFrame = nil
                 
                 restoreCamera()
             end
@@ -4943,39 +4904,39 @@ do
 
         callback = function(value: boolean)
 
-            script_state.Spinbot = value
+            getgenv().Spinbot = value
             if value then
-                script_state.spin = true
-                script_state.spinSpeed = script_state.spinSpeed or 1 
+                getgenv().spin = true
+                getgenv().spinSpeed = getgenv().spinSpeed or 1 
                 local Players = game:GetService("Players")
                 local RunService = game:GetService("RunService")
                 local Client = Players.LocalPlayer
     
                 
                 local function spinCharacter()
-                    while script_state.spin do
+                    while getgenv().spin do
                         RunService.Heartbeat:Wait()
                         local char = Client.Character
                         local funcHRP = char and char:FindFirstChild("HumanoidRootPart")
                         
                         if char and funcHRP then
-                            funcHRP.CFrame *= CFrame.Angles(0, script_state.spinSpeed, 0)
+                            funcHRP.CFrame *= CFrame.Angles(0, getgenv().spinSpeed, 0)
                         end
                     end
                 end
     
                 
-                if not script_state.spinThread then
-                    script_state.spinThread = coroutine.create(spinCharacter)
-                    coroutine.resume(script_state.spinThread)
+                if not getgenv().spinThread then
+                    getgenv().spinThread = coroutine.create(spinCharacter)
+                    coroutine.resume(getgenv().spinThread)
                 end
     
             else
-                script_state.spin = false
+                getgenv().spin = false
     
                 
-                if script_state.spinThread then
-                    script_state.spinThread = nil
+                if getgenv().spinThread then
+                    getgenv().spinThread = nil
                 end
             end
         end
@@ -4992,7 +4953,7 @@ do
         round_number = true,
     
         callback = function(value)
-            script_state.spinSpeed = math.rad(value)
+            getgenv().spinSpeed = math.rad(value)
         end
     })
 
@@ -5004,26 +4965,26 @@ do
         section = 'left',
     
         callback = function(value)
-            script_state.CameraEnabled = value
+            getgenv().CameraEnabled = value
             local Camera = game:GetService("Workspace").CurrentCamera
     
             if value then
-                script_state.CameraFOV = script_state.CameraFOV or 70
-                Camera.FieldOfView = script_state.CameraFOV
+                getgenv().CameraFOV = getgenv().CameraFOV or 70
+                Camera.FieldOfView = getgenv().CameraFOV
                 
-                if not script_state.FOVLoop then
-                    script_state.FOVLoop = game:GetService("RunService").RenderStepped:Connect(function()
-                        if script_state.CameraEnabled then
-                            Camera.FieldOfView = script_state.CameraFOV
+                if not getgenv().FOVLoop then
+                    getgenv().FOVLoop = game:GetService("RunService").RenderStepped:Connect(function()
+                        if getgenv().CameraEnabled then
+                            Camera.FieldOfView = getgenv().CameraFOV
                         end
                     end)
                 end
             else
                 Camera.FieldOfView = 70
                 
-                if script_state.FOVLoop then
-                    script_state.FOVLoop:Disconnect()
-                    script_state.FOVLoop = nil
+                if getgenv().FOVLoop then
+                    getgenv().FOVLoop:Disconnect()
+                    getgenv().FOVLoop = nil
                 end
             end
         end
@@ -5040,8 +5001,8 @@ do
         round_number = true,
     
         callback = function(value)
-            script_state.CameraFOV = value
-            if script_state.CameraEnabled then
+            getgenv().CameraFOV = value
+            if getgenv().CameraEnabled then
                 game:GetService("Workspace").CurrentCamera.FieldOfView = value
             end
         end
@@ -5055,7 +5016,7 @@ do
         section = 'right',
     
         callback = function(value)
-            script_state.Animations = value
+            getgenv().Animations = value
     
             if value then
                 Connections_Manager['Animations'] = RunService.Heartbeat:Connect(function()
@@ -5106,7 +5067,7 @@ do
         callback = function(value)
             selected_animation = value
     
-            if script_state.Animations then
+            if getgenv().Animations then
                 Auto_Parry.Play_Animation(value)
             end
         end
@@ -5114,7 +5075,7 @@ do
     
     AnimationChoice:update(selected_animation)
 
-    script_state.PlayerCosmeticsCleanup = {}
+    _G.PlayerCosmeticsCleanup = {}
     
     local PlayerCosmetics = player:create_module({
         title = "Player Cosmetics",
@@ -5150,17 +5111,17 @@ do
                     if rightLeg then
                         local originalMesh = rightLeg:FindFirstChildOfClass("SpecialMesh")
                         if originalMesh then
-                            script_state.PlayerCosmeticsCleanup.originalMeshId = originalMesh.MeshId
-                            script_state.PlayerCosmeticsCleanup.originalTextureId = originalMesh.TextureId
-                            script_state.PlayerCosmeticsCleanup.originalScale = originalMesh.Scale
+                            _G.PlayerCosmeticsCleanup.originalMeshId = originalMesh.MeshId
+                            _G.PlayerCosmeticsCleanup.originalTextureId = originalMesh.TextureId
+                            _G.PlayerCosmeticsCleanup.originalScale = originalMesh.Scale
                         else
-                            script_state.PlayerCosmeticsCleanup.hadNoMesh = true
+                            _G.PlayerCosmeticsCleanup.hadNoMesh = true
                         end
                         
-                        script_state.PlayerCosmeticsCleanup.rightLegChildren = {}
+                        _G.PlayerCosmeticsCleanup.rightLegChildren = {}
                         for _, child in pairs(rightLeg:GetChildren()) do
                             if child:IsA("SpecialMesh") then
-                                table.insert(script_state.PlayerCosmeticsCleanup.rightLegChildren, {
+                                table.insert(_G.PlayerCosmeticsCleanup.rightLegChildren, {
                                     ClassName = child.ClassName,
                                     Properties = {
                                         MeshId = child.MeshId,
@@ -5177,18 +5138,18 @@ do
             local function restoreRightLeg(char)
                 if char then
                     local rightLeg = char:FindFirstChild("RightLeg") or char:FindFirstChild("Right Leg")
-                    if rightLeg and script_state.PlayerCosmeticsCleanup.rightLegChildren then
+                    if rightLeg and _G.PlayerCosmeticsCleanup.rightLegChildren then
                         for _, child in pairs(rightLeg:GetChildren()) do
                             if child:IsA("SpecialMesh") then
                                 child:Destroy()
                             end
                         end
                         
-                        if script_state.PlayerCosmeticsCleanup.hadNoMesh then
+                        if _G.PlayerCosmeticsCleanup.hadNoMesh then
                             return
                         end
                         
-                        for _, childData in ipairs(script_state.PlayerCosmeticsCleanup.rightLegChildren) do
+                        for _, childData in ipairs(_G.PlayerCosmeticsCleanup.rightLegChildren) do
                             if childData.ClassName == "SpecialMesh" then
                                 local newMesh = Instance.new("SpecialMesh")
                                 newMesh.MeshId = childData.Properties.MeshId
@@ -5204,19 +5165,19 @@ do
             if value then
                 CosmeticsActive = true
     
-                script_state.Config = {
+                getgenv().Config = {
                     Headless = true
                 }
                 
                 if lp.Character then
                     local head = lp.Character:FindFirstChild("Head")
-                    if head and script_state.Config.Headless then
-                        script_state.PlayerCosmeticsCleanup.headTransparency = head.Transparency
+                    if head and getgenv().Config.Headless then
+                        _G.PlayerCosmeticsCleanup.headTransparency = head.Transparency
                         
                         local decal = head:FindFirstChildOfClass("Decal")
                         if decal then
-                            script_state.PlayerCosmeticsCleanup.faceDecalId = decal.Texture
-                            script_state.PlayerCosmeticsCleanup.faceDecalName = decal.Name
+                            _G.PlayerCosmeticsCleanup.faceDecalId = decal.Texture
+                            _G.PlayerCosmeticsCleanup.faceDecalName = decal.Name
                         end
                     end
                     
@@ -5224,15 +5185,15 @@ do
                     applyKorblox(lp.Character)
                 end
                 
-                script_state.PlayerCosmeticsCleanup.characterAddedConn = lp.CharacterAdded:Connect(function(char)
+                _G.PlayerCosmeticsCleanup.characterAddedConn = lp.CharacterAdded:Connect(function(char)
                     local head = char:FindFirstChild("Head")
-                    if head and script_state.Config.Headless then
-                        script_state.PlayerCosmeticsCleanup.headTransparency = head.Transparency
+                    if head and getgenv().Config.Headless then
+                        _G.PlayerCosmeticsCleanup.headTransparency = head.Transparency
                         
                         local decal = head:FindFirstChildOfClass("Decal")
                         if decal then
-                            script_state.PlayerCosmeticsCleanup.faceDecalId = decal.Texture
-                            script_state.PlayerCosmeticsCleanup.faceDecalName = decal.Name
+                            _G.PlayerCosmeticsCleanup.faceDecalId = decal.Texture
+                            _G.PlayerCosmeticsCleanup.faceDecalName = decal.Name
                         end
                     end
                     
@@ -5240,7 +5201,7 @@ do
                     applyKorblox(char)
                 end)
                 
-                if script_state.Config.Headless then
+                if getgenv().Config.Headless then
                     headLoop = task.spawn(function()
                         while CosmeticsActive do
                             local char = lp.Character
@@ -5262,9 +5223,9 @@ do
             else
                 CosmeticsActive = false
     
-                if script_state.PlayerCosmeticsCleanup.characterAddedConn then
-                    script_state.PlayerCosmeticsCleanup.characterAddedConn:Disconnect()
-                    script_state.PlayerCosmeticsCleanup.characterAddedConn = nil
+                if _G.PlayerCosmeticsCleanup.characterAddedConn then
+                    _G.PlayerCosmeticsCleanup.characterAddedConn:Disconnect()
+                    _G.PlayerCosmeticsCleanup.characterAddedConn = nil
                 end
     
                 if headLoop then
@@ -5275,13 +5236,13 @@ do
                 local char = lp.Character
                 if char then
                     local head = char:FindFirstChild("Head")
-                    if head and script_state.PlayerCosmeticsCleanup.headTransparency ~= nil then
-                        head.Transparency = script_state.PlayerCosmeticsCleanup.headTransparency
+                    if head and _G.PlayerCosmeticsCleanup.headTransparency ~= nil then
+                        head.Transparency = _G.PlayerCosmeticsCleanup.headTransparency
                         
-                        if script_state.PlayerCosmeticsCleanup.faceDecalId then
+                        if _G.PlayerCosmeticsCleanup.faceDecalId then
                             local newDecal = head:FindFirstChildOfClass("Decal") or Instance.new("Decal", head)
-                            newDecal.Name = script_state.PlayerCosmeticsCleanup.faceDecalName or "face"
-                            newDecal.Texture = script_state.PlayerCosmeticsCleanup.faceDecalId
+                            newDecal.Name = _G.PlayerCosmeticsCleanup.faceDecalName or "face"
+                            newDecal.Texture = _G.PlayerCosmeticsCleanup.faceDecalId
                             newDecal.Face = Enum.NormalId.Front
                         end
                     end
@@ -5289,7 +5250,7 @@ do
                     restoreRightLeg(char)
                 end
     
-                script_state.PlayerCosmeticsCleanup = {}
+                _G.PlayerCosmeticsCleanup = {}
             end
         end
     })
@@ -5301,15 +5262,15 @@ do
         section = "right",
         callback = function(value: boolean)
             if value then
-                script_state.FlyEnabled = true
+                getgenv().FlyEnabled = true
                 local char = Player.Character or Player.CharacterAdded:Wait()
                 local hrp = char:WaitForChild("HumanoidRootPart")
                 local humanoid = char:WaitForChild("Humanoid")
                 
-                script_state.OriginalStateType = humanoid:GetState()
+                getgenv().OriginalStateType = humanoid:GetState()
                 
-                script_state.RagdollHandler = humanoid.StateChanged:Connect(function(oldState, newState)
-                    if script_state.FlyEnabled then
+                getgenv().RagdollHandler = humanoid.StateChanged:Connect(function(oldState, newState)
+                    if getgenv().FlyEnabled then
                         if newState == Enum.HumanoidStateType.Physics or newState == Enum.HumanoidStateType.Ragdoll then
                             task.defer(function()
                                 humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
@@ -5331,8 +5292,8 @@ do
                 
                 humanoid.PlatformStand = true
                 
-                script_state.ResetterConnection = RunService.Heartbeat:Connect(function()
-                    if not script_state.FlyEnabled then return end
+                getgenv().ResetterConnection = RunService.Heartbeat:Connect(function()
+                    if not getgenv().FlyEnabled then return end
                     
                     if bodyGyro and bodyGyro.Parent then
                         bodyGyro.P = 90000
@@ -5361,8 +5322,8 @@ do
                     end
                 end)
                 
-                script_state.FlyConnection = RunService.RenderStepped:Connect(function()
-                    if not script_state.FlyEnabled then return end
+                getgenv().FlyConnection = RunService.RenderStepped:Connect(function()
+                    if not getgenv().FlyEnabled then return end
                     local camCF = workspace.CurrentCamera.CFrame
                     local moveDir = Vector3.new(0, 0, 0)
                     
@@ -5388,25 +5349,25 @@ do
                     if moveDir.Magnitude > 0 then
                         moveDir = moveDir.Unit
                     end
-                    bodyVelocity.Velocity = moveDir * (script_state.FlySpeed or 50)
+                    bodyVelocity.Velocity = moveDir * (getgenv().FlySpeed or 50)
                     bodyGyro.CFrame = camCF
                 end)
             else
-                script_state.FlyEnabled = false
+                getgenv().FlyEnabled = false
                 
-                if script_state.FlyConnection then
-                    script_state.FlyConnection:Disconnect()
-                    script_state.FlyConnection = nil
+                if getgenv().FlyConnection then
+                    getgenv().FlyConnection:Disconnect()
+                    getgenv().FlyConnection = nil
                 end
                 
-                if script_state.RagdollHandler then
-                    script_state.RagdollHandler:Disconnect()
-                    script_state.RagdollHandler = nil
+                if getgenv().RagdollHandler then
+                    getgenv().RagdollHandler:Disconnect()
+                    getgenv().RagdollHandler = nil
                 end
                 
-                if script_state.ResetterConnection then
-                    script_state.ResetterConnection:Disconnect()
-                    script_state.ResetterConnection = nil
+                if getgenv().ResetterConnection then
+                    getgenv().ResetterConnection:Disconnect()
+                    getgenv().ResetterConnection = nil
                 end
                 
                 local char = Player.Character
@@ -5416,8 +5377,8 @@ do
                     
                     if humanoid then
                         humanoid.PlatformStand = false
-                        if script_state.OriginalStateType then
-                            humanoid:ChangeState(script_state.OriginalStateType)
+                        if getgenv().OriginalStateType then
+                            humanoid:ChangeState(getgenv().OriginalStateType)
                         end
                     end
                     
@@ -5441,7 +5402,7 @@ do
         value = 50,
         round_number = true,
         callback = function(value: number)
-            script_state.FlySpeed = value
+            getgenv().FlySpeed = value
         end
     })
 
@@ -5479,8 +5440,8 @@ do
         section = "left",
         callback = function(value)
             if value then
-                script_state.PlayerFollowEnabled = true
-                script_state.PlayerFollowConnection = RunService.Heartbeat:Connect(function()
+                getgenv().PlayerFollowEnabled = true
+                getgenv().PlayerFollowConnection = RunService.Heartbeat:Connect(function()
                     if not SelectedPlayerFollow then return end -- Prevents nil indexing
                     local targetPlayer = Players:FindFirstChild(SelectedPlayerFollow)
                     if targetPlayer and targetPlayer.Character and targetPlayer.Character.PrimaryPart then
@@ -5494,10 +5455,10 @@ do
                     end
                 end)
             else
-                script_state.PlayerFollowEnabled = false
-                if script_state.PlayerFollowConnection then
-                    script_state.PlayerFollowConnection:Disconnect()
-                    script_state.PlayerFollowConnection = nil
+                getgenv().PlayerFollowEnabled = false
+                if getgenv().PlayerFollowConnection then
+                    getgenv().PlayerFollowConnection:Disconnect()
+                    getgenv().PlayerFollowConnection = nil
                 end
             end
         end
@@ -5514,7 +5475,7 @@ do
             callback = function(value)
                 if value then
                     SelectedPlayerFollow = value
-                    if script_state.FollowNotifyEnabled then
+                    if getgenv().FollowNotifyEnabled then
                         Library.SendNotification({
                             title = "Module Notification",
                             text = "Now following: " .. value,
@@ -5526,7 +5487,7 @@ do
         })
         SelectedPlayerFollow = initialOptions[1]
         followDropdown:update(SelectedPlayerFollow)
-        script_state.FollowDropdown = followDropdown
+        getgenv().FollowDropdown = followDropdown
     else
         SelectedPlayerFollow = nil
     end
@@ -5568,7 +5529,7 @@ do
         flag = "Follow_Notify",
         default = false,
         callback = function(value)
-            script_state.FollowNotifyEnabled = value
+            getgenv().FollowNotifyEnabled = value
         end
     })
 
@@ -5694,7 +5655,7 @@ do
         description = 'Control background music and sounds',
         section = 'left',
         callback = function(value)
-            script_state.soundmodule = value
+            getgenv().soundmodule = value
             if value then
                 playSoundById(soundOptions[selectedSound])
             else
@@ -5749,7 +5710,7 @@ do
         maximum_options = 15,
         callback = function(value)
             selectedSound = value
-            if script_state.soundmodule then
+            if getgenv().soundmodule then
                 playSoundById(soundOptions[value])
             end
         end
@@ -5763,7 +5724,7 @@ do
         section = 'right',
     
         callback = function(value)
-            script_state.WorldFilterEnabled = value
+            getgenv().WorldFilterEnabled = value
     
             if not value then
 
@@ -5782,7 +5743,7 @@ do
         flag = 'World_Filter_Atmosphere',
     
         callback = function(value)
-            script_state.AtmosphereEnabled = value
+            getgenv().AtmosphereEnabled = value
     
             if value then
                 if not game.Lighting:FindFirstChild("CustomAtmosphere") then
@@ -5807,7 +5768,7 @@ do
         value = 0.5,
     
         callback = function(value)
-            if script_state.AtmosphereEnabled and game.Lighting:FindFirstChild("CustomAtmosphere") then
+            if getgenv().AtmosphereEnabled and game.Lighting:FindFirstChild("CustomAtmosphere") then
                 game.Lighting.CustomAtmosphere.Density = value
             end
         end
@@ -5818,7 +5779,7 @@ do
         flag = 'World_Filter_Fog',
     
         callback = function(value)
-            script_state.FogEnabled = value
+            getgenv().FogEnabled = value
     
             if not value then
                 game.Lighting.FogEnd = 100000
@@ -5835,7 +5796,7 @@ do
         value = 1000,
     
         callback = function(value)
-            if script_state.FogEnabled then
+            if getgenv().FogEnabled then
                 game.Lighting.FogEnd = value
             end
         end
@@ -5846,7 +5807,7 @@ do
         flag = 'World_Filter_Saturation',
     
         callback = function(value)
-            script_state.SaturationEnabled = value
+            getgenv().SaturationEnabled = value
     
             if not value then
                 game.Lighting.ColorCorrection.Saturation = 0
@@ -5863,7 +5824,7 @@ do
         value = 0,
     
         callback = function(value)
-            if script_state.SaturationEnabled then
+            if getgenv().SaturationEnabled then
                 game.Lighting.ColorCorrection.Saturation = value
             end
         end
@@ -5874,7 +5835,7 @@ do
         flag = 'World_Filter_Hue',
     
         callback = function(value)
-            script_state.HueEnabled = value
+            getgenv().HueEnabled = value
     
             if not value then
                 game.Lighting.ColorCorrection.TintColor = Color3.new(1, 1, 1)
@@ -5891,7 +5852,7 @@ do
         value = 0,
     
         callback = function(value)
-            if script_state.HueEnabled then
+            if getgenv().HueEnabled then
                 game.Lighting.ColorCorrection.TintColor = Color3.fromHSV(value, 1, 1)
             end
         end
@@ -5903,7 +5864,7 @@ do
         description = "Toggles ball trail effects",
         section = "left",
         callback = function(value)
-            script_state.BallTrailEnabled = value
+            getgenv().BallTrailEnabled = value
             if value then
                 for _, ball in pairs(Auto_Parry.Get_Balls()) do
                     if not ball:FindFirstChild("Trail") then
@@ -5934,12 +5895,12 @@ do
                             NumberSequenceKeypoint.new(1, 1)
                         })
                         
-                        trail.Color = ColorSequence.new(script_state.BallTrailColor or Color3.new(1, 1, 1))
+                        trail.Color = ColorSequence.new(getgenv().BallTrailColor or Color3.new(1, 1, 1))
                         
                         trail.Parent = ball
                     else
                         local trail = ball:FindFirstChild("Trail")
-                        trail.Color = ColorSequence.new(script_state.BallTrailColor or Color3.new(1, 1, 1))
+                        trail.Color = ColorSequence.new(getgenv().BallTrailColor or Color3.new(1, 1, 1))
                         trail.Lifetime = 0.4
                         trail.WidthScale = NumberSequence.new({
                             NumberSequenceKeypoint.new(0, 0.5),
@@ -5970,10 +5931,10 @@ do
         value = 0,
         round_number = true,
         callback = function(value)
-            if not script_state.BallTrailRainbowEnabled then
+            if not getgenv().BallTrailRainbowEnabled then
                 local newColor = Color3.fromHSV(value / 360, 1, 1)
-                script_state.BallTrailColor = newColor
-                if script_state.BallTrailEnabled then
+                getgenv().BallTrailColor = newColor
+                if getgenv().BallTrailEnabled then
                     for _, ball in pairs(Auto_Parry.Get_Balls()) do
                         local trail = ball:FindFirstChild("Trail")
                         if trail then
@@ -5989,7 +5950,7 @@ do
         title = "Rainbow Trail",
         flag = "Ball_Trail_Rainbow",
         callback = function(value)
-            script_state.BallTrailRainbowEnabled = value
+            getgenv().BallTrailRainbowEnabled = value
         end
     })
 
@@ -5997,7 +5958,7 @@ do
         title = "Particle Emitter",
         flag = "Ball_Trail_Particle",
         callback = function(value)
-            script_state.BallTrailParticleEnabled = value
+            getgenv().BallTrailParticleEnabled = value
             for _, ball in pairs(Auto_Parry.Get_Balls()) do
                 if value then
                     if not ball:FindFirstChild("ParticleEmitter") then
@@ -6030,7 +5991,7 @@ do
         title = "Glow Effect",
         flag = "Ball_Trail_Glow",
         callback = function(value)
-            script_state.BallTrailGlowEnabled = value
+            getgenv().BallTrailGlowEnabled = value
             for _, ball in pairs(Auto_Parry.Get_Balls()) do
                 if value then
                     if not ball:FindFirstChild("BallGlow") then
@@ -6052,17 +6013,17 @@ do
 
     local hue = 0
     game:GetService("RunService").Heartbeat:Connect(function()
-        if script_state.BallTrailEnabled then
+        if getgenv().BallTrailEnabled then
             for _, ball in pairs(Auto_Parry.Get_Balls()) do
                 local trail = ball:FindFirstChild("Trail")
                 if trail then
-                    if script_state.BallTrailRainbowEnabled then
+                    if getgenv().BallTrailRainbowEnabled then
                         hue = (hue + 1) % 360
                         local newColor = Color3.fromHSV(hue / 360, 1, 1)
                         trail.Color = ColorSequence.new(newColor)
-                        script_state.BallTrailColor = newColor
+                        getgenv().BallTrailColor = newColor
                     else
-                        trail.Color = ColorSequence.new(script_state.BallTrailColor or Color3.new(1, 1, 1))
+                        trail.Color = ColorSequence.new(getgenv().BallTrailColor or Color3.new(1, 1, 1))
                     end
                 end
             end
@@ -6115,7 +6076,7 @@ do
                     return
                 end
     
-                if script_state.AbilityESP then
+                if getgenv().AbilityESP then
                     textLabel.Visible = true
                     local abilityName = p:GetAttribute("EquippedAbility")
                     if abilityName then
@@ -6153,7 +6114,7 @@ do
         description = 'Displays Player Abilities',
         section = 'right',
         callback = function(value: boolean)
-            script_state.AbilityESP = value
+            getgenv().AbilityESP = value
             for _, label in pairs(billboardLabels) do
                 label.Visible = value
             end
@@ -6276,7 +6237,7 @@ do
         section = 'right',
     
         callback = function(value)
-            script_state.AbilityExploit = value
+            getgenv().AbilityExploit = value
         end
     })
 
@@ -6284,8 +6245,8 @@ do
         title = 'Thunder Dash No Cooldown',
         flag = 'ThunderDashNoCooldown',
         callback = function(value)
-            script_state.ThunderDashNoCooldown = value
-            if script_state.AbilityExploit and script_state.ThunderDashNoCooldown then
+            getgenv().ThunderDashNoCooldown = value
+            if getgenv().AbilityExploit and getgenv().ThunderDashNoCooldown then
                 local thunderModule = game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Abilities"):WaitForChild("Thunder Dash")
                 local mod = require(thunderModule)
                 mod.cooldown = 0
@@ -6298,9 +6259,9 @@ do
         title = 'Continuity Zero Exploit',
         flag  = 'ContinuityZeroExploit',
         callback = function(value)
-            script_state.ContinuityZeroExploit = value
+            getgenv().ContinuityZeroExploit = value
     
-            if script_state.AbilityExploit and script_state.ContinuityZeroExploit then
+            if getgenv().AbilityExploit and getgenv().ContinuityZeroExploit then
                 local ContinuityZeroRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("UseContinuityPortal")
                 local oldNamecall
                 oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
@@ -6425,9 +6386,9 @@ do
         description = 'Skin Changer',
         section = 'left',
         callback = function(value: boolean)
-            script_state.skinChanger = value
+            getgenv().skinChanger = value
             if value then
-                script_state.updateSword()
+                getgenv().updateSword()
             end
         end
     })
@@ -6444,11 +6405,11 @@ do
         placeholder = "Enter Sword Skin Name... ",
         flag = "SkinChangerTextbox",
         callback = function(text)
-            script_state.swordModel = text
-            script_state.swordAnimations = text
-            script_state.swordFX = text
-            if script_state.skinChanger then
-                script_state.updateSword()
+            getgenv().swordModel = text
+            getgenv().swordAnimations = text
+            getgenv().swordFX = text
+            if getgenv().skinChanger then
+                getgenv().updateSword()
             end
         end
     })
@@ -6879,7 +6840,7 @@ do
             local choice = tonumber(padNumber)
             if choice then
                 AutoPlayModule.lobby.updateChoice(choice)
-                if script_state.AutoVote then
+                if getgenv().AutoVote then
                     game:GetService("ReplicatedStorage"):WaitForChild("Packages"):WaitForChild("_Index"):WaitForChild("sleitnick_net@0.1.0"):WaitForChild("net"):WaitForChild("RE/UpdateVotes"):FireServer("FFA")
                 end
             end
@@ -6939,7 +6900,7 @@ do
         TeleportService = cloneref(game:GetService("TeleportService"))
         PlaceId, JobId = game.PlaceId, game.JobId
         if #Players:GetPlayers() < 5 then
-            if script_state.AutoServerHop then
+            if getgenv().AutoServerHop then
                 Players.LocalPlayer:Kick("\nRejoining")
                 wait()
                 TeleportService:Teleport(PlaceId, Players.LocalPlayer)
@@ -7002,7 +6963,7 @@ do
         title = "Auto Vote",
         flag = "AutoVote",
         callback = function(value)
-            script_state.AutoVote = value
+            getgenv().AutoVote = value
         end
     })
 
@@ -7011,7 +6972,7 @@ do
             title = "Auto Server Hop",
             flag = "AutoServerHop",
             callback = function(value)
-                script_state.AutoServerHop = value
+                getgenv().AutoServerHop = value
             end
         })
 
@@ -7282,11 +7243,11 @@ do
                         visualPart.CFrame = HumanoidRootPart.CFrame  
                     end
     
-                    if script_state.VisualiserRainbow then
+                    if getgenv().VisualiserRainbow then
                         local hue = (tick() % 5) / 5
                         visualPart.Color = Color3.fromHSV(hue, 1, 1)
                     else
-                        local hueVal = script_state.VisualiserHue or 0
+                        local hueVal = getgenv().VisualiserHue or 0
                         visualPart.Color = Color3.fromHSV(hueVal / 360, 1, 1)
                     end
     
@@ -7326,7 +7287,7 @@ do
         title = 'Rainbow',
         flag = 'VisualiserRainbow',
         callback = function(value)
-            script_state.VisualiserRainbow = value
+            getgenv().VisualiserRainbow = value
         end
     })
 
@@ -7337,7 +7298,7 @@ do
         maximum_value = 360,
         value = 0,
         callback = function(value)
-            script_state.VisualiserHue = value
+            getgenv().VisualiserHue = value
         end
     })
     
@@ -7348,7 +7309,7 @@ do
         description = 'Automatically claims rewards.',
         section = 'left',
         callback = function(value: boolean)
-            script_state.AutoClaimRewards = value
+            getgenv().AutoClaimRewards = value
             if value then
                 local rs = game:GetService("ReplicatedStorage")
                 local net = rs:WaitForChild("Packages")
@@ -7367,7 +7328,7 @@ do
                     for i = 1, 6 do
                         while workspace:GetServerTimeNow() < joinTimestamp + (i * 300) + 1 do
                             task.wait(1)
-                            if not script_state.AutoClaimRewards then 
+                            if not getgenv().AutoClaimRewards then 
                                 return 
                             end
                         end
@@ -7384,11 +7345,11 @@ do
         description = 'Disables Quantum Arena effects.',
         section = 'right',
         callback = function(value: boolean)
-            script_state.NoQuantumEffects = value
+            getgenv().NoQuantumEffects = value
             if value then
                 task.spawn(function()
                     local quantumfx
-                    while task.wait() and script_state.NoQuantumEffects and not quantumfx do
+                    while task.wait() and getgenv().NoQuantumEffects and not quantumfx do
                         for _, v in getconnections(ReplicatedStorage.Remotes.QuantumArena.OnClientEvent) do
                             quantumfx = v
                             v:Disable()
