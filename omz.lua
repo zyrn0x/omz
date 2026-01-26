@@ -147,50 +147,58 @@ if ReplicatedStorage:FindFirstChild("Controllers") then
     end
 end
 
--- Extract Hash Constants from SwordsController (Dynamic)
+-- Extract Hash Constants from SwordsController (Updated for 2026)
 local function findHashConstants()
     for _, func in next, getgc() do
         if type(func) == "function" and islclosure(func) then
             local success, info = pcall(debug.getinfo, func)
             if success and info and info.source then
                 if info.source:find("SwordsController") then
-                    local constants = getconstants(func)
-                    -- Look for hash-like strings (long alphanumeric)
-                    local foundHashes = {}
-                    for i, const in ipairs(constants) do
-                        if type(const) == "string" and #const >= 10 and const:match("^[%w]+$") then
-                            table.insert(foundHashes, const)
+                    -- Try line 276 (current patch)
+                    if info.currentline == 276 or debug.getinfo(func, "l") == 276 then
+                        local h1 = getconstant(func, 62)
+                        local h2 = getconstant(func, 64)
+                        local h3 = getconstant(func, 65)
+                        if type(h1) == "string" and type(h2) == "string" and type(h3) == "string" then
+                            return h1, h2, h3
                         end
-                    end
-                    -- If we found exactly 3 hash-like strings, use them
-                    if #foundHashes >= 3 then
-                        return foundHashes[1], foundHashes[2], foundHashes[3]
                     end
                 end
             end
         end
     end
+    
+    -- Fallback: search all functions for hash-like strings
+    for _, func in next, getgc() do
+        if type(func) == "function" and islclosure(func) then
+            local success, info = pcall(debug.getinfo, func)
+            if success and info and info.source and info.source:find("SwordsController") then
+                local constants = getconstants(func)
+                if #constants >= 65 then
+                    local h1, h2, h3 = constants[62], constants[64], constants[65]
+                    if type(h1) == "string" and type(h2) == "string" and type(h3) == "string" then
+                        if #h1 >= 10 and #h2 >= 10 and #h3 >= 10 then
+                            return h1, h2, h3
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
     return nil, nil, nil
 end
 
 HashOne, HashTwo, HashThree = findHashConstants()
 
 if not HashOne or not HashTwo or not HashThree then
-    warn("[Omz Hub] Failed to extract hash constants - using fallback method")
-    -- Fallback: try to extract from any parry-related function
-    for _, func in next, getgc() do
-        if type(func) == "function" and islclosure(func) then
-            local constants = getconstants(func)
-            if #constants >= 65 then
-                -- Try old indices as fallback
-                local h1, h2, h3 = constants[62], constants[64], constants[65]
-                if type(h1) == "string" and type(h2) == "string" and type(h3) == "string" then
-                    HashOne, HashTwo, HashThree = h1, h2, h3
-                    break
-                end
-            end
-        end
-    end
+    warn("[Omz Hub] Failed to extract hash constants!")
+    warn("[Omz Hub] The game may have been updated. Please check for script updates.")
+else
+    print("[Omz Hub] Hash constants extracted successfully!")
+    print("[Omz Hub] HashOne:", HashOne)
+    print("[Omz Hub] HashTwo:", HashTwo)
+    print("[Omz Hub] HashThree:", HashThree)
 end
 
 -- Detect Hidden Remotes
