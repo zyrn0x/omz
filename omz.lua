@@ -515,7 +515,6 @@ local Lerp_Radians = 0
 
 function System.detection.is_curved()
     local ball = System.ball.get()
-    
     if not ball then return false end
     
     local zoomies = ball:FindFirstChild('zoomies')
@@ -533,29 +532,6 @@ function System.detection.is_curved()
     
     local reach_time = (player_pos - ball_pos).Magnitude / speed - (ping / 1000)
     
-    table.insert(Previous_Velocity, velocity)
-    if #Previous_Velocity > 4 then
-        table.remove(Previous_Velocity, 1)
-    end
-    
-    if speed < 300 then
-        if (tick() - Curving) < (reach_time / 1.2) then
-            return true
-        end
-    elseif speed >= 300 and speed < 450 then
-        if (tick() - Curving) < (reach_time / 1.21) then
-            return true
-        end
-    elseif speed > 450 and speed < 600 then
-        if (tick() - Curving) < (reach_time / 1.335) then
-            return true
-        end
-    elseif speed > 600 then
-        if (tick() - Curving) < (reach_time / 1.5) then
-            return true
-        end
-    end
-    
     local dot_threshold = (0.5 - ping / 1000)
     local direction_difference = (ball_direction - velocity.Unit)
     local direction_similarity = direction:Dot(direction_difference.Unit)
@@ -565,35 +541,23 @@ function System.detection.is_curved()
         return true
     end
     
-    local clamped_dot = math.clamp(dot, -1, 1)
-    local radians = math.deg(math.asin(clamped_dot))
-    
-    Lerp_Radians = Lerp_Radians + (radians - Lerp_Radians) * 0.8
-    if speed < 300 then
-        if Lerp_Radians < 0.02 then
-            Last_Warping = tick()
-        end
-        if (tick() - Last_Warping) < (reach_time / 1.19) then
-            return true
-        end
-    else
-        if Lerp_Radians < 0.018 then
-            Last_Warping = tick()
-        end
-        if (tick() - Last_Warping) < (reach_time / 1.5) then
-            return true
+    local backwardsCurveDetected = false
+    local backwardsAngleThreshold = 85
+    local horizDirection = Vector3.new(player_pos.X - ball_pos.X, 0, player_pos.Z - ball_pos.Z)
+    if horizDirection.Magnitude > 0 then
+        horizDirection = horizDirection.Unit
+    end
+    local awayFromPlayer = -horizDirection
+    local horizBallDir = Vector3.new(ball_direction.X, 0, ball_direction.Z)
+    if horizBallDir.Magnitude > 0 then
+        horizBallDir = horizBallDir.Unit
+        local backwardsAngle = math.deg(math.acos(math.clamp(awayFromPlayer:Dot(horizBallDir), -1, 1)))
+        if backwardsAngle < backwardsAngleThreshold then
+            backwardsCurveDetected = true
         end
     end
-    
-    if #Previous_Velocity == 4 then
-        local int_diff = (ball_direction - Previous_Velocity[1].Unit).Unit
-        local int_dot = direction:Dot(int_diff)
-        if (dot - int_dot) < dot_threshold then
-            return true
-        end
-    end
-    
-    return dot < dot_threshold
+
+    return (dot < dot_threshold) or backwardsCurveDetected
 end
 
 ReplicatedStorage.Remotes.DeathBall.OnClientEvent:Connect(function(c, d)
@@ -972,23 +936,34 @@ function System.auto_spam.start()
         
         local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
         local speed = zoomies.VectorVelocity.Magnitude
-        local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
+        local velocity = zoomies.VectorVelocity
+        local direction = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Unit
+        local dot = direction:Dot(velocity.Unit)
         
         local entity = System.player.get_closest()
         if not entity or not entity.PrimaryPart then return end
         local entity_distance = (LocalPlayer.Character.PrimaryPart.Position - entity.PrimaryPart.Position).Magnitude
         
-        local spam_threshold = ping / 10 + math.min(speed / 6, 255)
+        local max_spam_dist = ping + math.min(speed / 6, 95)
         
-        if distance <= spam_threshold and entity_distance <= spam_threshold then
-            if System.__properties.__parries > System.__properties.__spam_threshold then
-                if getgenv().AutoSpamMode == "Keypress" then
-                    if PF then PF() end
-                else
-                    System.parry.execute()
-                    if getgenv().AutoSpamAnimationFix and PF then
-                        PF()
-                    end
+        local ball_dist = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
+        local target_dist = LocalPlayer:DistanceFromCharacter(entity.PrimaryPart.Position)
+        
+        if entity_distance > max_spam_dist or ball_dist > max_spam_dist or target_dist > max_spam_dist then
+            return
+        end
+        
+        local max_speed = 5 - math.min(speed / 5, 5)
+        local max_dot = math.clamp(dot, -1, 0) * max_speed
+        local spam_accuracy = max_spam_dist - max_dot
+        
+        if ball_dist <= spam_accuracy and System.__properties.__parries > System.__properties.__spam_threshold then
+            if getgenv().AutoSpamMode == "Keypress" then
+                if PF then PF() end
+            else
+                System.parry.execute()
+                if getgenv().AutoSpamAnimationFix and PF then
+                    PF()
                 end
             end
         end
@@ -1030,31 +1005,20 @@ function System.autoparry.start()
             local speed = velocity.Magnitude
             if speed < 1 then continue end
 
-            local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
+            local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue() / 10
             local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
-            local reach_time = distance / speed - (ping / 1000)
+            local ping_threshold = math.clamp(ping / 10, 5, 17)
             
-            local ball_dist_threshold = 15 - math.min(distance/1000, 15) + math.min(speed/100, 40)
+            local cappedSpeedDiff = math.min(math.max(speed - 9.5, 0), 650)
+            local speed_divisor_base = 2.4 + cappedSpeedDiff * 0.002
+            local speed_divisor = speed_divisor_base * System.__properties.__divisor_multiplier
+            local parry_accuracy = ping_threshold + math.max(speed / speed_divisor, 9.5)
             
-            if reach_time > ping / 10 then
-                if speed < 300 then
-                    ball_dist_threshold = math.max(ball_dist_threshold - 15, 15)
-                elseif speed >= 300 and speed < 600 then
-                    ball_dist_threshold = math.max(ball_dist_threshold - 16, 16)
-                elseif speed >= 600 and speed < 1000 then
-                    ball_dist_threshold = math.max(ball_dist_threshold - 17, 17)
-                elseif speed >= 1000 and speed < 1500 then
-                    ball_dist_threshold = math.max(ball_dist_threshold - 19, 19)
-                elseif speed >= 1500 then
-                    ball_dist_threshold = math.max(ball_dist_threshold - 20, 20)
-                end
-            end
-
             if System.__properties.__parried then continue end
             
             local ball_target = ball:GetAttribute('target')
             
-            if ball_target == LocalPlayer.Name and distance <= ball_dist_threshold then
+            if ball_target == LocalPlayer.Name and distance <= parry_accuracy then
                 if System.detection.is_curved() then
                     continue
                 end
@@ -1249,12 +1213,12 @@ local AutoCurveDropdown = MainSection:Dropdown({
     end
 })
 
-MainSection:Slider({
+    MainSection:Slider({
     Title = 'Parry Accuracy',
-    Value = { Min = 1, Max = 100, Value = 50 },
+    Value = { Min = 1, Max = 100, Value = 100 },
     Callback = function(value)
         System.__properties.__accuracy = value
-        update_divisor()
+        System.__properties.__divisor_multiplier = 0.7 + (value - 1) * (0.35 / 99)
     end
 })
 
