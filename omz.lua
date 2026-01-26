@@ -134,6 +134,11 @@ local Parry_Key = nil
 local PF = nil
 local SC = nil
 
+-- New Hash-Based System
+local PropertyChangeOrder = {}
+local HashOne, HashTwo, HashThree
+local ShouldPlayerJump, MainRemote, GetOpponentPosition
+
 if ReplicatedStorage:FindFirstChild("Controllers") then
     for _, child in ipairs(ReplicatedStorage.Controllers:GetChildren()) do
         if child.Name:match("^SwordsController%s*$") then
@@ -142,61 +147,79 @@ if ReplicatedStorage:FindFirstChild("Controllers") then
     end
 end
 
-if LocalPlayer.PlayerGui:FindFirstChild("Hotbar") and LocalPlayer.PlayerGui.Hotbar:FindFirstChild("Block") then
-    for _, v in next, getconnections(LocalPlayer.PlayerGui.Hotbar.Block.Activated) do
-        if SC and getfenv(v.Function).script == SC then
-            PF = v.Function
-            break
-        end
-    end
-end
-
-local function update_divisor()
-    System.__properties.__divisor_multiplier = 0.75 + (System.__properties.__accuracy - 1) * (3 / 99)
-end
-
-function isValidRemoteArgs(args)
-    return #args == 7 and
-        type(args[2]) == "string" and
-        type(args[3]) == "number" and
-        typeof(args[4]) == "CFrame" and
-        type(args[5]) == "table" and
-        type(args[6]) == "table" and
-        type(args[7]) == "boolean"
-end
-
-function hookRemote(remote)
-    if not revertedRemotes[remote] then
-        if not originalMetatables[getrawmetatable(remote)] then
-            originalMetatables[getrawmetatable(remote)] = true
-            local meta = getrawmetatable(remote)
-            local oldIndex = meta.__index
-            
-            setreadonly(meta, false)
-            meta.__index = newcclosure(function(self, key)
-                if not checkcaller() then
-                    if (key == "FireServer" and self:IsA("RemoteEvent")) or
-                       (key == "InvokeServer" and self:IsA("RemoteFunction")) then
-                        return function(_, ...)
-                            local args = {...}
-                            if isValidRemoteArgs(args) and not revertedRemotes[self] then
-                                revertedRemotes[self] = args
-                                Parry_Key = args[2]
-                            end
-                            return oldIndex(self, key)(_, unpack(args))
+-- Extract Hash Constants from SwordsController (Dynamic)
+local function findHashConstants()
+    for _, func in next, getgc() do
+        if type(func) == "function" and islclosure(func) then
+            local success, info = pcall(debug.getinfo, func)
+            if success and info and info.source then
+                if info.source:find("SwordsController") then
+                    local constants = getconstants(func)
+                    -- Look for hash-like strings (long alphanumeric)
+                    local foundHashes = {}
+                    for i, const in ipairs(constants) do
+                        if type(const) == "string" and #const >= 10 and const:match("^[%w]+$") then
+                            table.insert(foundHashes, const)
                         end
                     end
+                    -- If we found exactly 3 hash-like strings, use them
+                    if #foundHashes >= 3 then
+                        return foundHashes[1], foundHashes[2], foundHashes[3]
+                    end
                 end
-                return oldIndex(self, key)
-            end)
-            setreadonly(meta, true)
+            end
+        end
+    end
+    return nil, nil, nil
+end
+
+HashOne, HashTwo, HashThree = findHashConstants()
+
+if not HashOne or not HashTwo or not HashThree then
+    warn("[Omz Hub] Failed to extract hash constants - using fallback method")
+    -- Fallback: try to extract from any parry-related function
+    for _, func in next, getgc() do
+        if type(func) == "function" and islclosure(func) then
+            local constants = getconstants(func)
+            if #constants >= 65 then
+                -- Try old indices as fallback
+                local h1, h2, h3 = constants[62], constants[64], constants[65]
+                if type(h1) == "string" and type(h2) == "string" and type(h3) == "string" then
+                    HashOne, HashTwo, HashThree = h1, h2, h3
+                    break
+                end
+            end
         end
     end
 end
 
-for _, remote in pairs(ReplicatedStorage:GetChildren()) do
-    if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
-        hookRemote(remote)
+-- Detect Hidden Remotes
+for Index, Object in next, game:GetDescendants() do
+    if Object:IsA("RemoteEvent") and string.find(Object.Name, "\n") then
+        Object.Changed:Once(function()
+            table.insert(PropertyChangeOrder, Object)
+        end)
+    end
+end
+
+repeat task.wait() until #PropertyChangeOrder == 3
+
+ShouldPlayerJump = PropertyChangeOrder[1]
+MainRemote = PropertyChangeOrder[2]
+GetOpponentPosition = PropertyChangeOrder[3]
+
+-- Extract Parry Key from Hotbar
+if LocalPlayer.PlayerGui:FindFirstChild("Hotbar") and LocalPlayer.PlayerGui.Hotbar:FindFirstChild("Block") then
+    for _, v in next, getconnections(LocalPlayer.PlayerGui.Hotbar.Block.Activated) do
+        if v and v.Function and not iscclosure(v.Function) then
+            for _, upval in pairs(getupvalues(v.Function)) do
+                if type(upval) == "function" then
+                    Parry_Key = getupvalue(getupvalue(upval, 2), 17)
+                    PF = v.Function
+                    break
+                end
+            end
+        end
     end
 end
 
@@ -457,23 +480,12 @@ function System.parry.execute(Parry_Type)
         System.__properties.__first_parry_done = true
     end
 
-    -- Final Firing
-    for remote, original_args in pairs(revertedRemotes) do
-        local modified_args = {
-            original_args[1],
-            original_args[2],
-            original_args[3],
-            Parry_CFrame,
-            Events,
-            Aim_Target,
-            original_args[7]
-        }
+    -- New Hash-Based Remote Firing
+    if ShouldPlayerJump and MainRemote and GetOpponentPosition and Parry_Key then
         pcall(function()
-            if remote:IsA('RemoteEvent') then
-                remote:FireServer(unpack(modified_args))
-            elseif remote:IsA('RemoteFunction') then
-                remote:InvokeServer(unpack(modified_args))
-            end
+            ShouldPlayerJump:FireServer(HashOne, Parry_Key, 0, Parry_CFrame, Events, Aim_Target, false)
+            MainRemote:FireServer(HashTwo, Parry_Key, 0, Parry_CFrame, Events, Aim_Target, false)
+            GetOpponentPosition:FireServer(HashThree, Parry_Key, 0, Parry_CFrame, Events, Aim_Target, false)
         end)
     end
 
