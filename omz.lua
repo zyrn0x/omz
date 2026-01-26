@@ -155,18 +155,13 @@ if ReplicatedStorage:FindFirstChild("Controllers") then
     end
 end
 
-local function load_pf()
-    if PF then return PF end
-    
-    if LocalPlayer.PlayerGui:FindFirstChild("Hotbar") and LocalPlayer.PlayerGui.Hotbar:FindFirstChild("Block") then
-        for _, v in next, getconnections(LocalPlayer.PlayerGui.Hotbar.Block.Activated) do
-            if SC and getfenv(v.Function).script == SC then
-                PF = v.Function
-                return PF
-            end
-        end
-    end
-    return nil
+local VirtualInputManager = cloneref(game:GetService("VirtualInputManager"))
+
+-- Helper to perform click execution
+local function perform_parry_click()
+    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+    task.wait(0.005)
+    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
 end
 
 -- Try initial load
@@ -509,21 +504,7 @@ function System.parry.keypress()
         return
     end
 
-    -- // LAZY LOAD PF IF MISSING (Fix for 'call a nil value' error)
-    if not PF then
-        if LocalPlayer.PlayerGui:FindFirstChild("Hotbar") and LocalPlayer.PlayerGui.Hotbar:FindFirstChild("Block") then
-            for _, v in next, getconnections(LocalPlayer.PlayerGui.Hotbar.Block.Activated) do
-                if SC and getfenv(v.Function).script == SC then
-                    PF = v.Function
-                    break
-                end
-            end
-        end
-    end
-
-    if PF then
-        pcall(PF) -- Safely call
-    end
+    perform_parry_click()
 
     if System.__properties.__parries > 10000 then return end
     
@@ -858,15 +839,12 @@ function System.manual_spam.loop(delta)
     if System.__properties.__spam_accumulator >= interval then
         System.__properties.__spam_accumulator = 0
         
-        -- Ensure PF is loaded
-        load_pf()
-        
         if getgenv().ManualSpamMode == "Keypress" then
-            if PF then PF() end
+            perform_parry_click()
         else
             System.parry.execute()
-            if getgenv().ManualSpamAnimationFix and PF then
-                PF()
+            if getgenv().ManualSpamAnimationFix then
+                perform_parry_click()
             end
         end
     end
@@ -1025,14 +1003,12 @@ function System.auto_spam.start()
         if ball_target == LocalPlayer.Name and target_distance > 30 and ball_distance > 30 then return end
         
         if ball_distance <= spam_accuracy and System.__properties.__parries > System.__properties.__spam_threshold then
-            load_pf() -- Ensure PF is loaded
-            
             if getgenv().AutoSpamMode == "Keypress" then
-                if PF then PF() end
+                perform_parry_click()
             else
                 System.parry.execute()
-                if getgenv().AutoSpamAnimationFix and PF then
-                    PF()
+                if getgenv().AutoSpamAnimationFix then
+                    perform_parry_click()
                 end
             end
         end
