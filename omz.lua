@@ -165,7 +165,7 @@ local function perform_parry_click()
 end
 
 -- Try initial load
-load_pf()
+
 
 local function update_divisor()
     System.__properties.__divisor_multiplier = 0.75 + (System.__properties.__accuracy - 1) * (3 / 99)
