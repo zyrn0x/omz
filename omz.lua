@@ -145,14 +145,22 @@ if ReplicatedStorage:FindFirstChild("Controllers") then
     end
 end
 
-if LocalPlayer.PlayerGui:FindFirstChild("Hotbar") and LocalPlayer.PlayerGui.Hotbar:FindFirstChild("Block") then
-    for _, v in next, getconnections(LocalPlayer.PlayerGui.Hotbar.Block.Activated) do
-        if SC and getfenv(v.Function).script == SC then
-            PF = v.Function
-            break
+local function load_pf()
+    if PF then return PF end
+    
+    if LocalPlayer.PlayerGui:FindFirstChild("Hotbar") and LocalPlayer.PlayerGui.Hotbar:FindFirstChild("Block") then
+        for _, v in next, getconnections(LocalPlayer.PlayerGui.Hotbar.Block.Activated) do
+            if SC and getfenv(v.Function).script == SC then
+                PF = v.Function
+                return PF
+            end
         end
     end
+    return nil
 end
+
+-- Try initial load
+load_pf()
 
 local function update_divisor()
     System.__properties.__divisor_multiplier = 0.75 + (System.__properties.__accuracy - 1) * (3 / 99)
@@ -486,7 +494,21 @@ function System.parry.keypress()
         return
     end
 
-    PF()
+    -- // LAZY LOAD PF IF MISSING (Fix for 'call a nil value' error)
+    if not PF then
+        if LocalPlayer.PlayerGui:FindFirstChild("Hotbar") and LocalPlayer.PlayerGui.Hotbar:FindFirstChild("Block") then
+            for _, v in next, getconnections(LocalPlayer.PlayerGui.Hotbar.Block.Activated) do
+                if SC and getfenv(v.Function).script == SC then
+                    PF = v.Function
+                    break
+                end
+            end
+        end
+    end
+
+    if PF then
+        pcall(PF) -- Safely call
+    end
 
     if System.__properties.__parries > 10000 then return end
     
@@ -821,6 +843,9 @@ function System.manual_spam.loop(delta)
     if System.__properties.__spam_accumulator >= interval then
         System.__properties.__spam_accumulator = 0
         
+        -- Ensure PF is loaded
+        load_pf()
+        
         if getgenv().ManualSpamMode == "Keypress" then
             if PF then PF() end
         else
@@ -985,6 +1010,8 @@ function System.auto_spam.start()
         if ball_target == LocalPlayer.Name and target_distance > 30 and ball_distance > 30 then return end
         
         if ball_distance <= spam_accuracy and System.__properties.__parries > System.__properties.__spam_threshold then
+            load_pf() -- Ensure PF is loaded
+            
             if getgenv().AutoSpamMode == "Keypress" then
                 if PF then PF() end
             else
