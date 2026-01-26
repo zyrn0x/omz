@@ -417,7 +417,12 @@ function System.curve.get_cframe()
         end
     }
     
-    return curve_functions[System.__properties.__curve_mode]()
+    local selected_func = curve_functions[System.__properties.__curve_mode]
+    if not selected_func then
+        selected_func = curve_functions[1] -- Fallback to Camera
+    end
+    
+    return selected_func()
 end
 
 System.parry = {}
