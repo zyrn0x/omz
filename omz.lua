@@ -36,10 +36,19 @@ local Config = {
     end
 }
 
-local Library = { _config = Config:load(game.GameId), _ui_open = true }
+local Library = { 
+    _config = Config:load(game.GameId), 
+    _ui_open = true,
+    load = function() end,
+    change_visiblity = function() end 
+}
 
 function Library.new()
     local self = setmetatable({}, { __index = Library })
+    if not WindUI then
+        warn("WindUI failed to load")
+        return self
+    end
     self._window = WindUI:CreateWindow({
         Title = "Allussive | WindUI",
         Icon = "solar:ghost-bold",
@@ -50,10 +59,13 @@ function Library.new()
 end
 
 function Library:SendNotification(settings)
-    WindUI:Notify({ Title = settings.title or "Notification", Content = settings.text or "", Duration = settings.duration or 5 })
+    if WindUI then
+        WindUI:Notify({ Title = settings.title or "Notification", Content = settings.text or "", Duration = settings.duration or 5 })
+    end
 end
 
 function Library:create_tab(title, icon)
+    if not self._window then return { create_module = function() return { create_checkbox = function() end, create_slider = function() end, create_dropdown = function() end, create_textbox = function() end, create_divider = function() end, create_feature = function() end, create_paragraph = function() end, create_text = function() end } end } end
     local tab = self._window:Tab({ Title = title, Icon = icon or "solar:home-2-bold" })
     local tab_bridge = { _tab = tab }
     
@@ -71,7 +83,7 @@ function Library:create_tab(title, icon)
                 module_bridge._state = v
                 Library._config._flags[settings.flag] = v
                 Config:save(game.GameId, Library._config)
-                settings.callback(v)
+                if settings.callback then settings.callback(v) end
             end
         })
 
@@ -88,7 +100,7 @@ function Library:create_tab(title, icon)
                 Callback = function(v)
                     Library._config._flags[sub.flag] = v
                     Config:save(game.GameId, Library._config)
-                    sub.callback(v)
+                    if sub.callback then sub.callback(v) end
                 end
             })
             function sub:change_state(state) if sub_toggle and sub_toggle.Set then sub_toggle:Set(state) end end
@@ -104,7 +116,7 @@ function Library:create_tab(title, icon)
                 Callback = function(v)
                     Library._config._flags[sub.flag] = v
                     Config:save(game.GameId, Library._config)
-                    sub.callback(v)
+                    if sub.callback then sub.callback(v) end
                 end
             })
         end
@@ -117,7 +129,7 @@ function Library:create_tab(title, icon)
                 Callback = function(v)
                     Library._config._flags[sub.flag] = v
                     Config:save(game.GameId, Library._config)
-                    sub.callback(v)
+                    if sub.callback then sub.callback(v) end
                 end
             })
         end
@@ -130,21 +142,18 @@ function Library:create_tab(title, icon)
                 Callback = function(v)
                     Library._config._flags[sub.flag] = v
                     Config:save(game.GameId, Library._config)
-                    sub.callback(v)
+                    if sub.callback then sub.callback(v) end
                 end
             })
         end
         function module_bridge:create_divider() end
         function module_bridge:create_feature(sub) return self:create_checkbox(sub) end
-        function module_bridge:create_paragraph(sub) return self._section:Button({Title = sub.title, Desc = sub.text}) end
-        function module_bridge:create_text(sub) return self._section:Button({Title = sub.text}) end
+        function module_bridge:create_paragraph(sub) return self._section:Button({Title = sub.title or "Info", Desc = sub.text or ""}) end
+        function module_bridge:create_text(sub) return self._section:Button({Title = sub.text or ""}) end
         return module_bridge
     end
     return tab_bridge
 end
-
-function Library:load() end
-function Library:change_visiblity() end
 
 local function convertStringToTable(inputString)
     local result = {}
@@ -170,8 +179,7 @@ local AcrylicBlur = { new = function() return { setup = function() end, render =
 
 -- Bridge Setup Complete
 
-
-local main = Library.new()
+getgenv().main = Library.new()
 
 local rage = main:create_tab('Blatant', 'rbxassetid://76499042599127')
 local player = main:create_tab('Player', 'rbxassetid://126017907477623')
@@ -238,7 +246,8 @@ local HashOne
 local HashTwo
 local HashThree
 
---[[
+local PropertyChangeOrder = {}
+
 LPH_NO_VIRTUALIZE(function()
     for Index, Value in next, getgc() do
         if rawequal(typeof(Value), "function") and islclosure(Value) and getrenv().debug.info(Value, "s"):find("SwordsController") then
@@ -266,7 +275,6 @@ end)()
 repeat
     task.wait()
 until #PropertyChangeOrder == 3
-]]
 
 
 local ShouldPlayerJump = PropertyChangeOrder[1]
