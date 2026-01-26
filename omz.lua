@@ -1,4 +1,32 @@
-local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+local RunService = game:GetService("RunService")
+--[[
+
+    WindUI Example (wip)
+    
+]]
+
+
+local cloneref = (cloneref or clonereference or function(instance) return instance end)
+local ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
+
+
+local WindUI
+
+do
+    local ok, result = pcall(function()
+        return require("./src/Init")
+    end)
+    
+    if ok then
+        WindUI = result
+    else 
+        if cloneref(game:GetService("RunService")):IsStudio() then
+            WindUI = require(cloneref(ReplicatedStorage:WaitForChild("WindUI"):WaitForChild("Init")))
+        else
+            WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+        end
+    end
+end
 
 -- */ Colors /* --
 local Purple = Color3.fromHex("#7775F2")
@@ -37,6 +65,11 @@ local Player = Players.LocalPlayer
 local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local Tornado_Time = tick()
 local UserInputService = game:GetService('UserInputService')
+local function cloneref(ref)
+    if _G.cloneref then return _G.cloneref(ref) end
+    if typeof(cloneref) == "function" then return cloneref(ref) end
+    return ref
+end
 local Last_Input = UserInputService:GetLastInputType()
 local Debris = game:GetService('Debris')
 local RunService = game:GetService('RunService')
@@ -657,6 +690,7 @@ end
 
 function Auto_Parry.Parry(Parry_Type)
     local Parry_Data = Auto_Parry.Parry_Data(Parry_Type)
+    if not Parry_Data then return end
 
     if not firstParryFired then
         VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0.001)
@@ -711,7 +745,7 @@ local Runtime = workspace.Runtime
 function Auto_Parry.Is_Curved()
     local Ball = Auto_Parry.Get_Ball()
 
-    if not Ball then
+    if not Ball or not Player.Character or not Player.Character:FindFirstChild("PrimaryPart") then
         return false
     end
 
@@ -857,6 +891,7 @@ end
 
 function Auto_Parry:Get_Ball_Properties()
     local Ball = Auto_Parry.Get_Ball()
+    if not Ball then return nil end
 
     local Ball_Velocity = Vector3.zero
     local Ball_Origin = Ball
@@ -903,6 +938,10 @@ function Auto_Parry.Spam_Service(self)
     -- AMÉLIORATION 2: Vérifications avec seuils ajustés
     local distanceMultiplier = 1.15  -- 15% de marge supplémentaire
     
+    if not self.Entity_Properties or not self.Ball_Properties then
+        return Spam_Accuracy
+    end
+
     if self.Entity_Properties.Distance > (Maximum_Spam_Distance * distanceMultiplier) then
         return Spam_Accuracy
     end
@@ -950,7 +989,7 @@ function Auto_Parry.Spam_Service(self)
 end
 
 local Connections_Manager = {}
-local Selected_Parry_Type = nil
+local Selected_Parry_Type = "Camera"
 
 local Parried = false
 local Last_Parry = 0
@@ -3600,8 +3639,8 @@ _G.PlayerCosmeticsCleanup = {}
         local getServiceFunction = game.GetService
         
         local function getClonerefPermission()
-            local permission = cloneref(getServiceFunction(game, "ReplicatedFirst"))
-            return permission
+            local success, result = pcall(function() return cloneref(getServiceFunction(game, "ReplicatedFirst")) end)
+            return success and result
         end
         
         AutoPlayModule.clonerefPermission = getClonerefPermission()
@@ -4546,7 +4585,8 @@ _G.PlayerCosmeticsCleanup = {}
 end
 
 ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent:Connect(function(_, root)
-    if root.Parent and root.Parent ~= Player.Character then
+    if not root or not root.Parent then return end
+    if root.Parent ~= Player.Character then
         if root.Parent.Parent ~= workspace.Alive then
             return
         end
@@ -4556,7 +4596,7 @@ ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent:Connect(function(_, root
 
     local Ball = Auto_Parry.Get_Ball()
 
-    if not Ball then
+    if not Ball or not Closest_Entity or not Closest_Entity.PrimaryPart or not Player.Character or not Player.Character:FindFirstChild("PrimaryPart") then
         return
     end
 
@@ -4567,7 +4607,7 @@ ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent:Connect(function(_, root
 
     local Curve_Detected = Auto_Parry.Is_Curved()
 
-    if Target_Distance < 15 and Distance < 15 and Dot < -0.25 then -- wtf ?? maybe the big issue
+    if Target_Distance < 15 and Distance < 15 and Dot < -0.25 then
         if Curve_Detected then
             Auto_Parry.Parry(Selected_Parry_Type)
         end
