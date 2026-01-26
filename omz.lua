@@ -1,13 +1,13 @@
-local RunService = game:GetService("RunService")
---[[
+local function cloneref(ref)
+    local c = _G.cloneref or (typeof(cloneref) == "function" and cloneref) or (typeof(clonereference) == "function" and clonereference)
+    if c then return c(ref) end
+    return ref
+end
 
-    WindUI Example (wip)
-    
-]]
-
-
-local cloneref = (cloneref or clonereference or function(instance) return instance end)
+local RunService = cloneref(game:GetService("RunService"))
+local Players = cloneref(game:GetService("Players"))
 local ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
+local UserInputService = cloneref(game:GetService("UserInputService"))
 
 
 local WindUI
@@ -60,19 +60,10 @@ local config = Window:Tab({ Title = "Config", Icon = "solar:settings-bold", Icon
 
 repeat task.wait() until game:IsLoaded()
 
-local Players = game:GetService('Players')
 local Player = Players.LocalPlayer
-local ReplicatedStorage = game:GetService('ReplicatedStorage')
 local Tornado_Time = tick()
-local UserInputService = game:GetService('UserInputService')
-local function cloneref(ref)
-    if _G.cloneref then return _G.cloneref(ref) end
-    if typeof(cloneref) == "function" then return cloneref(ref) end
-    return ref
-end
 local Last_Input = UserInputService:GetLastInputType()
 local Debris = game:GetService('Debris')
-local RunService = game:GetService('RunService')
 local Vector2_Mouse_Location = nil
 local Grab_Parry = nil
 local Remotes = {}
