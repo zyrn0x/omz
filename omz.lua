@@ -28,7 +28,6 @@ do
     end
 end
 
--- */ Colors /* --
 local Purple = Color3.fromHex("#7775F2")
 local Yellow = Color3.fromHex("#ECA201")
 local Green = Color3.fromHex("#10C550")
