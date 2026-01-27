@@ -842,6 +842,80 @@ function System.detection.calculate_ball_priority(ball, player_pos)
     return priority
 end
 
+-- Ability Detection System
+function System.detection.detect_abilities(ball)
+    local results = {
+        pull = false,
+        windup = false,
+        warp = false,
+        swap = false,
+        freeze = false,
+        forcefield = false
+    }
+    
+    if not ball or not ball:FindFirstChild('zoomies') then return results end
+    
+    local ball_properties = System.detection.__ball_properties
+    local current_velocity = ball.zoomies.VectorVelocity
+    local current_speed = current_velocity.Magnitude
+    local ball_pos = ball.Position
+    local player_pos = LocalPlayer.Character.PrimaryPart.Position
+    
+    -- 1. Pull/Windup Detection (Velocity change)
+    if #ball_properties.__previous_velocity > 0 then
+        local last_velocity = ball_properties.__previous_velocity[#ball_properties.__previous_velocity]
+        local last_speed = last_velocity.Magnitude
+        local speed_diff = current_speed - last_speed
+        
+        -- Pull: Sharp spike in speed towards the player
+        local direction_to_player = (player_pos - ball_pos).Unit
+        local dot = current_velocity.Unit:Dot(direction_to_player)
+        
+        if speed_diff > 45 and dot > 0.85 then
+            results.pull = true
+        end
+        
+        -- Windup: Sudden deceleration then acceleration
+        if speed_diff < -35 then
+            results.windup = true
+        end
+    end
+    
+    -- 2. Warp Detection (Lightning/VFX)
+    -- Check for lightning attributes or children that signify Warp
+    if ball:FindFirstChild("LightningWarpVFX") or ball:GetAttribute("Warping") then
+        results.warp = true
+    end
+    
+    -- 3. Swap Detection (Player position jump)
+    if System.__properties.__last_pos then
+        local dist_moved = (player_pos - System.__properties.__last_pos).Magnitude
+        -- If player moved more than 40 studs in one frame without speed
+        if dist_moved > 40 and LocalPlayer.Character.Humanoid.MoveDirection.Magnitude < 0.1 then
+            results.swap = true
+        end
+    end
+    System.__properties.__last_pos = player_pos
+    
+    -- 4. Freeze Detection
+    if ball:GetAttribute("Frozen") or ball:FindFirstChild("FreezeVFX") then
+        results.freeze = true
+    end
+    
+    -- 5. Forcefield Detection (Opponent state)
+    local target_name = ball:GetAttribute("target")
+    if target_name then
+        local target_player = Players:FindFirstChild(target_name)
+        if target_player and target_player.Character then
+            if target_player.Character:FindFirstChild("ForceField") or target_player.Character:GetAttribute("ForcefieldActive") then
+                results.forcefield = true
+            end
+        end
+    end
+    
+    return results
+end
+
 -- Performance Tracking
 function System.detection.track_parry_performance(success, timing_error)
     local recent = System.__properties.__recent_parries
@@ -1039,7 +1113,10 @@ ReplicatedStorage.Remotes.ParrySuccess.OnClientEvent:Connect(function()
     -- Track performance for adaptive timing
     local ball = System.ball.get()
     if ball then
-        System.detection.track_parry_performance(ball, true)
+        local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
+        local timing = System.detection.calculate_optimal_parry_time(ball, LocalPlayer.Character.PrimaryPart.Position, ping)
+        local timing_error = timing and timing.optimal or 0
+        System.detection.track_parry_performance(true, timing_error)
     end
     
     if System.__properties.__grab_animation then
@@ -1366,6 +1443,14 @@ function System.auto_spam.start()
         -- Visualize trajectory if debug enabled
         System.detection.visualize_trajectory(ball, 1.0)
         
+        -- Ability Detection
+        local abilities = System.detection.detect_abilities(ball)
+        
+        -- Prevent feeding Forcefield
+        if abilities.forcefield then
+            return 
+        end
+        
         if distance <= spam_accuracy and System.__properties.__parries > dynamic_threshold then
             if getgenv().AutoSpamMode == "Keypress" then
                 if PF then PF() end
@@ -1486,6 +1571,9 @@ function System.autoparry.start()
             
             local player_pos = LocalPlayer.Character.PrimaryPart.Position
             local should_parry = false
+            
+            -- Ability Detection & Counters
+            local abilities = System.detection.detect_abilities(ball)
 
             if ball_target == LocalPlayer.Name then
                 -- Check distance first (standard logic)
@@ -1499,6 +1587,11 @@ function System.autoparry.start()
                     if timing and timing.optimal <= 0.05 then
                         should_parry = true
                     end
+                end
+                
+                -- Instant counter for specific abilities
+                if not should_parry and (abilities.pull or abilities.warp or abilities.swap) then
+                    should_parry = true
                 end
             end
             
@@ -1566,10 +1659,11 @@ function System.autoparry.start()
                     local speed_divisor = (2.4 + capped_speed_diff * 0.002) * System.__properties.__divisor_multiplier
                     local parry_accuracy = ping_threshold + math.max(speed / speed_divisor, 9.5)
                     
+                    local abilities = System.detection.detect_abilities(training_ball)
                     local should_parry = false
                     if ball_target == LocalPlayer.Name then
                         -- Check distance first (standard logic)
-                        if distance <= parry_accuracy then
+                        if distance <= parry_accuracy or (abilities.pull or abilities.warp or abilities.swap) then
                             should_parry = true
                         end
 
