@@ -55,6 +55,7 @@ local MiscTab = Window:Tab({ Title = "Misc", Icon = "solar:settings-bold", IconC
 local ExclusiveTab = Window:Tab({ Title = "Exclusive", Icon = "solar:star-bold", IconColor = Yellow })
 local CosmeticsTab = Window:Tab({ Title = "Cosmetics", Icon = "solar:palette-bold", IconColor = Red })
 local WorldTab = Window:Tab({ Title = "World", Icon = "solar:globe-bold", IconColor = Blue })
+local AboutTab = Window:Tab({ Title = "About", Icon = "solar:info-circle-bold", IconColor = Grey })
 
 repeat task.wait() until game:IsLoaded()
 
@@ -153,7 +154,7 @@ if LocalPlayer.PlayerGui:FindFirstChild("Hotbar") and LocalPlayer.PlayerGui.Hotb
 end
 
 local function update_divisor()
-    System.__properties.__divisor_multiplier = 0.7 + (System.__properties.__accuracy - 1) * (0.5 / 99)
+    System.__properties.__divisor_multiplier = 0.7 + (System.__properties.__accuracy - 1) * (0.35 / 99)
 end
 
 function isValidRemoteArgs(args)
@@ -1017,6 +1018,8 @@ function System.auto_spam.spam_service(self)
     local ping = self.Ping
     
     local maximum_spam_distance = ping + math.min(speed / 6, System.__properties.__spam_distance)
+    -- Add small randomness to avoid detection and mimic human error
+    maximum_spam_distance = maximum_spam_distance + math.random(-5, 5) * 0.1
     
     if speed < 600 then
         maximum_spam_distance = ping + math.min(speed / 7, 75)
@@ -5739,21 +5742,29 @@ TrailsSection:Toggle({
             task.spawn(function()
                 while getgenv().BallTrailEnabled do
                     task.wait(0.1)
-                    local balls = System.ball.get_all()
-                    if balls then
-                        for _, ball in pairs(balls) do
-                            if not ball:FindFirstChild("Trail") then
+                    local balls_folder = workspace:FindFirstChild('Balls')
+                    if balls_folder then
+                        for _, ball in pairs(balls_folder:GetChildren()) do
+                            if ball:IsA("BasePart") and not ball:FindFirstChild("Trail") then
                                 local trail = Instance.new("Trail")
                                 trail.Color = ColorSequence.new(trail_color)
                                 local a1 = Instance.new("Attachment", ball)
                                 local a2 = Instance.new("Attachment", ball)
-                                a1.Position = Vector3.new(0, 0.5, 0)
-                                a2.Position = Vector3.new(0, -0.5, 0)
+                                -- Adjust attachment positions relative to ball size
+                                local half_size = ball.Size.Y / 2
+                                a1.Position = Vector3.new(0, half_size, 0)
+                                a2.Position = Vector3.new(0, -half_size, 0)
                                 trail.Attachment0 = a1
                                 trail.Attachment1 = a2
                                 trail.Parent = ball
                                 trail.Lifetime = 0.5
                                 trail.Transparency = NumberSequence.new(0.5)
+                                trail.MinLength = 0
+                                trail.MaxLength = 0
+                            end
+                            -- Update trail color if needed
+                            if ball:FindFirstChild("Trail") then
+                                ball.Trail.Color = ColorSequence.new(trail_color)
                             end
                         end
                     end
