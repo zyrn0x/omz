@@ -988,14 +988,21 @@ end
 
 function System.auto_spam:get_ball_properties()
     local ball = System.ball.get()
-    if not ball then return false end
+    if not ball or not ball.Parent or not ball:IsA("BasePart") then return false end
     
-    local ball_velocity = Vector3.zero
-    local ball_origin = ball
+    local char = LocalPlayer.Character
+    if not char or not char.PrimaryPart then return false end
     
-    local ball_direction = (LocalPlayer.Character.PrimaryPart.Position - ball_origin.Position).Unit
-    local ball_distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
-    local ball_dot = ball_direction:Dot(ball_velocity.Unit)
+    local zoomies = ball:FindFirstChild("zoomies")
+    local ball_velocity = zoomies and zoomies.VectorVelocity or Vector3.zero
+    
+    local ball_direction = (char.PrimaryPart.Position - ball.Position).Unit
+    local ball_distance = (char.PrimaryPart.Position - ball.Position).Magnitude
+    
+    local ball_dot = 0
+    if ball_velocity.Magnitude > 0 then
+        ball_dot = ball_direction:Dot(ball_velocity.Unit)
+    end
     
     return {
         Velocity = ball_velocity,
@@ -5696,10 +5703,20 @@ local function UpdateSky(sky_name)
         ["Vaporwave"] = {"1417494030", "1417494146", "1417494253", "1417494402", "1417494499", "1417494643"},
         ["Redshift"] = {"401664839", "401664862", "401664960", "401664881", "401664901", "401664936"},
         ["Desert"] = {"1013852", "1013853", "1013850", "1013851", "1013849", "1013854"},
+        ["DaBaby"] = {"7245418472", "7245418472", "7245418472", "7245418472", "7245418472", "7245418472"},
         ["Minecraft"] = {"1876545003", "1876544331", "1876542941", "1876543392", "1876543764", "1876544642"},
-        ["Space"] = {"16262356578", "16262358026", "16262360469", "16262362003", "16262363873", "16262366016"},
-        ["Night"] = {"6285719338", "6285721078", "6285722964", "6285724682", "6285726335", "6285730635"},
-        ["Pink"] = {"271042516", "271077243", "271042556", "271042310", "271042467", "271077958"}
+        ["SpongeBob"] = {"7633178166", "7633178166", "7633178166", "7633178166", "7633178166", "7633178166"},
+        ["Skibidi"] = {"14952256113", "14952256113", "14952256113", "14952256113", "14952256113", "14952256113"},
+        ["Blaze"] = {"150939022", "150939038", "150939047", "150939056", "150939063", "150939082"},
+        ["Pussy Cat"] = {"11154422902", "11154422902", "11154422902", "11154422902", "11154422902", "11154422902"},
+        ["Among Us"] = {"5752463190", "5752463190", "5752463190", "5752463190", "5752463190", "5752463190"},
+        ["Space Wave"] = {"16262356578", "16262358026", "16262360469", "16262362003", "16262363873", "16262366016"},
+        ["Space Wave2"] = {"1233158420", "1233158838", "1233157105", "1233157640", "1233157995", "1233159158"},
+        ["Turquoise Wave"] = {"47974894", "47974690", "47974821", "47974776", "47974859", "47974909"},
+        ["Dark Night"] = {"6285719338", "6285721078", "6285722964", "6285724682", "6285726335", "6285730635"},
+        ["Bright Pink"] = {"271042516", "271077243", "271042556", "271042310", "271042467", "271077958"},
+        ["White Galaxy"] = {"5540798456", "5540799894", "5540801779", "5540801192", "5540799108", "5540800635"},
+        ["Blue Galaxy"] = {"14961495673", "14961494492", "14961492844", "14961491298", "14961490439", "14961489508"}
     }
     
     local data = skyboxData[sky_name]
@@ -5722,17 +5739,21 @@ VisualsSection:Toggle({
         if v then
             UpdateSky(getgenv().SelectedSky or "Default")
         else
-            -- Reset to default sky if needed, or just delete the sky instance
             local Lighting = game:GetService("Lighting")
             local Sky = Lighting:FindFirstChild("Sky")
             if Sky then Sky:Destroy() end
+            Lighting.GlobalShadows = true
         end
     end
 })
 
 VisualsSection:Dropdown({
     Title = "Skybox",
-    Values = {"Default", "Vaporwave", "Redshift", "Desert", "Minecraft", "Space", "Night", "Pink"},
+    Values = {
+        "Default", "Vaporwave", "Redshift", "Desert", "DaBaby", "Minecraft", "SpongeBob", "Skibidi",
+        "Blaze", "Pussy Cat", "Among Us", "Space Wave", "Space Wave2", "Turquoise Wave",
+        "Dark Night", "Bright Pink", "White Galaxy", "Blue Galaxy"
+    },
     Value = "Default",
     Callback = function(v)
         getgenv().SelectedSky = v
