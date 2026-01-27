@@ -5974,46 +5974,146 @@ CosmeticsSection:Toggle({
     end
 })
 
-local MusicSection = CosmeticsTab:Section({ Title = "Music Player", Side = "Right", Box = true, Opened = true })
-local music_sound = Instance.new("Sound", workspace)
-music_sound.Name = "AllusiveMusic"
-music_sound.Looped = true
+-- // NEW AUDIO LOGIC & UI (Combined Music & Hit Sounds)
+local MusicSection = CosmeticsTab:Section({ Title = "Audio Controller", Side = "Right", Box = true, Opened = true })
 
-MusicSection:Dropdown({
-   Title = "Track",
-   Values = {"Phonk", "Chill", "Aggressive", "Custom"},
-   Value = "Phonk",
-   Callback = function(v)
-       if v == "Phonk" then music_sound.SoundId = "rbxassetid://1837879082"
-       elseif v == "Chill" then music_sound.SoundId = "rbxassetid://1848354536"
-       elseif v == "Aggressive" then music_sound.SoundId = "rbxassetid://1846627375"
-       end
-       if music_sound.Playing and v ~= "Custom" then music_sound:Play() end
-   end
+-- Hit Sounds Variables
+local hit_Sound_Enabled = false
+local hit_Sound = Instance.new('Sound', workspace)
+hit_Sound.Name = "HitSoundFX"
+hit_Sound.Volume = 5
+
+local hitSoundOptions = { 
+    "Medal", "Fatality", "Skeet", "Switches", "Rust Headshot", "Neverlose Sound", 
+    "Bubble", "Laser", "Steve", "Call of Duty", "Bat", "TF2 Critical", "Saber", "Bameware"
+}
+
+local hitSoundIds = {
+    Medal = "rbxassetid://6607336718",
+    Fatality = "rbxassetid://6607113255",
+    Skeet = "rbxassetid://6607204501",
+    Switches = "rbxassetid://6607173363",
+    ["Rust Headshot"] = "rbxassetid://138750331387064",
+    ["Neverlose Sound"] = "rbxassetid://110168723447153",
+    Bubble = "rbxassetid://6534947588",
+    Laser = "rbxassetid://7837461331",
+    Steve = "rbxassetid://4965083997",
+    ["Call of Duty"] = "rbxassetid://5952120301",
+    Bat = "rbxassetid://3333907347",
+    ["TF2 Critical"] = "rbxassetid://296102734",
+    Saber = "rbxassetid://8415678813",
+    Bameware = "rbxassetid://3124331820"
+}
+
+-- Music Player Variables
+local currentSound = Instance.new("Sound")
+currentSound.Name = "BackgroundMusic"
+currentSound.Volume = 3
+currentSound.Looped = false
+currentSound.Parent = game:GetService("SoundService")
+
+local soundOptions = {
+    ["Eeyuh"] = "rbxassetid://16190782181",
+    ["Sweep"] = "rbxassetid://103508936658553",
+    ["Bounce"] = "rbxassetid://134818882821660",
+    ["Everybody Wants To Rule The World"] = "rbxassetid://87209527034670",
+    ["Missing Money"] = "rbxassetid://134668194128037",
+    ["Sour Grapes"] = "rbxassetid://117820392172291",
+    ["Erwachen"] = "rbxassetid://124853612881772",
+    ["Grasp the Light"] = "rbxassetid://89549155689397",
+    ["Beyond the Shadows"] = "rbxassetid://120729792529978",
+    ["Rise to the Horizon"] = "rbxassetid://72573266268313",
+    ["Echoes of the Candy Kingdom"] = "rbxassetid://103040477333590",
+    ["Speed"] = "rbxassetid://125550253895893",
+    ["Lo-fi Chill A"] = "rbxassetid://9043887091",
+    ["Lo-fi Ambient"] = "rbxassetid://129775776987523",
+    ["Tears in the Rain"] = "rbxassetid://129710845038263"
+}
+local selectedSound = "Eeyuh"
+
+--// HIT SOUNDS UI //--
+MusicSection:Toggle({
+    Title = "Enable Hit Sounds",
+    Callback = function(v)
+        hit_Sound_Enabled = v
+    end
 })
 
-MusicSection:Input({
-    Title = "Custom ID",
-    Placeholder = "Enter ID",
-    Callback = function(text)
-        if tonumber(text) then
-            music_sound.SoundId = "rbxassetid://" .. text
-            if music_sound.Playing then music_sound:Play() end
+MusicSection:Dropdown({
+    Title = "Hit Sound Type",
+    Values = hitSoundOptions,
+    Value = "Medal",
+    Callback = function(v)
+        if hitSoundIds[v] then
+            hit_Sound.SoundId = hitSoundIds[v]
+        end
+    end
+})
+
+MusicSection:Slider({
+    Title = "Hit Sound Volume",
+    Value = { Min = 1, Max = 10, Value = 5 },
+    Callback = function(v)
+        hit_Sound.Volume = v
+    end
+})
+
+-- Hit Sound Connection
+if ReplicatedStorage.Remotes:FindFirstChild("ParrySuccess") then
+    ReplicatedStorage.Remotes.ParrySuccess.OnClientEvent:Connect(function()
+        if hit_Sound_Enabled then
+            hit_Sound:Play()
+        end
+    end)
+end
+
+--// MUSIC PLAYER UI //--
+MusicSection:Toggle({
+    Title = "Enable Background Music",
+    Callback = function(v)
+        getgenv().soundmodule = v
+        if v then
+            currentSound:Stop()
+            currentSound.SoundId = soundOptions[selectedSound] or "rbxassetid://0"
+            currentSound:Play()
+        else
+            currentSound:Stop()
+        end
+    end
+})
+
+MusicSection:Dropdown({
+    Title = "Select Song",
+    Values = {
+        "Eeyuh", "Sweep", "Bounce", "Everybody Wants To Rule The World",
+        "Missing Money", "Sour Grapes", "Erwachen", "Grasp the Light",
+        "Beyond the Shadows", "Rise to the Horizon", "Echoes of the Candy Kingdom",
+        "Speed", "Lo-fi Chill A", "Lo-fi Ambient", "Tears in the Rain"
+    },
+    Value = "Eeyuh",
+    Callback = function(v)
+        selectedSound = v
+        if getgenv().soundmodule and soundOptions[v] then
+            currentSound:Stop()
+            currentSound.SoundId = soundOptions[v]
+            currentSound:Play()
         end
     end
 })
 
 MusicSection:Toggle({
-    Title = "Play Music",
+    Title = "Loop Song",
     Callback = function(v)
-        if v then music_sound:Play() else music_sound:Stop() end
+        currentSound.Looped = v
     end
 })
 
 MusicSection:Slider({
-    Title = "Volume",
-    Value = { Min = 0, Max = 10, Value = 1 },
-    Callback = function(v) music_sound.Volume = v end
+    Title = "Music Volume",
+    Value = { Min = 1, Max = 10, Value = 3 },
+    Callback = function(v)
+        currentSound.Volume = v
+    end
 })
 
 -- // WORLD LOGIC & UI
