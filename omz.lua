@@ -1012,34 +1012,23 @@ function System.auto_spam:get_ball_properties()
     }
 end
 
-function System.auto_spam.spam_service(self)
-    local ball = System.ball.get()
+function System.auto_spam.spam_service(params)
+    local ping = params.Ping or 0
+    local speed = params.Ball_Speed or 0
     
-    if not ball then return false end
+    -- Calculate base distance based on Ping and Configured Spam Distance
+    local max_dist = System.__properties.__spam_distance
     
-    local zoomies = ball:FindFirstChild('zoomies')
-    if not zoomies then return false end
+    -- Dynamic adjustment: speed / 6 is a good baseline, capped by max_dist
+    local calculated_dist = ping + math.min(speed / 6, max_dist)
     
-    local velocity = zoomies.VectorVelocity
-    local speed = velocity.Magnitude
-    local ping = self.Ping
-    
-    local maximum_spam_distance = ping + math.min(speed / 6, System.__properties.__spam_distance)
-    -- Add small randomness to avoid detection and mimic human error
-    maximum_spam_distance = maximum_spam_distance + math.random(-5, 5) * 0.1
-    
+    -- Cap for low speeds to prevent weird behavior
     if speed < 600 then
-        maximum_spam_distance = ping + math.min(speed / 7, 75)
+        calculated_dist = ping + math.min(speed / 7, 75)
     end
     
-    local target_position = Closest_Entity.PrimaryPart.Position
-    local target_distance = LocalPlayer:DistanceFromCharacter(target_position)
-    
-    if target_distance > maximum_spam_distance then
-        return 0
-    end
-    
-    return maximum_spam_distance
+    -- Return the calculated effective range
+    return calculated_dist
 end
 
 function System.auto_spam.start()
@@ -1065,16 +1054,11 @@ function System.auto_spam.start()
         
         local ball_target = ball:GetAttribute('target')
         
-        local ball_properties = System.auto_spam:get_ball_properties()
-        local entity_properties = System.auto_spam:get_entity_properties()
-        
-        if not ball_properties or not entity_properties then return end
-        
-        local spam_accuracy = System.auto_spam.spam_service({
-            Ball_Properties = ball_properties,
-            Entity_Properties = entity_properties,
-            Ping = ping_threshold
+        local valid_range = System.auto_spam.spam_service({
+            Ping = ping_threshold,
+            Ball_Speed = zoomies.VectorVelocity.Magnitude
         })
+        local spam_accuracy = valid_range
         
         local target_position = Closest_Entity.PrimaryPart.Position
         local target_distance = LocalPlayer:DistanceFromCharacter(target_position)
