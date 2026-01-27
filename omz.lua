@@ -107,8 +107,19 @@ local System = {
         __slashesoffury_active = false,
         __slashesoffury_count = 0,
         __is_mobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled,
-        __mobile_guis = {}
+        __mobile_guis = {},
+        
+        -- New advanced features
+        __dynamic_spam_range = true,
+        __predictive_timing = true,
+        __auto_accuracy_adjustment = false,
+        __debug_trajectory = false,
+        __calibration_offset = 0,
+        __recent_parries = {},
+        __success_rate = 1.0,
+        __average_timing_error = 0
     },
+
     
     __config = {
         __curve_names = {'Camera', 'Random', 'Accelerated', 'Backwards', 'Slow', 'High', 'Straight', 'Left', 'Right', 'RandomTarget'},
@@ -549,7 +560,18 @@ System.detection = {
         __last_warping = tick(),
         __lerp_radians = 0,
         __curving = tick(),
-        __previous_velocity = {}
+        __previous_velocity = {},
+        
+        -- Advanced velocity tracking
+        __velocity_acceleration = {},
+        __smoothed_velocity = Vector3.zero,
+        __predicted_position = Vector3.zero,
+        __velocity_jerk = 0,
+        
+        -- Curve tracking
+        __curve_intensity = 0,
+        __curve_type = 1,  -- 1=STRAIGHT, 2=SLIGHT, 3=MEDIUM, 4=HARD, 5=BACKWARDS, 6=SPIRAL
+        __curve_commitment = 0
     }
 }
 
@@ -672,6 +694,216 @@ function System.detection.is_curved()
     
     return (dot < dot_threshold) or backwards_detected
 end
+
+-- Advanced Velocity Tracking
+function System.detection.track_velocity(ball)
+    local ball_properties = System.detection.__ball_properties
+    local zoomies = ball:FindFirstChild('zoomies')
+    if not zoomies then return end
+    
+    local current_velocity = zoomies.VectorVelocity
+    
+    -- Calculate acceleration
+    if #ball_properties.__previous_velocity > 0 then
+        local last_velocity = ball_properties.__previous_velocity[#ball_properties.__previous_velocity]
+        local acceleration = current_velocity - last_velocity
+        
+        table.insert(ball_properties.__velocity_acceleration, acceleration)
+        if #ball_properties.__velocity_acceleration > 4 then
+            table.remove(ball_properties.__velocity_acceleration, 1)
+        end
+        
+        -- Calculate jerk (rate of acceleration change)
+        if #ball_properties.__velocity_acceleration >= 2 then
+            local last_accel = ball_properties.__velocity_acceleration[#ball_properties.__velocity_acceleration - 1]
+            ball_properties.__velocity_jerk = (acceleration - last_accel).Magnitude
+        end
+    end
+    
+    -- Smooth velocity using exponential moving average
+    local alpha = 0.3
+    ball_properties.__smoothed_velocity = ball_properties.__smoothed_velocity:Lerp(current_velocity, alpha)
+    
+    -- Predict future position
+    if #ball_properties.__previous_velocity >= 2 then
+        local velocity_trend = current_velocity - ball_properties.__previous_velocity[1]
+        ball_properties.__predicted_position = ball.Position + current_velocity * 0.5 + velocity_trend * 0.25
+    end
+end
+
+-- Predictive Parry Timing
+function System.detection.calculate_optimal_parry_time(ball, player_pos, ping)
+    if not ball or not ball:FindFirstChild('zoomies') then return nil end
+    
+    local velocity = ball:FindFirstChild('zoomies').VectorVelocity
+    local ball_pos = ball.Position
+    local distance = (player_pos - ball_pos).Magnitude
+    local speed = velocity.Magnitude
+    
+    if speed < 1 then return nil end
+    
+    -- Basic time to impact
+    local time_to_impact = distance / speed
+    
+    -- Network latency compensation
+    local latency_offset = ping / 1000
+    
+    -- Animation delay (average parry animation time)
+    local animation_delay = 0.08
+    
+    -- Curve adjustment
+    local curve_detected = System.detection.is_curved()
+    local curve_offset = curve_detected and 0.05 or 0
+    
+    -- Calibration offset from performance tracking
+    local calibration = System.__properties.__calibration_offset
+    
+    return {
+        earliest = time_to_impact - latency_offset - animation_delay - curve_offset - calibration - 0.07,
+        optimal = time_to_impact - latency_offset - animation_delay - curve_offset - calibration,
+        latest = time_to_impact - latency_offset - curve_offset - calibration + 0.03
+    }
+end
+
+-- Auto Accuracy Adjustment
+function System.detection.auto_adjust_accuracy(ball_speed, curve_detected, ping)
+    if not System.__properties.__auto_accuracy_adjustment then
+        return System.__properties.__accuracy
+    end
+    
+    local base_accuracy = System.__properties.__accuracy
+    
+    -- Speed modifier
+    local speed_modifier = 0
+    if ball_speed > 1500 then
+        speed_modifier = -10  -- Tighter window for fast balls
+    elseif ball_speed > 1000 then
+        speed_modifier = -5
+    elseif ball_speed < 300 then
+        speed_modifier = 5    -- Looser window for slow balls
+    end
+    
+    -- Curve modifier
+    local curve_modifier = curve_detected and 8 or 0
+    
+    -- Ping modifier
+    local ping_modifier = math.clamp(ping / 50, -5, 10)
+    
+    return math.clamp(base_accuracy + speed_modifier + curve_modifier + ping_modifier, 1, 100)
+end
+
+-- Ball Spin Detection
+function System.detection.detect_ball_spin(ball)
+    if not ball then return {spinning = false, direction = Vector3.zero, speed = 0} end
+    
+    local body_angular = ball:FindFirstChild("BodyAngularVelocity")
+    if not body_angular then
+        return {spinning = false, direction = Vector3.zero, speed = 0}
+    end
+    
+    local angular_velocity = body_angular.AngularVelocity
+    local spin_speed = angular_velocity.Magnitude
+    
+    local result = {
+        spinning = spin_speed > 5,
+        direction = spin_speed > 0 and angular_velocity.Unit or Vector3.zero,
+        speed = spin_speed
+    }
+    
+    -- Predict curve from spin
+    if result.spinning and ball:FindFirstChild('zoomies') then
+        local velocity = ball.zoomies.VectorVelocity
+        if velocity.Magnitude > 0 then
+            result.predicted_curve = angular_velocity:Cross(velocity.Unit)
+        end
+    end
+    
+    return result
+end
+
+-- Multi-Ball Priority System
+function System.detection.calculate_ball_priority(ball, player_pos)
+    if not ball or not ball:FindFirstChild('zoomies') then return 0 end
+    
+    local distance = (player_pos - ball.Position).Magnitude
+    local velocity = ball.zoomies.VectorVelocity
+    local speed = velocity.Magnitude
+    local time_to_impact = speed > 0 and (distance / speed) or 999
+    local is_targeted = ball:GetAttribute('target') == LocalPlayer.Name
+    
+    -- Priority score (higher = more urgent)
+    local priority = 0
+    
+    if is_targeted then priority = priority + 1000 end
+    priority = priority + (1000 / math.max(time_to_impact, 0.1))
+    priority = priority + (speed / 10)
+    priority = priority - distance
+    
+    return priority
+end
+
+-- Performance Tracking
+function System.detection.track_parry_performance(success, timing_error)
+    local recent = System.__properties.__recent_parries
+    
+    table.insert(recent, {
+        success = success,
+        timing_error = timing_error or 0,
+        timestamp = tick()
+    })
+    
+    if #recent > 10 then
+        table.remove(recent, 1)
+    end
+    
+    -- Calculate success rate
+    local successes = 0
+    local total_error = 0
+    for _, parry in ipairs(recent) do
+        if parry.success then successes = successes + 1 end
+        total_error = total_error + math.abs(parry.timing_error)
+    end
+    
+    if #recent > 0 then
+        System.__properties.__success_rate = successes / #recent
+        System.__properties.__average_timing_error = total_error / #recent
+        
+        -- Auto-calibrate if success rate is low
+        if System.__properties.__success_rate < 0.7 and #recent >= 5 then
+            System.__properties.__calibration_offset = System.__properties.__calibration_offset + (System.__properties.__average_timing_error * 0.1)
+        end
+    end
+end
+
+-- Trajectory Visualization (Debug)
+function System.detection.visualize_trajectory(ball, prediction_time)
+    if not System.__properties.__debug_trajectory then return end
+    if not ball or not ball:FindFirstChild('zoomies') then return end
+    
+    local current_pos = ball.Position
+    local velocity = ball.zoomies.VectorVelocity
+    
+    -- Create trajectory markers
+    for i = 0, prediction_time, 0.1 do
+        local predicted_pos = current_pos + (velocity * i)
+        
+        task.spawn(function()
+            local part = Instance.new("Part")
+            part.Size = Vector3.new(0.5, 0.5, 0.5)
+            part.Position = predicted_pos
+            part.Anchored = true
+            part.CanCollide = false
+            part.CanQuery = false
+            part.Material = Enum.Material.Neon
+            part.Color = Color3.fromRGB(255, 100, 100)
+            part.Transparency = 0.5
+            part.Parent = workspace
+            
+            Debris:AddItem(part, 0.5)
+        end)
+    end
+end
+
 
 ReplicatedStorage.Remotes.DeathBall.OnClientEvent:Connect(function(c, d)
     System.__properties.__deathslash_active = d or false
@@ -802,6 +1034,12 @@ end)
 ReplicatedStorage.Remotes.ParrySuccess.OnClientEvent:Connect(function()
     if not Alive or LocalPlayer.Character.Parent ~= Alive then
         return
+    end
+    
+    -- Track performance for adaptive timing
+    local ball = System.ball.get()
+    if ball then
+        System.detection.track_parry_performance(ball, true)
     end
     
     if System.__properties.__grab_animation then
@@ -1012,23 +1250,48 @@ function System.auto_spam:get_ball_properties()
     }
 end
 
+
 function System.auto_spam.spam_service(params)
     local ping = params.Ping or 0
     local speed = params.Ball_Speed or 0
+    local target_distance = params.Target_Distance or 999
+    local ball_target = params.Ball_Target or ""
     
-    -- Calculate base distance based on Ping and Configured Spam Distance
-    local max_dist = System.__properties.__spam_distance
+    -- Base distance from configuration
+    local base_range = System.__properties.__spam_distance
     
-    -- Dynamic adjustment: speed / 6 is a good baseline, capped by max_dist
-    local calculated_dist = ping + math.min(speed / 6, max_dist)
-    
-    -- Cap for low speeds to prevent weird behavior
-    if speed < 600 then
-        calculated_dist = ping + math.min(speed / 7, 75)
+    -- Dynamic range calculation if enabled
+    if System.__properties.__dynamic_spam_range then
+        -- Multi-factor calculation
+        local speed_factor = math.min(speed / 5, base_range * 0.8)
+        local ping_factor = ping * 1.5
+        local proximity_bonus = target_distance < 30 and 15 or 0
+        
+        -- Adaptive formula
+        local effective_range = base_range + speed_factor + ping_factor + proximity_bonus
+        
+        -- Speed-based clamping for optimal performance
+        if speed < 400 then
+            effective_range = math.min(effective_range, 70)
+        elseif speed < 800 then
+            effective_range = math.min(effective_range, 90)
+        elseif speed < 1200 then
+            effective_range = math.min(effective_range, 110)
+        else
+            effective_range = math.min(effective_range, 130)
+        end
+        
+        return effective_range
+    else
+        -- Original calculation for compatibility
+        local calculated_dist = ping + math.min(speed / 6, base_range)
+        
+        if speed < 600 then
+            calculated_dist = ping + math.min(speed / 7, 75)
+        end
+        
+        return calculated_dist
     end
-    
-    -- Return the calculated effective range
-    return calculated_dist
 end
 
 function System.auto_spam.start()
@@ -1049,16 +1312,13 @@ function System.auto_spam.start()
         
         System.player.get_closest()
         
+        if not Closest_Entity or not Closest_Entity.PrimaryPart then return end
+        
         local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
         local ping_threshold = math.clamp(ping / 10, 1, 16)
         
         local ball_target = ball:GetAttribute('target')
-        
-        local valid_range = System.auto_spam.spam_service({
-            Ping = ping_threshold,
-            Ball_Speed = zoomies.VectorVelocity.Magnitude
-        })
-        local spam_accuracy = valid_range
+        local ball_speed = zoomies.VectorVelocity.Magnitude
         
         local target_position = Closest_Entity.PrimaryPart.Position
         local target_distance = LocalPlayer:DistanceFromCharacter(target_position)
@@ -1069,6 +1329,15 @@ function System.auto_spam.start()
         local dot = direction:Dot(ball_direction)
         local distance = LocalPlayer:DistanceFromCharacter(ball.Position)
         
+        -- Enhanced spam service with all parameters
+        local valid_range = System.auto_spam.spam_service({
+            Ping = ping_threshold,
+            Ball_Speed = ball_speed,
+            Target_Distance = target_distance,
+            Ball_Target = ball_target
+        })
+        local spam_accuracy = valid_range
+        
         if not ball_target then return end
         if target_distance > spam_accuracy or distance > spam_accuracy then return end
         
@@ -1077,7 +1346,27 @@ function System.auto_spam.start()
         
         if ball_target == LocalPlayer.Name and target_distance > 30 and distance > 30 then return end
         
-                    if distance <= spam_accuracy and System.__properties.__parries > System.__properties.__spam_threshold then
+        -- Dynamic threshold based on situation
+        local base_threshold = System.__properties.__spam_threshold
+        local dynamic_threshold = base_threshold
+        
+        -- Lower threshold when ball is fast
+        if ball_speed > 1000 then
+            dynamic_threshold = base_threshold * 0.7
+        end
+        
+        -- Lower threshold when very close
+        if distance < 40 then
+            dynamic_threshold = base_threshold * 0.5
+        end
+        
+        -- Track velocity for advanced features
+        System.detection.track_velocity(ball)
+        
+        -- Visualize trajectory if debug enabled
+        System.detection.visualize_trajectory(ball, 1.0)
+        
+        if distance <= spam_accuracy and System.__properties.__parries > dynamic_threshold then
             if getgenv().AutoSpamMode == "Keypress" then
                 if PF then PF() end
             else
@@ -1123,6 +1412,11 @@ function System.autoparry.start()
                 end
             end
         end
+        
+        -- Sort balls by priority to handle most dangerous first
+        table.sort(balls, function(a, b)
+            return System.detection.calculate_ball_priority(a) > System.detection.calculate_ball_priority(b)
+        end)
 
         for _, ball in pairs(balls) do
             if System.__triggerbot.__enabled then return end
@@ -1146,11 +1440,24 @@ function System.autoparry.start()
             local ping_threshold = math.clamp(ping / 10, 5, 17)
             local speed = velocity.Magnitude
             
-            local capped_speed_diff = math.min(math.max(speed - 9.5, 0), 650)
-            local speed_divisor = (2.4 + capped_speed_diff * 0.002) * System.__properties.__divisor_multiplier
-            local parry_accuracy = ping_threshold + math.max(speed / speed_divisor, 9.5)
+            -- Track velocity for advanced features
+            System.detection.track_velocity(ball)
+            
+            -- Visualize trajectory if debug enabled
+            System.detection.visualize_trajectory(ball, 1.0)
             
             local curved = System.detection.is_curved()
+            
+            -- Auto-adjust accuracy if enabled
+            local adjusted_accuracy = System.detection.auto_adjust_accuracy(speed, curved, ping)
+            
+            -- Use adjusted accuracy for divisor calculation
+            local effective_accuracy = System.__properties.__auto_accuracy_adjustment and adjusted_accuracy or System.__properties.__accuracy
+            local divisor_multiplier = 0.7 + (effective_accuracy - 1) * (0.35 / 99)
+            
+            local capped_speed_diff = math.min(math.max(speed - 9.5, 0), 650)
+            local speed_divisor = (2.4 + capped_speed_diff * 0.002) * divisor_multiplier
+            local parry_accuracy = ping_threshold + math.max(speed / speed_divisor, 9.5)
             
             if ball:FindFirstChild('AeroDynamicSlashVFX') then
                 ball.AeroDynamicSlashVFX:Destroy()
@@ -1177,7 +1484,25 @@ function System.autoparry.start()
             if System.__config.__detections.__timehole and System.__properties.__timehole_active then continue end
             if System.__config.__detections.__slashesoffury and System.__properties.__slashesoffury_active then continue end
             
-            if ball_target == LocalPlayer.Name and distance <= parry_accuracy then
+            local player_pos = LocalPlayer.Character.PrimaryPart.Position
+            local should_parry = false
+
+            if ball_target == LocalPlayer.Name then
+                -- Check distance first (standard logic)
+                if distance <= parry_accuracy then
+                    should_parry = true
+                end
+
+                -- Predictive timing logic
+                if not should_parry and System.__properties.__predictive_timing then
+                    local timing = System.detection.calculate_optimal_parry_time(ball, player_pos, ping * 10)
+                    if timing and timing.optimal <= 0.05 then
+                        should_parry = true
+                    end
+                end
+            end
+            
+            if should_parry then
                 if getgenv().CooldownProtection then
                     local ParryCD = LocalPlayer.PlayerGui.Hotbar.Block.UIGradient
                     if ParryCD.Offset.Y < 0.4 then
@@ -1205,7 +1530,7 @@ function System.autoparry.start()
                 end
             end
             
-            if ball_target == LocalPlayer.Name and distance <= parry_accuracy then
+            if should_parry then
                 if getgenv().AutoParryMode == "Keypress" then
                     System.parry.keypress()
                 else
@@ -1241,7 +1566,23 @@ function System.autoparry.start()
                     local speed_divisor = (2.4 + capped_speed_diff * 0.002) * System.__properties.__divisor_multiplier
                     local parry_accuracy = ping_threshold + math.max(speed / speed_divisor, 9.5)
                     
-                    if ball_target == LocalPlayer.Name and distance <= parry_accuracy then
+                    local should_parry = false
+                    if ball_target == LocalPlayer.Name then
+                        -- Check distance first (standard logic)
+                        if distance <= parry_accuracy then
+                            should_parry = true
+                        end
+
+                        -- Predictive timing logic
+                        if not should_parry and System.__properties.__predictive_timing then
+                            local timing = System.detection.calculate_optimal_parry_time(training_ball, LocalPlayer.Character.PrimaryPart.Position, ping * 10)
+                            if timing and timing.optimal <= 0.05 then
+                                should_parry = true
+                            end
+                        end
+                    end
+
+                    if should_parry then
                         if getgenv().AutoParryMode == "Keypress" then
                             System.parry.keypress()
                         else
@@ -1460,6 +1801,77 @@ MainSection:Toggle({ Type = "Checkbox",
         getgenv().AutoAbility = value
     end
 })
+
+-- Advanced Features Section
+local AdvancedSection = AutoparryTab:Section({ 
+    Title = "Advanced Features", 
+    Side = "Right",
+    Box = true, 
+    Opened = false 
+})
+
+AdvancedSection:Toggle({
+    Title = "Auto Accuracy Adjustment",
+    Description = "Automatically adjust accuracy based on ball speed",
+    Value = false,
+    Callback = function(value)
+        System.__properties.__auto_accuracy_adjustment = value
+    end
+})
+
+AdvancedSection:Toggle({
+    Title = "Predictive Timing",
+    Description = "Use physics prediction for parry timing",
+    Value = true,
+    Callback = function(value)
+        System.__properties.__predictive_timing = value
+    end
+})
+
+AdvancedSection:Toggle({
+    Title = "Debug Trajectory",
+    Description = "Visualize ball trajectory (may impact FPS)",
+    Value = false,
+    Callback = function(value)
+        System.__properties.__debug_trajectory = value
+    end
+})
+
+-- Spam Settings Section
+local SpamSettingsSection = SpamTab:Section({ 
+    Title = "Spam Settings", 
+    Side = "Left",
+    Box = true, 
+    Opened = true 
+})
+
+SpamSettingsSection:Slider({
+    Title = 'Spam Distance',
+    Description = 'Maximum distance for auto spam activation',
+    Value = { Min = 50, Max = 150, Value = 95 },
+    Callback = function(value)
+        System.__properties.__spam_distance = value
+    end
+})
+
+SpamSettingsSection:Slider({
+    Title = 'Spam Threshold',
+    Description = 'Minimum parries before spam activates',
+    Value = { Min = 0, Max = 5, Value = 1.5 },
+    Callback = function(value)
+        System.__properties.__spam_threshold = value
+    end
+})
+
+SpamSettingsSection:Toggle({
+    Title = "Dynamic Spam Range",
+    Description = "Auto-adjust spam distance based on ball speed",
+    Value = true,
+    Callback = function(value)
+        System.__properties.__dynamic_spam_range = value
+    end
+})
+
 
 local BotSection = AutoparryTab:Section({ 
     Title = "Triggerbot Settings", 
@@ -6197,7 +6609,7 @@ ExploitsSection:Toggle({
                  
                  if self == ContinuityZeroRemote and method == "FireServer" and getgenv().ContinuityZeroExploit then
                      return oldNamecall(self,
-                         CFrame.new(9e9, 9e9, 9e9), -- Extreme coordinates
+                         CFrame.new(9e9, 9e9, 9e9),
                          LocalPlayer.Name
                      )
                  end
@@ -6210,6 +6622,6 @@ ExploitsSection:Toggle({
 
 WindUI:Notify({
     Title = 'Updated',
-    Content = 'Allusive Features Loaded',
+    Content = 'Advanced Auto Parry & Spam Features Loaded',
     Duration = 10,
 })
