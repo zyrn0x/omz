@@ -5714,11 +5714,78 @@ local function UpdateSky(sky_name)
     end
 end
 
+VisualsSection:Toggle({
+    Title = "Enable Custom Sky",
+    Value = false,
+    Callback = function(v)
+        getgenv().CustomSkyEnabled = v
+        if v then
+            UpdateSky(getgenv().SelectedSky or "Default")
+        else
+            -- Reset to default sky if needed, or just delete the sky instance
+            local Lighting = game:GetService("Lighting")
+            local Sky = Lighting:FindFirstChild("Sky")
+            if Sky then Sky:Destroy() end
+        end
+    end
+})
+
 VisualsSection:Dropdown({
     Title = "Skybox",
     Values = {"Default", "Vaporwave", "Redshift", "Desert", "Minecraft", "Space", "Night", "Pink"},
     Value = "Default",
-    Callback = UpdateSky
+    Callback = function(v)
+        getgenv().SelectedSky = v
+        if getgenv().CustomSkyEnabled then
+            UpdateSky(v)
+        end
+    end
+})
+
+VisualsSection:Toggle({
+    Title = "Show Ball Velocity",
+    Value = false,
+    Callback = function(v)
+        getgenv().ShowBallVelocity = v
+        if v then
+            task.spawn(function()
+                while getgenv().ShowBallVelocity do
+                    task.wait()
+                    local balls = System.ball.get_all()
+                    if balls then
+                        for _, ball in pairs(balls) do
+                            if ball:IsA("BasePart") then
+                                local vel = ball.AssemblyLinearVelocity.Magnitude
+                                if not ball:FindFirstChild("VelocityGUI") then
+                                    local bg = Instance.new("BillboardGui", ball)
+                                    bg.Name = "VelocityGUI"
+                                    bg.Size = UDim2.new(0, 100, 0, 50)
+                                    bg.StudsOffset = Vector3.new(0, 2, 0)
+                                    bg.AlwaysOnTop = true
+                                    local txt = Instance.new("TextLabel", bg)
+                                    txt.Size = UDim2.new(1,0,1,0)
+                                    txt.BackgroundTransparency = 1
+                                    txt.TextColor3 = Color3.new(1,0,0)
+                                    txt.TextStrokeTransparency = 0
+                                    txt.Font = Enum.Font.GothamBold
+                                    txt.TextSize = 14
+                                    txt.Text = math.floor(vel)
+                                else
+                                    ball.VelocityGUI.TextLabel.Text = math.floor(vel)
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        else
+            for _, ball in pairs(System.ball.get_all()) do
+                if ball:FindFirstChild("VelocityGUI") then
+                    ball.VelocityGUI:Destroy()
+                end
+            end
+        end
+    end
 })
 
 VisualsSection:Slider({
@@ -5872,58 +5939,63 @@ CosmeticsSection:Toggle({
     end
 })
 
+-- Rewritten Korblox Logic
 CosmeticsSection:Toggle({
     Title = "Korblox",
     Value = false,
     Callback = function(v)
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("RightLowerLeg") then
-             if v then
-                 local mesh = Instance.new("SpecialMesh", LocalPlayer.Character.RightLowerLeg)
-                 mesh.MeshId = "rbxassetid://902942096"
-                 mesh.TextureId = "rbxassetid://902843398"
-                 mesh.Scale = Vector3.new(1, 1, 1)
-                 LocalPlayer.Character.RightFoot.Transparency = 1
-                 LocalPlayer.Character.RightUpperLeg.Transparency = 1
-             end
+        local char = LocalPlayer.Character
+        if char then
+            local rll = char:FindFirstChild("RightLowerLeg")
+            if rll then
+                if v then
+                    local mesh = rll:FindFirstChild("KorbloxMesh") or Instance.new("SpecialMesh", rll)
+                    mesh.Name = "KorbloxMesh"
+                    mesh.MeshId = "http://www.roblox.com/asset/?id=902942093"
+                    mesh.TextureId = "http://www.roblox.com/asset/?id=902843398"
+                    mesh.Scale = Vector3.new(1, 1, 1)
+                    
+                    if char:FindFirstChild("RightFoot") then char.RightFoot.Transparency = 1 end
+                    if char:FindFirstChild("RightUpperLeg") then char.RightUpperLeg.Transparency = 1 end
+                else
+                    local mesh = rll:FindFirstChild("KorbloxMesh")
+                    if mesh then mesh:Destroy() end
+                    
+                    if char:FindFirstChild("RightFoot") then char.RightFoot.Transparency = 0 end
+                    if char:FindFirstChild("RightUpperLeg") then char.RightUpperLeg.Transparency = 0 end
+                end
+            end
         end
     end
 })
 
-local SkinChangerSection = CosmeticsTab:Section({ Title = "Skin Changer", Side = "Right", Box = true, Opened = true })
-
-SkinChangerSection:Input({
-    Title = "Sword Skin Name",
-    Placeholder = "e.g. Dark Blade",
-    Callback = function(text)
-        getgenv().swordModel = text
-        getgenv().updateSword() -- Assumes updateSword exists or fails gracefully
-    end
-})
-
-SkinChangerSection:Toggle({
-    Title = "Enable Skin Changer",
-    Callback = function(v)
-        getgenv().skinChanger = v
-        if v and getgenv().updateSword then getgenv().updateSword() end
-    end
-})
-
-local MusicSection = CosmeticsTab:Section({ Title = "Music Player", Side = "Left", Box = true, Opened = true })
+local MusicSection = CosmeticsTab:Section({ Title = "Music Player", Side = "Right", Box = true, Opened = true })
 local music_sound = Instance.new("Sound", workspace)
 music_sound.Name = "AllusiveMusic"
 music_sound.Looped = true
 
 MusicSection:Dropdown({
    Title = "Track",
-   Values = {"Eeyuh", "Sweep", "Bounce"},
-   Value = "Eeyuh",
+   Values = {"Phonk", "Chill", "Aggressive", "Custom"},
+   Value = "Phonk",
    Callback = function(v)
-       if v == "Eeyuh" then music_sound.SoundId = "rbxassetid://1848354536" -- Placeholder ID
-       elseif v == "Sweep" then music_sound.SoundId = "rbxassetid://1848354536"
-       elseif v == "Bounce" then music_sound.SoundId = "rbxassetid://1848354536"
+       if v == "Phonk" then music_sound.SoundId = "rbxassetid://1837879082"
+       elseif v == "Chill" then music_sound.SoundId = "rbxassetid://1848354536"
+       elseif v == "Aggressive" then music_sound.SoundId = "rbxassetid://1846627375"
        end
-       if music_sound.Playing then music_sound:Play() end
+       if music_sound.Playing and v ~= "Custom" then music_sound:Play() end
    end
+})
+
+MusicSection:Input({
+    Title = "Custom ID",
+    Placeholder = "Enter ID",
+    Callback = function(text)
+        if tonumber(text) then
+            music_sound.SoundId = "rbxassetid://" .. text
+            if music_sound.Playing then music_sound:Play() end
+        end
+    end
 })
 
 MusicSection:Toggle({
@@ -5998,43 +6070,6 @@ ExploitsSection:Toggle({
             if success and mod then
                 mod.cooldown = 0
             end
-        end
-    end
-})
-
-local esp_folder = Instance.new("Folder", CoreGui)
-esp_folder.Name = "AbilityESPPath"
-
-ExploitsSection:Toggle({
-    Title = "Ability ESP",
-    Callback = function(v)
-        getgenv().AbilityESP = v
-        if v then
-            task.spawn(function()
-                while getgenv().AbilityESP do
-                    task.wait(1)
-                    for _, ptr in pairs(Players:GetPlayers()) do
-                        if ptr ~= LocalPlayer and ptr.Character and ptr.Character:FindFirstChild("Head") then
-                             -- Simple ESP Logic placeholder
-                             if not ptr.Character.Head:FindFirstChild("AbilityESP") then
-                                 local bil = Instance.new("BillboardGui", ptr.Character.Head)
-                                 bil.Name = "AbilityESP"
-                                 bil.Size = UDim2.new(0, 100, 0, 50)
-                                 bil.StudsOffset = Vector3.new(0, 3, 0)
-                                 bil.AlwaysOnTop = true
-                                 local txt = Instance.new("TextLabel", bil)
-                                 txt.Size = UDim2.new(1,0,1,0)
-                                 txt.BackgroundTransparency = 1
-                                 txt.TextColor3 = Color3.new(1,1,1)
-                                 txt.TextStrokeTransparency = 0
-                                 txt.Text = ptr:GetAttribute("Abilty") or "Unknown"
-                             end
-                        end
-                    end
-                end
-            end)
-        else
-            -- Clear ESP
         end
     end
 })
