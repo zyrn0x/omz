@@ -112,6 +112,9 @@ local System = {
         __slashesoffury_count = 0,
         __is_mobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled,
         __mobile_guis = {},
+        __is_lagging = false,
+        __last_ping = 0,
+        __last_delta = 0,
         
         -- New advanced features
         __dynamic_spam_range = true,
@@ -132,7 +135,13 @@ local System = {
             __deathslash = false,
             __timehole = false,
             __slashesoffury = false,
-            __phantom = false
+            __phantom = false,
+            __singularity = false,
+            __dribble = false,
+            __bounty = false,
+            __telekinesis = false,
+            __martyrdom = false,
+            __pulse = false
         }
     },
     
@@ -939,6 +948,94 @@ function System.detection.detect_abilities(ball)
     return results
 end
 
+-- 6. Singularity Detection
+function System.detection.detect_singularity(ball)
+    if not ball then return false end
+    if ball:GetAttribute("Singularity") or ball:FindFirstChild("SingularityVFX") then
+        return true
+    end
+    -- Check if target player has Singularity effect
+    local target_name = ball:GetAttribute("target")
+    if target_name then
+        local target_player = Players:FindFirstChild(target_name)
+        if target_player and target_player.Character and target_player.Character.PrimaryPart:FindFirstChild("SingularityCape") then
+            return true
+        end
+    end
+    return false
+end
+
+-- 7. Dribble Detection
+function System.detection.detect_dribble(ball)
+    if not ball or not ball:FindFirstChild('zoomies') then return false end
+    local velocity = ball.zoomies.VectorVelocity
+    local speed = velocity.Magnitude
+    
+    -- Dribble typically involves rapid target changes at high speed in close proximity
+    if speed > 200 then
+        local target = ball:GetAttribute("target")
+        if target and target ~= "" then
+            local target_player = Players:FindFirstChild(target)
+            if target_player and target_player.Character and target_player.Character.PrimaryPart then
+                local dist = (ball.Position - target_player.Character.PrimaryPart.Position).Magnitude
+                if dist < 20 then
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+
+-- 8. Bounty Detection
+function System.detection.detect_bounty()
+    if LocalPlayer.Character and (LocalPlayer.Character:GetAttribute("Bounty") or LocalPlayer.Character:FindFirstChild("BountyMark")) then
+        return true
+    end
+    return false
+end
+
+-- 9. Telekinesis Detection
+function System.detection.detect_telekinesis(ball)
+    if not ball then return false end
+    if ball:GetAttribute("Telekinesis") or ball:FindFirstChild("TelekinesisVFX") then
+        return true
+    end
+    return false
+end
+
+-- 10. Martyrdom Detection
+function System.detection.detect_martyrdom(player)
+    if not player or not player.Character then return false end
+    if player.Character:GetAttribute("MartyrdomActive") or player.Character:FindFirstChild("MartyrdomVFX") then
+        return true
+    end
+    return false
+end
+
+-- 11. Pulse Detection
+function System.detection.detect_pulse()
+    if LocalPlayer.Character and LocalPlayer.Character:GetAttribute("Pulsed") then
+        return true
+    end
+    return false
+end
+
+-- Network Status Tracking
+function System.detection.update_network_status()
+    local current_ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
+    local last_ping = System.__properties.__last_ping
+    
+    System.__properties.__last_ping = current_ping
+    
+    -- Detect Ping Spikes (Lag)
+    if math.abs(current_ping - last_ping) > 50 then
+        System.__properties.__is_lagging = true
+    else
+        System.__properties.__is_lagging = false
+    end
+end
+
 -- Performance Tracking
 function System.detection.track_parry_performance(success, timing_error)
     local recent = System.__properties.__recent_parries
@@ -1360,37 +1457,33 @@ end
 function System.auto_spam.spam_service(params)
     local ping = params.Ping or 0
     local speed = params.Ball_Speed or 0
-    local target_distance = params.Target_Distance or 999
-    local ball_target = params.Ball_Target or ""
     local dot = params.Dot or 0
     
-    -- Base distance from configuration
     local base_range = System.__properties.__spam_distance
+    local calculated_dist = 0
     
-    -- Dynamic range calculation if enabled
     if System.__properties.__dynamic_spam_range then
         local Maximum_Spam_Distance = ping + math.min(speed / 6, base_range)
-        
         if speed < 600 then
             Maximum_Spam_Distance = ping + math.min(speed / 7, 75)
         end
-
         local Maximum_Speed = 5 - math.min(speed / 5, 5)
         local Maximum_Dot = math.clamp(dot, -1, 0) * Maximum_Speed
-        
-        local spam_accuracy = Maximum_Spam_Distance - Maximum_Dot
-        
-        return spam_accuracy
+        calculated_dist = Maximum_Spam_Distance - Maximum_Dot
     else
-        -- Original calculation for compatibility
-        local calculated_dist = ping + math.min(speed / 6, base_range)
-        
+        calculated_dist = ping + math.min(speed / 6, base_range)
         if speed < 600 then
             calculated_dist = ping + math.min(speed / 7, 75)
         end
-        
-        return calculated_dist
     end
+    
+    -- Lag/Ping awareness
+    System.detection.update_network_status()
+    if System.__properties.__is_lagging then
+        calculated_dist = calculated_dist + 15
+    end
+    
+    return calculated_dist
 end
 
 function System.auto_spam.start()
@@ -1468,6 +1561,19 @@ function System.auto_spam.start()
         
         -- Ability Detection
         local abilities = System.detection.detect_abilities(ball)
+        
+        -- Advanced Spam Detections
+        if System.__config.__detections.__singularity and System.detection.detect_singularity(ball) then
+            spam_accuracy = spam_accuracy * 1.5
+        end
+        
+        if System.__config.__detections.__dribble and System.detection.detect_dribble(ball) then
+            spam_accuracy = spam_accuracy * 1.3
+        end
+        
+        if System.__config.__detections.__pulse and System.detection.detect_pulse() then
+            return 
+        end
         
         -- Prevent feeding Forcefield
         if abilities.forcefield then
@@ -1597,6 +1703,31 @@ function System.autoparry.start()
             
             -- Ability Detection & Counters
             local abilities = System.detection.detect_abilities(ball)
+            
+            -- Network Update
+            System.detection.update_network_status()
+            if System.__properties.__is_lagging then
+                parry_accuracy = parry_accuracy + 5
+            end
+
+            -- Advanced Detections
+            if System.__config.__detections.__singularity and System.detection.detect_singularity(ball) then
+                should_parry = true
+            end
+            
+            if System.__config.__detections.__telekinesis and System.detection.detect_telekinesis(ball) then
+                should_parry = true
+            end
+            
+            if System.__config.__detections.__martyrdom then
+                local closest = System.player.get_closest()
+                if closest and System.detection.detect_martyrdom(closest) then
+                    local char = LocalPlayer.Character
+                    if char and char.PrimaryPart and (char.PrimaryPart.Position - closest.PrimaryPart.Position).Magnitude < 15 then
+                        should_parry = true
+                    end
+                end
+            end
 
             if ball_target == LocalPlayer.Name then
                 -- Check distance first (standard logic)
@@ -2626,6 +2757,54 @@ SpecSection:Toggle({
     end
 })
 
+SpecSection:Toggle({
+    Title = 'Singularity Detection',
+    Value = false,
+    Callback = function(value)
+        System.__config.__detections.__singularity = value
+    end
+})
+
+SpecSection:Toggle({
+    Title = 'Dribble Detection',
+    Value = false,
+    Callback = function(value)
+        System.__config.__detections.__dribble = value
+    end
+})
+
+SpecSection:Toggle({
+    Title = 'Bounty Detection',
+    Value = false,
+    Callback = function(value)
+        System.__config.__detections.__bounty = value
+    end
+})
+
+SpecSection:Toggle({
+    Title = 'Telekinesis Detection',
+    Value = false,
+    Callback = function(value)
+        System.__config.__detections.__telekinesis = value
+    end
+})
+
+SpecSection:Toggle({
+    Title = 'Pulse Detection',
+    Value = false,
+    Callback = function(value)
+        System.__config.__detections.__pulse = value
+    end
+})
+
+SpecSection:Toggle({
+    Title = 'Martyrdom Detection',
+    Value = false,
+    Callback = function(value)
+        System.__config.__detections.__martyrdom = value
+    end
+})
+
 local SlashesSection = DetectionTab:Section({ Title = "Slashes Of Fury", Side = "Right", Box = true, Opened = true })
 
 SlashesSection:Toggle({
@@ -2680,6 +2859,15 @@ SpamConfigSection:Slider({
     CustomStep = 0.1,
     Callback = function(v)
         System.__properties.__spam_threshold = v
+    end
+})
+
+SpamConfigSection:Toggle({
+    Title = 'Auto Adaptive Spam',
+    Description = "Scales with Ping & Lag",
+    Value = true,
+    Callback = function(value)
+        System.__properties.__dynamic_spam_range = value
     end
 })
 
@@ -5876,36 +6064,28 @@ local function performDesync()
     local velocity = getgenv().BallPeakVelocity or 0
     local target_y = System.__properties.__desync_height
     
-    desyncData.originalCFrame = hrp.CFrame
-    desyncData.originalVelocity = hrp.AssemblyLinearVelocity
-    
-    -- GOD MODE Desync Logic (Handles 1M+ Velocity and 10-Minute Hold)
-    -- We use a massive Y offset to exploit the server's pathfinding for the ball.
-    -- If targeted, the ball will go to this spoofed position.
-    
     local isTargeted = (ballData.currentBall and ballData.currentBall:GetAttribute("target") == LocalPlayer.Name)
     
     if isTargeted or velocity > 100 then
-        -- Scale offset with velocity, minimum -100k, maximum -10M for extreme speeds
-        local multiplier = math.clamp(velocity / 50, 1, 100000)
+        desyncData.originalCFrame = hrp.CFrame
+        desyncData.originalVelocity = hrp.AssemblyLinearVelocity
+        
+        -- Stable multiplier to prevent engine crashes
+        -- Capping the offset at -100,000 instead of -10M
+        local multiplier = math.clamp(velocity / 100, 1, 50)
         target_y = target_y - (2000 * multiplier)
-    end
-
-    -- Server-Side Teleport Bypass: 
-    -- We set velocity to nearly zero to prevent movement-based "teleport" detection
-    -- while spoofing the CFrame.
-    hrp.CFrame = CFrame.new(
-        Vector3.new(current_pos.X, target_y, current_pos.Z),
-        desyncData.originalCFrame.LookVector
-    )
-    hrp.AssemblyLinearVelocity = Vector3.new(0, 0.001, 0) -- Tiny velocity to "tick" physics
-    
-    -- Stable Physics Wait
-    task.wait() 
-    
-    if state.enabled and cache.hrp then
-        hrp.CFrame = desyncData.originalCFrame
-        hrp.AssemblyLinearVelocity = desyncData.originalVelocity
+        
+        -- Temporarily move HRP
+        hrp.CFrame = CFrame.new(current_pos.X, target_y, current_pos.Z)
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        
+        -- Use PreRender to return position immediately after physics update
+        RunService.PreRender:Once(function()
+            if hrp and state.enabled and desyncData.originalCFrame then
+                hrp.CFrame = desyncData.originalCFrame
+                hrp.AssemblyLinearVelocity = desyncData.originalVelocity
+            end
+        end)
     end
 end
 
