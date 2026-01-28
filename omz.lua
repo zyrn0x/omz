@@ -2403,9 +2403,9 @@ local function create_curve_selector_mobile()
                 current_selected = buttons[i]
                 
                 if getgenv().AutoCurveHotkeyNotify then
-                    Library.SendNotification({
+                    WindUI:Notify({
                         Title = "AutoCurve",
-                        text = curve_data.name,
+                        Content = curve_data.name,
                         Duration = 2
                     })
                 end
@@ -2491,9 +2491,9 @@ local function updateCurveType(newType)
     end
     
     if getgenv().AutoCurveHotkeyNotify then
-        Library.SendNotification({
+        WindUI:Notify({
             Title = "AutoCurve",
-            text = newType,
+            Content = newType,
             Duration = 2
         })
     end
@@ -2569,9 +2569,9 @@ end
 local function sendNotification(title, text)
     if not state.notificationsEnabled then return end
     
-    Library.SendNotification({
+    WindUI:Notify({
         Title = title,
-        text = text,
+        Content = text,
         Duration = config.notificationDuration
     })
 end
@@ -6050,14 +6050,13 @@ local function performDesync()
         performGodDesync()
     end
 end
-    
-end
 
 local function sendNotification(text)
-    if state.notify and Library then
-        Library.SendNotification({
+    if state.notify and WindUI then
+        WindUI:Notify({
             Title = "Immortal [GOD MODE]",
-            text = text
+            Content = text,
+            Duration = 3
         })
     end
 end
@@ -6110,19 +6109,7 @@ LocalPlayer.CharacterRemoving:Connect(function()
     cache.aliveFolder = nil
 end)
 
-hooks.oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
-    if not shouldApplyDesync() or checkcaller() or key ~= "CFrame" or not cache.hrp or not isInAliveFolder() then
-        return hooks.oldIndex(self, key)
-    end
-    
-    if self == cache.hrp then
-        return desyncData.originalCFrame or constants.emptyCFrame
-    elseif self == cache.head and desyncData.originalCFrame then
-        return desyncData.originalCFrame + cache.headOffset
-    end
-    
-    return hooks.oldIndex(self, key)
-end))
+-- Metamethod logic handled at top of script
 
 local DupeSection = ExclusiveTab:Section({ Title = "Immortal [GOD MODE]", Side = "Right", Box = true, Opened = true })
 
