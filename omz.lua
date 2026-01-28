@@ -112,6 +112,11 @@ local System = {
         __slashesoffury_count = 0,
         __is_mobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled,
         __mobile_guis = {},
+        __god_immortal = false,
+        __god_spam = true,
+        __target_history = {},
+        __last_target_change = tick(),
+        __dribble_count = 0,
         __is_lagging = false,
         __last_ping = 0,
         __last_delta = 0,
@@ -153,6 +158,29 @@ local System = {
         __max_parries = 10000,
         __parry_delay = 0.5
     }
+}
+
+-- Metamethod Hook for Desync Hiding
+local oldIndex
+oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
+    if not System.__properties.__god_immortal or checkcaller() then
+        return oldIndex(self, key)
+    end
+    
+    if key == "CFrame" then
+        if self == (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")) then
+            return System.desync_data.originalCFrame or CFrame.new()
+        elseif self == (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head")) then
+            return (System.desync_data.originalCFrame or CFrame.new()) + Vector3.new(0, 1.5, 0)
+        end
+    end
+    
+    return oldIndex(self, key)
+end))
+
+System.desync_data = {
+    originalCFrame = nil,
+    originalVelocity = nil
 }
 
 local revertedRemotes = {}
@@ -966,20 +994,22 @@ function System.detection.detect_singularity(ball)
     return false
 end
 
--- 7. Dribble Detection
+-- 7. Dribble Detection (Revised: Target Switch Analysis)
 function System.detection.detect_dribble(ball)
-    if not ball or not ball:FindFirstChild('zoomies') then return false end
-    local velocity = ball.zoomies.VectorVelocity
-    local speed = velocity.Magnitude
-    
-    -- Dribble typically involves rapid target changes at high speed in close proximity
-    if speed > 200 then
-        local target = ball:GetAttribute("target")
-        if target and target ~= "" then
-            local target_player = Players:FindFirstChild(target)
-            if target_player and target_player.Character and target_player.Character.PrimaryPart then
-                local dist = (ball.Position - target_player.Character.PrimaryPart.Position).Magnitude
-                if dist < 20 then
+    if not ball then return false end
+    local target = ball:GetAttribute("target")
+    if target and target ~= "" then
+        local history = System.__properties.__target_history
+        local now = tick()
+        
+        if #history == 0 or history[#history].target ~= target then
+            table.insert(history, {target = target, time = now})
+            if #history > 10 then table.remove(history, 1) end
+            
+            -- Analyze frequency: 5 target changes in less than 0.75s
+            if #history >= 5 then
+                local interval = (history[#history].time - history[#history-4].time)
+                if interval < 0.75 then 
                     return true
                 end
             end
@@ -1005,11 +1035,23 @@ function System.detection.detect_telekinesis(ball)
     return false
 end
 
--- 10. Martyrdom Detection
-function System.detection.detect_martyrdom(player)
-    if not player or not player.Character then return false end
-    if player.Character:GetAttribute("MartyrdomActive") or player.Character:FindFirstChild("MartyrdomVFX") then
-        return true
+-- 10. Martyrdom Detection (Revised: Health + Proximity)
+function System.detection.detect_martyrdom(ball)
+    if not ball then return false end
+    local current_target = ball:GetAttribute("target")
+    if current_target == LocalPlayer.Name then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") then
+                if player.Character.Humanoid.Health <= 0 then
+                    if player.Character.PrimaryPart then
+                        local dist = (ball.Position - player.Character.PrimaryPart.Position).Magnitude
+                        if dist < 25 then
+                            return true
+                        end
+                    end
+                end
+            end
+        end
     end
     return false
 end
@@ -1017,6 +1059,26 @@ end
 -- 11. Pulse Detection
 function System.detection.detect_pulse()
     if LocalPlayer.Character and LocalPlayer.Character:GetAttribute("Pulsed") then
+        return true
+    end
+    return false
+end
+
+-- 12. Anti-Curve Logic (Delayed Parry for Curving Balls)
+function System.detection.should_wait_for_curve(ball)
+    if not ball then return false end
+    local zoomies = ball:FindFirstChild("zoomies")
+    if not zoomies then return false end
+    
+    local velocity = zoomies.VectorVelocity
+    local char = LocalPlayer.Character
+    if not char or not char.PrimaryPart then return false end
+    
+    local direction_to_player = (char.PrimaryPart.Position - ball.Position).Unit
+    local dot = direction_to_player:Dot(velocity.Unit)
+    
+    -- If dot is low, ball is curving significantly
+    if dot < 0.7 and velocity.Magnitude > 80 then
         return true
     end
     return false
@@ -1455,36 +1517,55 @@ function System.auto_spam:get_ball_properties()
 end
 
 
-function System.auto_spam.spam_service(params)
-    local ping = params.Ping or 0
-    local speed = params.Ball_Speed or 0
-    local dot = params.Dot or 0
+-- God Mode Combat Core (Simplified & Super Strong)
+function System.auto_spam.god_combat_loop()
+    if not System.__properties.__god_spam then return end
     
-    local base_range = System.__properties.__spam_distance
-    local calculated_dist = 0
+    local ball = System.ball.get()
+    if not ball then return end
     
-    if System.__properties.__dynamic_spam_range then
-        local Maximum_Spam_Distance = ping + math.min(speed / 6, base_range)
-        if speed < 600 then
-            Maximum_Spam_Distance = ping + math.min(speed / 7, 75)
-        end
-        local Maximum_Speed = 5 - math.min(speed / 5, 5)
-        local Maximum_Dot = math.clamp(dot, -1, 0) * Maximum_Speed
-        calculated_dist = Maximum_Spam_Distance - Maximum_Dot
-    else
-        calculated_dist = ping + math.min(speed / 6, base_range)
-        if speed < 600 then
-            calculated_dist = ping + math.min(speed / 7, 75)
+    local char = LocalPlayer.Character
+    if not char or not char.PrimaryPart then return end
+    
+    local zoomies = ball:FindFirstChild("zoomies")
+    if not zoomies then return end
+    
+    local ball_speed = zoomies.VectorVelocity.Magnitude
+    local distance = (char.PrimaryPart.Position - ball.Position).Magnitude
+    local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
+    
+    -- THRESHOLD & DISTANCE ENGINE
+    local reaction_time = (distance / math.max(ball_speed, 1)) * 1000
+    local danger_threshold = ping + (ball_speed / 16)
+    local dynamic_threshold = math.clamp(1.5 - (ball_speed / 1500), 0.01, 2)
+    
+    -- ADVANCED DETECTIONS
+    local s_detect = System.detection.detect_singularity(ball)
+    local d_detect = System.detection.detect_dribble(ball)
+    local m_detect = System.detection.detect_martyrdom(ball)
+    local p_detect = System.detection.detect_pulse()
+    local c_wait = System.detection.should_wait_for_curve(ball)
+    
+    -- SCALING
+    if s_detect then danger_threshold = danger_threshold * 1.8 end
+    if d_detect then danger_threshold = danger_threshold * 1.4 end
+    if c_wait and reaction_time > (ping + 80) then return end
+    if p_detect then return end
+    
+    -- PANIC AUTO-ABILITY (Dash/Flash fallback)
+    if reaction_time < (ping + 15) and ball:GetAttribute("target") == LocalPlayer.Name then
+        local ability_remote = ReplicatedStorage:FindFirstChild("AbilityButtonPress", true)
+        if ability_remote then ability_remote:FireServer() end
+    end
+
+    -- EXECUTION
+    if (reaction_time < danger_threshold or m_detect) then
+        if ball:GetAttribute("target") == LocalPlayer.Name then
+            if System.__properties.__parries > dynamic_threshold then
+                System.parry.execute()
+            end
         end
     end
-    
-    -- Lag/Ping awareness
-    System.detection.update_network_status()
-    if System.__properties.__is_lagging then
-        calculated_dist = calculated_dist + 15
-    end
-    
-    return calculated_dist
 end
 
 function System.auto_spam.start()
@@ -1493,112 +1574,7 @@ function System.auto_spam.start()
     end
     
     System.__properties.__auto_spam_enabled = true
-    System.__properties.__connections.__auto_spam = RunService.PreSimulation:Connect(function()
-        local ball = System.ball.get()
-        
-        if not ball then return end
-        
-        if System.__properties.__slashesoffury_active then return end
-        
-        local zoomies = ball:FindFirstChild('zoomies')
-        if not zoomies then return end
-        
-        System.player.get_closest()
-        
-        if not Closest_Entity or not Closest_Entity.PrimaryPart then return end
-        
-        local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
-        local ping_threshold = math.clamp(ping / 10, 1, 16)
-        
-        local ball_target = ball:GetAttribute('target')
-        local ball_speed = zoomies.VectorVelocity.Magnitude
-        
-        local target_position = Closest_Entity.PrimaryPart.Position
-        local target_distance = LocalPlayer:DistanceFromCharacter(target_position)
-        
-        local direction = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Unit
-        local ball_direction = zoomies.VectorVelocity.Unit
-        
-        local dot = direction:Dot(ball_direction)
-        local distance = LocalPlayer:DistanceFromCharacter(ball.Position)
-        
-        -- Enhanced spam service with all parameters
-        local valid_range = System.auto_spam.spam_service({
-            Ping = ping_threshold,
-            Ball_Speed = ball_speed,
-            Target_Distance = target_distance,
-            Ball_Target = ball_target,
-            Dot = dot
-        })
-        local spam_accuracy = valid_range
-        
-        if not ball_target then return end
-        if target_distance > spam_accuracy or distance > spam_accuracy then return end
-        
-        local pulsed = LocalPlayer.Character:GetAttribute('Pulsed')
-        if pulsed then return end
-        
-        if ball_target == LocalPlayer.Name and target_distance > 40 and distance > 40 then return end
-        
-        -- Dynamic threshold base calculation
-        local base_threshold = System.__properties.__spam_threshold
-        local dynamic_threshold = base_threshold
-        
-        -- Lower base threshold when ball is fast or close
-        if ball_speed > 1000 then dynamic_threshold = dynamic_threshold * 0.7 end
-        if distance < 40 then dynamic_threshold = dynamic_threshold * 0.5 end
-        
-        -- Track velocity and visualize for advanced features
-        System.detection.track_velocity(ball)
-        System.detection.visualize_trajectory(ball, 1.0)
-        
-        -- Ability Detection
-        local abilities = System.detection.detect_abilities(ball)
-        if abilities.forcefield then return end
-        
-        -- Advanced Spam Detections
-        if System.__config.__detections.__singularity and System.detection.detect_singularity(ball) then
-            spam_accuracy = spam_accuracy * 1.5
-        end
-        if System.__config.__detections.__dribble and System.detection.detect_dribble(ball) then
-            spam_accuracy = spam_accuracy * 1.3
-        end
-        if System.__config.__detections.__pulse and System.detection.detect_pulse() then
-            return 
-        end
-        
-        if distance <= spam_accuracy then
-            -- STRICT TARGET VERIFICATION (Fixes 'one extra parry' death)
-            local current_target = ball:GetAttribute('target')
-            if current_target ~= LocalPlayer.Name then
-                return
-            end
-            
-            -- AUTOMATIC THRESHOLD LOGIC
-            local threshold_to_use = dynamic_threshold
-            if System.__properties.__auto_threshold then
-                -- Faster/Closer ball = lower threshold (more aggressive)
-                -- Slower/Further ball = higher threshold (safer)
-                local speed_factor = math.clamp(ball_speed / 500, 0.5, 2)
-                local dist_factor = math.clamp(distance / 100, 0.5, 2)
-                threshold_to_use = (dynamic_threshold / speed_factor) * dist_factor
-                
-                -- Clamp to sane values
-                threshold_to_use = math.clamp(threshold_to_use, 0.1, 5)
-            end
-
-            if System.__properties.__parries > threshold_to_use then
-                if getgenv().AutoSpamMode == "Keypress" then
-                    if PF then PF() end
-                else
-                    System.parry.execute()
-                    if getgenv().AutoSpamAnimationFix and PF then
-                        PF()
-                    end
-                end
-            end
-        end
-    end)
+    System.__properties.__connections.__auto_spam = RunService.PreSimulation:Connect(System.auto_spam.god_combat_loop)
 end
 
 function System.auto_spam.stop()
@@ -2849,42 +2825,23 @@ PhantomSection:Toggle({
     end
 })
 
-local SpamConfigSection = SpamTab:Section({ Title = "Configuration", Side = "Left", Box = true, Opened = true })
+local SpamConfigSection = SpamTab:Section({ Title = "GOD-Tier Combat", Side = "Left", Box = true, Opened = true })
 
-SpamConfigSection:Slider({
-    Title = "Spam Distance",
-    Value = { Min = 10, Max = 500, Value = 150 },
-    LeftText = "Studs",
-    Callback = function(v)
-        System.__properties.__spam_distance = v
-    end
-})
-
-SpamConfigSection:Slider({
-    Title = "Spam Threshold",
-    Value = { Min = 0.1, Max = 10, Value = 1.5 },
-    LeftText = "Value",
-    CustomStep = 0.1,
-    Callback = function(v)
-        System.__properties.__spam_threshold = v
+SpamConfigSection:Toggle({
+    Title = 'GOD Mode Auto Spam',
+    Description = "Fully Automated & Super Strong",
+    Value = true,
+    Callback = function(value)
+        System.__properties.__god_spam = value
     end
 })
 
 SpamConfigSection:Toggle({
-    Title = 'Auto Adaptive Spam',
-    Description = "Scales with Ping & Lag",
-    Value = true,
+    Title = 'ULTIMATE Immortal [GOD MODE]',
+    Description = "1M+ Velocity & 10min stability",
+    Value = false,
     Callback = function(value)
-        System.__properties.__dynamic_spam_range = value
-    end
-})
-
-SpamConfigSection:Toggle({
-    Title = 'Auto Adaptive Threshold',
-    Description = "Prevents 'one extra parry' death",
-    Value = true,
-    Callback = function(value)
-        System.__properties.__auto_threshold = value
+        Invisibilidade.toggle(value)
     end
 })
 
@@ -6010,6 +5967,34 @@ local ballData = {
     currentBall = nil
 }
 
+local function performGodDesync()
+    updateCache()
+    if not System.__properties.__god_immortal or not cache.hrp or not isInAliveFolder() then return end
+    
+    local hrp = cache.hrp
+    local velocity = getgenv().BallPeakVelocity or 0
+    
+    -- Teleport happens BEFORE physics
+    System.desync_data.originalCFrame = hrp.CFrame
+    System.desync_data.originalVelocity = hrp.AssemblyLinearVelocity
+    
+    local target_y = -100000000 -- 10^8 Studs for maximum safety
+    hrp.CFrame = CFrame.new(hrp.Position.X, target_y, hrp.Position.Z)
+    hrp.AssemblyLinearVelocity = Vector3.new(0, 10^15, 0) -- Break prediction server-side
+end
+
+local function restoreGodDesync()
+    if not System.__properties.__god_immortal or not cache.hrp or not System.desync_data.originalCFrame then return end
+    
+    -- Restoration happens AFTER physics
+    cache.hrp.CFrame = System.desync_data.originalCFrame
+    cache.hrp.AssemblyLinearVelocity = System.desync_data.originalVelocity
+end
+
+local function shouldApplyDesync()
+    return System.__properties.__god_immortal and (getgenv().BallVelocityAbove800 == true or (ballData.currentBall and ballData.currentBall:GetAttribute("target") == LocalPlayer.Name))
+end
+
 local function updateCache()
     local character = LocalPlayer.Character
     if character ~= cache.character then
@@ -6017,7 +6002,7 @@ local function updateCache()
         if character then
             cache.hrp = character:FindFirstChild("HumanoidRootPart")
             cache.head = character:FindFirstChild("Head")
-            cache.aliveFolder = workspace.Alive
+            cache.aliveFolder = workspace:FindFirstChild("Alive")
             if cache.hrp then
                 cache.headOffset = Vector3.new(0, cache.hrp.Size.Y * 0.5 + 0.5, 0)
             end
@@ -6034,7 +6019,6 @@ end
 
 local function trackBallVelocity()
     local ball = System.ball.get()
-
     if not ball then
         ballData.currentBall = nil
         ballData.peakVelocity = 0
@@ -6049,11 +6033,7 @@ local function trackBallVelocity()
     end
 
     local zoomies = ball:FindFirstChild("zoomies")
-    if not zoomies then
-        getgenv().BallPeakVelocity = 0
-        getgenv().BallVelocityAbove800 = false
-        return
-    end
+    if not zoomies then return end
 
     local velocity = zoomies.VectorVelocity.Magnitude
 
@@ -6062,48 +6042,15 @@ local function trackBallVelocity()
     end
 
     getgenv().BallPeakVelocity = ballData.peakVelocity
-    getgenv().BallVelocityAbove800 = ballData.peakVelocity >= constants.velocityThreshold
-end
-
-local function shouldApplyDesync()
-    return state.enabled and (getgenv().BallVelocityAbove800 == true or (ballData.currentBall and ballData.currentBall:GetAttribute("target") == LocalPlayer.Name))
+    getgenv().BallVelocityAbove800 = ballData.peakVelocity >= 800
 end
 
 local function performDesync()
-    updateCache()
-    
-    if not state.enabled or not cache.hrp or not isInAliveFolder() then
-        return
+    if System.__properties.__god_immortal then
+        performGodDesync()
     end
+end
     
-    local hrp = cache.hrp
-    local current_pos = hrp.Position
-    local velocity = getgenv().BallPeakVelocity or 0
-    local target_y = System.__properties.__desync_height
-    
-    local isTargeted = (ballData.currentBall and ballData.currentBall:GetAttribute("target") == LocalPlayer.Name)
-    
-    if isTargeted or velocity > 100 then
-        desyncData.originalCFrame = hrp.CFrame
-        desyncData.originalVelocity = hrp.AssemblyLinearVelocity
-        
-        -- Stable multiplier to prevent engine crashes
-        -- Capping the offset at -100,000 instead of -10M
-        local multiplier = math.clamp(velocity / 100, 1, 50)
-        target_y = target_y - (2000 * multiplier)
-        
-        -- Temporarily move HRP
-        hrp.CFrame = CFrame.new(current_pos.X, target_y, current_pos.Z)
-        hrp.AssemblyLinearVelocity = Vector3.zero
-        
-        -- Use PreRender to return position immediately after physics update
-        RunService.PreRender:Once(function()
-            if hrp and state.enabled and desyncData.originalCFrame then
-                hrp.CFrame = desyncData.originalCFrame
-                hrp.AssemblyLinearVelocity = desyncData.originalVelocity
-            end
-        end)
-    end
 end
 
 local function sendNotification(text)
@@ -6116,48 +6063,39 @@ local function sendNotification(text)
 end
 
 function Invisibilidade.toggle(enabled)
-    if state.enabled == enabled then return end
+    if System.__properties.__god_immortal == enabled then return end
     
-    state.enabled = enabled
-    System.__properties.__walkable_immortal = enabled
+    System.__properties.__god_immortal = enabled
     
     if enabled then
+        -- Multi-connection setup for high stability
         if not state.ballTrackingConnection then
             state.ballTrackingConnection = RunService.Heartbeat:Connect(trackBallVelocity)
         end
-
-        if not state.heartbeatConnection then
-            state.heartbeatConnection = RunService.Heartbeat:Connect(performDesync)
+        if not state.preSimulationConnection then
+            state.preSimulationConnection = RunService.PreSimulation:Connect(performGodDesync)
+        end
+        if not state.postSimulationConnection then
+            state.postSimulationConnection = RunService.PostSimulation:Connect(restoreGodDesync)
         end
     else
-        if state.ballTrackingConnection then
-            state.ballTrackingConnection:Disconnect()
-            state.ballTrackingConnection = nil
-        end
-
-        if state.heartbeatConnection then
-            state.heartbeatConnection:Disconnect()
-            state.heartbeatConnection = nil
-        end
+        if state.ballTrackingConnection then state.ballTrackingConnection:Disconnect(); state.ballTrackingConnection = nil end
+        if state.preSimulationConnection then state.preSimulationConnection:Disconnect(); state.preSimulationConnection = nil end
+        if state.postSimulationConnection then state.postSimulationConnection:Disconnect(); state.postSimulationConnection = nil end
 
         updateCache()
-        if cache.hrp and desyncData.originalCFrame then
-            cache.hrp.CFrame = desyncData.originalCFrame
-            if desyncData.originalVelocity then
-                cache.hrp.AssemblyLinearVelocity = desyncData.originalVelocity
-            end
+        if cache.hrp and System.desync_data.originalCFrame then
+            cache.hrp.CFrame = System.desync_data.originalCFrame
+            cache.hrp.AssemblyLinearVelocity = System.desync_data.originalVelocity
         end
         
-        desyncData.originalCFrame = nil
-        desyncData.originalVelocity = nil
-
+        System.desync_data.originalCFrame = nil
+        System.desync_data.originalVelocity = nil
         ballData.peakVelocity = 0
-        ballData.currentBall = nil
         getgenv().BallPeakVelocity = 0
-        getgenv().BallVelocityAbove800 = false
     end
     
-    sendNotification(enabled and "God Mode ON" or "God Mode OFF")
+    sendNotification(enabled and "ULTIMATE IMMORTAL ON" or "ULTIMATE IMMORTAL OFF")
 end
 
 function Invisibilidade.setNotify(enabled)
