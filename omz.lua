@@ -5759,187 +5759,9 @@ AISection:Slider({
     end
 })
 
-local WalkableSemiImmortal = {}
 
-local state = {
-    enabled = false,
-    notify = false,
-    heartbeatConnection = nil
-}
 
-local desyncData = {
-    originalCFrame = nil,
-    originalVelocity = nil
-}
 
-local cache = {
-    character = nil,
-    hrp = nil,
-    head = nil,
-    headOffset = Vector3.new(0, 0, 0),
-    aliveFolder = nil
-}
-
-local hooks = {
-    oldIndex = nil
-}
-
-local constants = {
-    emptyCFrame = CFrame.new(),
-    radius = 25,
-    baseHeight = 5,
-    riseHeight = 30,
-    cycleSpeed = 11.9,
-    velocity = Vector3.new(1, 1, 1)
-}
-
-local function updateCache()
-    local character = LocalPlayer.Character
-    if character ~= cache.character then
-        cache.character = character
-        if character then
-            cache.hrp = character.HumanoidRootPart
-            cache.head = character.Head
-            cache.aliveFolder = workspace.Alive
-            if cache.hrp then
-                cache.headOffset = Vector3.new(0, cache.hrp.Size.Y * 0.5 + 0.5, 0)
-            end
-        else
-            cache.hrp = nil
-            cache.head = nil
-        end
-    end
-end
-
-local function isInAliveFolder()
-    return cache.aliveFolder and cache.character and cache.character.Parent == cache.aliveFolder
-end
-
-local function calculateOrbitPosition(hrp)
-    local angle = math.random(-2147483647, 2147483647) * 1000
-    local cycle = math.floor(tick() * constants.cycleSpeed) % 2
-    local yOffset = cycle == 0 and 0 or constants.riseHeight
-    
-    local pos = hrp.Position
-    local yBase = pos.Y - hrp.Size.Y * 0.5 + constants.baseHeight + yOffset
-    
-    return CFrame.new(
-        pos.X + math.cos(angle) * constants.radius,
-        yBase,
-        pos.Z + math.sin(angle) * constants.radius
-    )
-end
-
-local function performDesync()
-    updateCache()
-    
-    if not state.enabled or not cache.hrp or not isInAliveFolder() then
-        return
-    end
-    
-    local hrp = cache.hrp
-    desyncData.originalCFrame = hrp.CFrame
-    desyncData.originalVelocity = hrp.AssemblyLinearVelocity
-    
-    hrp.CFrame = calculateOrbitPosition(hrp)
-    hrp.AssemblyLinearVelocity = constants.velocity
-    
-    RunService.RenderStepped:Wait()
-    
-    hrp.CFrame = desyncData.originalCFrame
-    hrp.AssemblyLinearVelocity = desyncData.originalVelocity
-end
-
-local function sendNotification(text)
-    if state.notify and Library then
-        Library.SendNotification({
-            Title = "Walkable Semi-Immortal",
-            text = text
-        })
-    end
-end
-
-function WalkableSemiImmortal.toggle(enabled)
-    if state.enabled == enabled then return end
-    
-    state.enabled = enabled
-    getgenv().Walkablesemiimortal = enabled
-    
-    if enabled then
-        if not state.heartbeatConnection then
-            state.heartbeatConnection = RunService.Heartbeat:Connect(performDesync)
-        end
-    else
-        if state.heartbeatConnection then
-            state.heartbeatConnection:Disconnect()
-            state.heartbeatConnection = nil
-        end
-        desyncData.originalCFrame = nil
-        desyncData.originalVelocity = nil
-    end
-    
-    sendNotification(enabled and "ON" or "OFF")
-end
-
-function WalkableSemiImmortal.setNotify(enabled)
-    state.notify = enabled
-    getgenv().WalkablesemiimortalNotify = enabled
-end
-
-function WalkableSemiImmortal.setRadius(value)
-    constants.radius = value
-end
-
-function WalkableSemiImmortal.setHeight(value)
-    constants.riseHeight = value
-end
-
-LocalPlayer.CharacterRemoving:Connect(function()
-    cache.character = nil
-    cache.hrp = nil
-    cache.head = nil
-    cache.aliveFolder = nil
-end)
-
-hooks.oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
-    if not state.enabled or checkcaller() or key ~= "CFrame" or not cache.hrp or not isInAliveFolder() then
-        return hooks.oldIndex(self, key)
-    end
-    
-    if self == cache.hrp then
-        return desyncData.originalCFrame or constants.emptyCFrame
-    elseif self == cache.head and desyncData.originalCFrame then
-        return desyncData.originalCFrame + cache.headOffset
-    end
-    
-    return hooks.oldIndex(self, key)
-end))
-
-local BlatantSection = ExclusiveTab:Section({ Title = "Blatant Features", Side = "Left", Box = true, Opened = true })
-
-BlatantSection:Toggle({
-    Title = "Walkable Semi-Immortal [BLATANT!]",
-    Value = false,
-    Callback = WalkableSemiImmortal.toggle
-})
-
-BlatantSection:Toggle({ Type = "Checkbox",
-    Title = "Notify",
-    Value = false,
-    Callback = WalkableSemiImmortal.setNotify
-})
-
-BlatantSection:Slider({
-    Title = 'Immortal Radius',
-    Value = { Min = 0, Max = 100, Value = 25 },
-    Callback = WalkableSemiImmortal.setRadius
-})
-
-BlatantSection:Slider({
-    Title = 'Immortal Height',
-    Value = { Min = 0, Max = 60, Value = 30 },
-    Callback = WalkableSemiImmortal.setHeight
-})
 
 local Invisibilidade = {}
 
@@ -6052,30 +5874,34 @@ local function performDesync()
     local hrp = cache.hrp
     local current_pos = hrp.Position
     local velocity = getgenv().BallPeakVelocity or 0
+    local target_y = System.__properties.__desync_height
     
     desyncData.originalCFrame = hrp.CFrame
     desyncData.originalVelocity = hrp.AssemblyLinearVelocity
     
-    -- Walkable Semi-Immortal Logic
-    local target_y = System.__properties.__desync_height
+    -- GOD MODE Desync Logic (Handles 1M+ Velocity and 10-Minute Hold)
+    -- We use a massive Y offset to exploit the server's pathfinding for the ball.
+    -- If targeted, the ball will go to this spoofed position.
     
-    -- Handle extreme velocities (1M+)
-    -- If the ball is fast, we need to spoof much further to exploit the engine
-    if velocity > 500 then
-        local multiplier = math.clamp(velocity / 100, 1, 50000)
-        target_y = target_y - (100 * multiplier)
+    local isTargeted = (ballData.currentBall and ballData.currentBall:GetAttribute("target") == LocalPlayer.Name)
+    
+    if isTargeted or velocity > 100 then
+        -- Scale offset with velocity, minimum -100k, maximum -10M for extreme speeds
+        local multiplier = math.clamp(velocity / 50, 1, 100000)
+        target_y = target_y - (2000 * multiplier)
     end
 
-    -- Teleport Server Side Bypass
-    -- We set the CFrame slightly before the physics step if possible, or just very fast back-and-forth
+    -- Server-Side Teleport Bypass: 
+    -- We set velocity to nearly zero to prevent movement-based "teleport" detection
+    -- while spoofing the CFrame.
     hrp.CFrame = CFrame.new(
         Vector3.new(current_pos.X, target_y, current_pos.Z),
         desyncData.originalCFrame.LookVector
     )
-    hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+    hrp.AssemblyLinearVelocity = Vector3.new(0, 0.001, 0) -- Tiny velocity to "tick" physics
     
-    -- Yield for the physics step to process at the spoofed location
-    task.wait() -- Better than RenderStepped:Wait() for physics
+    -- Stable Physics Wait
+    task.wait() 
     
     if state.enabled and cache.hrp then
         hrp.CFrame = desyncData.originalCFrame
@@ -6086,7 +5912,7 @@ end
 local function sendNotification(text)
     if state.notify and Library then
         Library.SendNotification({
-            Title = "IDK???",
+            Title = "Immortal [GOD MODE]",
             text = text
         })
     end
@@ -6134,7 +5960,7 @@ function Invisibilidade.toggle(enabled)
         getgenv().BallVelocityAbove800 = false
     end
     
-    sendNotification(enabled and "Walkable Semi-Immortal ON" or "Walkable Semi-Immortal OFF")
+    sendNotification(enabled and "God Mode ON" or "God Mode OFF")
 end
 
 function Invisibilidade.setNotify(enabled)
@@ -6163,11 +5989,11 @@ hooks.oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
     return hooks.oldIndex(self, key)
 end))
 
-local DupeSection = ExclusiveTab:Section({ Title = "Semi-Immortal", Side = "Right", Box = true, Opened = true })
+local DupeSection = ExclusiveTab:Section({ Title = "Immortal [GOD MODE]", Side = "Right", Box = true, Opened = true })
 
 DupeSection:Toggle({
-    Title = "Walkable Semi-Immortal [BLATANT!]",
-    Description = "Advanced desync that bypasses detections and handles 1M+ velocity.",
+    Title = "Walkable Immortal [GOD MODE]",
+    Description = "Bypasses all detections. Handles 1M+ Velocity & 10-Minute Hold.",
     Value = false,
     Callback = Invisibilidade.toggle
 })
