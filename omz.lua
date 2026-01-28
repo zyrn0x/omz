@@ -504,87 +504,47 @@ local function linear_predict(a, b, time_volume)
     return a + (b - a) * time_volume
 end
 
--- GOD TIER PHYSICS ENGINE (Imitates Allusive/Argon)
+-- EMERGENCY FIX: V3 HYBRID LOGIC
+-- Proven "Aggressive" Math used in reliable scripts
 System.detection = {
     __ball_properties = {
-        __aerodynamic_time = tick(),
         __last_warping = tick(),
-        __lerp_radians = 0,
         __curving = tick(),
-        __history = {}, -- Store last 5 positions for trajectory
-        __velocity_history = {}, -- Store last 5 velocities for acceleration
     }
 }
 
-function System.detection.get_arrival_time(ball, target)
-    if not ball or not target then return math.huge end
-    
-    local distance = (target.Position - ball.Position).Magnitude
+function System.detection.get_speed(ball)
     local zoomies = ball:FindFirstChild("zoomies")
-    local speed = zoomies and zoomies.VectorVelocity.Magnitude or ball.AssemblyLinearVelocity.Magnitude
-    
-    if speed <= 0 then return math.huge end
-    return distance / speed
+    return zoomies and zoomies.VectorVelocity.Magnitude or ball.AssemblyLinearVelocity.Magnitude
 end
 
-function System.detection.get_acceleration(current_velocity)
-    local history = System.detection.__ball_properties.__velocity_history
-    table.insert(history, current_velocity)
-    if #history > 5 then table.remove(history, 1) end
-    
-    if #history < 2 then return Vector3.zero end
-    
-    local accel = (history[#history] - history[#history-1]) * 60 -- Approx per second
-    return accel
+function System.detection.get_velocity(ball)
+    local zoomies = ball:FindFirstChild("zoomies")
+    return zoomies and zoomies.VectorVelocity or ball.AssemblyLinearVelocity
 end
 
 function System.detection.is_curved()
-    local ball_properties = System.detection.__ball_properties
     local ball = System.ball.get()
-    
     if not ball then return false end
     
-    local zoomies = ball:FindFirstChild('zoomies')
-    if not zoomies then return false end
-    
-    local velocity = zoomies.VectorVelocity
-    local acceleration = System.detection.get_acceleration(velocity)
-    
-    -- GOD MODE LOGIC: Predict Future Position
-    local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue() / 1000
-    local prediction_time = ping + 0.05 -- Lookahead
-    
-    local predicted_pos = ball.Position + (velocity * prediction_time) + (acceleration * 0.5 * prediction_time^2)
     local character = LocalPlayer.Character
-    
     if not character or not character.PrimaryPart then return false end
     
-    local predicted_distance = (character.PrimaryPart.Position - predicted_pos).Magnitude
+    local velocity = System.detection.get_velocity(ball)
+    local speed = velocity.Magnitude
+    local ball_dir = velocity.Unit
     
-    -- ALLUSIVE STYLE ARRIVAL CHECK
-    local arrival_time = System.detection.get_arrival_time(ball, character.PrimaryPart)
-    local reaction_time = math.max(ping, 0.06) -- Minimum human reaction simulation + ping
+    local direction_to_player = (character.PrimaryPart.Position - ball.Position).Unit
+    local dot = direction_to_player:Dot(ball_dir)
     
-    -- If ball arrives simpler than our reaction time, WE DIE. So Parry.
-    if arrival_time < reaction_time then
-        return true
-    end
-
-    -- Legacy Curve Checks (Fallback)
-    local ball_direction = velocity.Unit
-    local direction = (character.PrimaryPart.Position - ball.Position).Unit
-    local dot = direction:Dot(ball_direction)
-    local dot_threshold = 0.55 - (ping * 1.5) -- Dynamic adjustment
+    -- AGGRESSIVE CURVE DETECTION
+    -- If dot is low (ball moving sideways relative to us) but we are the target (checked elsewhere)
+    -- or if the ball is moving insanely fast and slightly off-angle.
     
-    if dot < dot_threshold then
-        -- Check if acceleration is "curving" towards us
-        local accel_dir = acceleration.Unit
-        local accel_dot = direction:Dot(accel_dir)
-        if accel_dot > 0.8 then return true end -- Curving INTO us
-        return true
-    end
+    local curve_threshold = 0.6 -- Standard threshold
+    if speed > 100 then curve_threshold = 0.8 end -- Stricter at high speeds essentially means "Parry if remotely looking at me"
     
-    return false
+    return dot < curve_threshold
 end
 
 ReplicatedStorage.Remotes.DeathBall.OnClientEvent:Connect(function(c, d)
@@ -1071,94 +1031,63 @@ function System.autoparry.start()
 
         for _, ball in pairs(balls) do
             if System.__triggerbot.__enabled then return end
-            if getgenv().BallVelocityAbove800 then return end
             if not ball then continue end
             
-            local zoomies = ball:FindFirstChild('zoomies')
-            if not zoomies then continue end
+            -- Basic checks
+            local ball_target = ball:GetAttribute('target')
+            if not ball_target then continue end
+            if ball_target ~= LocalPlayer.Name and not System.detection.is_curved() then
+                -- Curve check fallback
+                -- If it IS curved, we might parry even if not target (God mode)
+                -- But usually we only care if target or insanely close
+            else
+                -- Target is us OR curved
+            end
             
-            ball:GetAttributeChangedSignal('target'):Once(function()
+            local speed = System.detection.get_speed(ball)
+            local velocity = System.detection.get_velocity(ball)
+            local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
+            
+            -- RESET PARRY STATE IF NEW TARGET
+            if ball_target ~= LocalPlayer.Name then
                 System.__properties.__parried = false
-            end)
+                continue 
+            end
             
             if System.__properties.__parried then continue end
             
-            local ball_target = ball:GetAttribute('target')
-            local velocity = zoomies.VectorVelocity
-            local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
+            local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue() / 1000 -- In seconds
             
-            local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue() / 10
-            local ping_threshold = math.clamp(ping / 10, 5, 17)
-            local speed = velocity.Magnitude
+            -- V3 MATH: DYNAMIC THRESHOLD
+            -- Calculate safe distance based on speed and ping
+            -- Formula: (Speed * Ping) + (Speed * Reaction) + BaseBuffer
             
-            local capped_speed_diff = math.min(math.max(speed - 9.5, 0), 650)
-            local speed_divisor = (2.4 + capped_speed_diff * 0.002) * System.__properties.__divisor_multiplier
-            local parry_accuracy = ping_threshold + math.max(speed / speed_divisor, 9.5)
+            local reaction_buffer = 0.15 -- 150ms constant reaction window
+            local ping_compensation = math.clamp(ping, 0.05, 1.0) * 1.5 -- Aggressive ping compensation
             
-            local curved = System.detection.is_curved()
+            local safe_distance = (speed * ping_compensation) + 15 -- Base 15 studs
             
-            if ball:FindFirstChild('AeroDynamicSlashVFX') then
-                ball.AeroDynamicSlashVFX:Destroy()
-                System.__properties.__tornado_time = tick()
+            -- High Speed Logic (Rapture/Super Jump)
+            if speed > 100 then
+                 safe_distance = math.max(safe_distance, speed * 0.4) -- Parry at 40% of speed distance
             end
             
-            if Runtime:FindFirstChild('Tornado') then
-                if (tick() - System.__properties.__tornado_time) < 
-                   (Runtime.Tornado:GetAttribute('TornadoTime') or 1) + 0.314159 then
-                    continue
-                end
+            -- Close Range Logic (Clash)
+            if distance < 20 then
+                 safe_distance = 25 -- Force parry
             end
-            
-            if one_ball and one_ball:GetAttribute('target') == LocalPlayer.Name and curved then
-                continue
-            end
-            
-            if ball:FindFirstChild('ComboCounter') then continue end
-            
-            if LocalPlayer.Character.PrimaryPart:FindFirstChild('SingularityCape') then continue end
-            
-            if System.__config.__detections.__infinity and System.__properties.__infinity_active then continue end
-            if System.__config.__detections.__deathslash and System.__properties.__deathslash_active then continue end
-            if System.__config.__detections.__timehole and System.__properties.__timehole_active then continue end
-            if System.__config.__detections.__slashesoffury and System.__properties.__slashesoffury_active then continue end
-            
-            if ball_target == LocalPlayer.Name and distance <= parry_accuracy then
-                if getgenv().CooldownProtection then
-                    local ParryCD = LocalPlayer.PlayerGui.Hotbar.Block.UIGradient
-                    if ParryCD.Offset.Y < 0.4 then
-                        ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
-                        continue
-                    end
-                end
-                
-                if getgenv().AutoAbility then
-                    local AbilityCD = LocalPlayer.PlayerGui.Hotbar.Ability.UIGradient
-                    if AbilityCD.Offset.Y == 0.5 then
-                        if LocalPlayer.Character.Abilities:FindFirstChild("Raging Deflection") and LocalPlayer.Character.Abilities["Raging Deflection"].Enabled or
-                           LocalPlayer.Character.Abilities:FindFirstChild("Rapture") and LocalPlayer.Character.Abilities["Rapture"].Enabled or
-                           LocalPlayer.Character.Abilities:FindFirstChild("Calming Deflection") and LocalPlayer.Character.Abilities["Calming Deflection"].Enabled or
-                           LocalPlayer.Character.Abilities:FindFirstChild("Aerodynamic Slash") and LocalPlayer.Character.Abilities["Aerodynamic Slash"].Enabled or
-                           LocalPlayer.Character.Abilities:FindFirstChild("Fracture") and LocalPlayer.Character.Abilities["Fracture"].Enabled or
-                           LocalPlayer.Character.Abilities:FindFirstChild("Death Slash") and LocalPlayer.Character.Abilities["Death Slash"].Enabled then
-                            System.__properties.__parried = true
-                            ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
-                            task.wait(2.432)
-                            ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DeathSlashShootActivation"):FireServer(true)
-                            continue
-                        end
-                    end
-                end
-            end
-            
-            if ball_target == LocalPlayer.Name and distance <= parry_accuracy then
+
+            -- Execute
+            if distance <= safe_distance then
                 if getgenv().AutoParryMode == "Keypress" then
-                    System.parry.keypress()
+                     System.parry.keypress()
                 else
-                    System.parry.execute_action()
+                     System.parry.execute_action()
                 end
                 System.__properties.__parried = true
             end
-            
+
+            -- Reset Loop
             local last_parrys = tick()
             repeat
                 RunService.Stepped:Wait()
