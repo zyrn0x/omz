@@ -504,6 +504,7 @@ local function linear_predict(a, b, time_volume)
     return a + (b - a) * time_volume
 end
 
+-- GOD TIER PHYSICS ENGINE (Imitates Allusive/Argon)
 System.detection = {
     __ball_properties = {
         __aerodynamic_time = tick(),
@@ -511,17 +512,30 @@ System.detection = {
         __lerp_radians = 0,
         __curving = tick(),
         __history = {}, -- Store last 5 positions for trajectory
+        __velocity_history = {}, -- Store last 5 velocities for acceleration
     }
 }
 
-function System.detection.get_trajectory()
-    local ball = System.ball.get()
-    if not ball then return Vector3.zero end
+function System.detection.get_arrival_time(ball, target)
+    if not ball or not target then return math.huge end
     
-    local zoomies = ball:FindFirstChild('zoomies')
-    if not zoomies then return ball.AssemblyLinearVelocity end
+    local distance = (target.Position - ball.Position).Magnitude
+    local zoomies = ball:FindFirstChild("zoomies")
+    local speed = zoomies and zoomies.VectorVelocity.Magnitude or ball.AssemblyLinearVelocity.Magnitude
     
-    return zoomies.VectorVelocity
+    if speed <= 0 then return math.huge end
+    return distance / speed
+end
+
+function System.detection.get_acceleration(current_velocity)
+    local history = System.detection.__ball_properties.__velocity_history
+    table.insert(history, current_velocity)
+    if #history > 5 then table.remove(history, 1) end
+    
+    if #history < 2 then return Vector3.zero end
+    
+    local accel = (history[#history] - history[#history-1]) * 60 -- Approx per second
+    return accel
 end
 
 function System.detection.is_curved()
@@ -534,58 +548,43 @@ function System.detection.is_curved()
     if not zoomies then return false end
     
     local velocity = zoomies.VectorVelocity
-    local ball_direction = velocity.Unit
+    local acceleration = System.detection.get_acceleration(velocity)
     
+    -- GOD MODE LOGIC: Predict Future Position
+    local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue() / 1000
+    local prediction_time = ping + 0.05 -- Lookahead
+    
+    local predicted_pos = ball.Position + (velocity * prediction_time) + (acceleration * 0.5 * prediction_time^2)
     local character = LocalPlayer.Character
+    
     if not character or not character.PrimaryPart then return false end
     
-    local direction = (character.PrimaryPart.Position - ball.Position).Unit
-    local dot = direction:Dot(ball_direction)
+    local predicted_distance = (character.PrimaryPart.Position - predicted_pos).Magnitude
     
-    local speed = velocity.Magnitude
-    -- Dynamic speed threshold based on curve type
-    local speed_threshold = math.min(speed / 100, 50) 
+    -- ALLUSIVE STYLE ARRIVAL CHECK
+    local arrival_time = System.detection.get_arrival_time(ball, character.PrimaryPart)
+    local reaction_time = math.max(ping, 0.06) -- Minimum human reaction simulation + ping
     
-    local direction_difference = (ball_direction - velocity).Unit
-    local direction_similarity = direction:Dot(direction_difference)
-    
-    local dot_difference = dot - direction_similarity
-    local distance = (character.PrimaryPart.Position - ball.Position).Magnitude
-    
-    local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
-    -- Dynamic Ping Adjuster: More aggressive on high ping
-    local ping_compensation = math.max(ping / 800, 0.05) 
-    
-    local dot_threshold = 0.5 - ping_compensation
-    local reach_time = distance / speed - (ping / 1000)
-    
-    local ball_distance_threshold = 18 - math.min(distance / 1000, 15) + speed_threshold -- Increased base threshold
-    
-    -- Advanced Curve Detections
-    local clamped_dot = math.clamp(dot, -1, 1)
-    local radians = math.rad(math.asin(clamped_dot))
-    
-    ball_properties.__lerp_radians = linear_predict(ball_properties.__lerp_radians, radians, 0.8)
-    
-    -- High/Backwards Curve Logic
-    if speed > 0 and reach_time > ping / 10 then
-        ball_distance_threshold = math.max(ball_distance_threshold - 10, 15)
-    end
-    
-    -- Anti-Phantom / Warping Safety
-    if ball_properties.__lerp_radians < 0.02 then
-        ball_properties.__last_warping = tick()
-    end
-    
-    if (tick() - ball_properties.__last_warping) < (reach_time / 1.4) then -- Tighter window
+    -- If ball arrives simpler than our reaction time, WE DIE. So Parry.
+    if arrival_time < reaction_time then
         return true
     end
 
-    if distance < ball_distance_threshold then return false end
-    if dot_difference < dot_threshold then return true end
+    -- Legacy Curve Checks (Fallback)
+    local ball_direction = velocity.Unit
+    local direction = (character.PrimaryPart.Position - ball.Position).Unit
+    local dot = direction:Dot(ball_direction)
+    local dot_threshold = 0.55 - (ping * 1.5) -- Dynamic adjustment
     
-    -- Final fallback
-    return dot < dot_threshold
+    if dot < dot_threshold then
+        -- Check if acceleration is "curving" towards us
+        local accel_dir = acceleration.Unit
+        local accel_dot = direction:Dot(accel_dir)
+        if accel_dot > 0.8 then return true end -- Curving INTO us
+        return true
+    end
+    
+    return false
 end
 
 ReplicatedStorage.Remotes.DeathBall.OnClientEvent:Connect(function(c, d)
@@ -5616,7 +5615,12 @@ System.visuals = {
 }
 
 function System.visuals.create_drawing(type, props)
-    local drawing = Drawing.new(type)
+    local success, drawing = pcall(function()
+        return Drawing.new(type)
+    end)
+    
+    if not success or not drawing then return nil end
+    
     for k, v in pairs(props) do
         drawing[k] = v
     end
@@ -5635,25 +5639,27 @@ function System.visuals.update()
             })
         end
         
-        local ball = System.ball.get()
-        if ball then
-            local velocity = ball.AssemblyLinearVelocity
-            local origin = ball.Position
-            local future_pos = origin + (velocity * 0.5) -- 0.5s prediction
-            
-            local camera = workspace.CurrentCamera
-            local start_pos, start_vis = camera:WorldToViewportPoint(origin)
-            local end_pos, end_vis = camera:WorldToViewportPoint(future_pos)
-            
-            if start_vis and end_vis then
-                System.visuals.__cache.prediction_line.From = Vector2.new(start_pos.X, start_pos.Y)
-                System.visuals.__cache.prediction_line.To = Vector2.new(end_pos.X, end_pos.Y)
-                System.visuals.__cache.prediction_line.Visible = true
+        if System.visuals.__cache.prediction_line then
+            local ball = System.ball.get()
+            if ball then
+                local velocity = ball.AssemblyLinearVelocity
+                local origin = ball.Position
+                local future_pos = origin + (velocity * 0.5) -- 0.5s prediction
+                
+                local camera = workspace.CurrentCamera
+                local start_pos, start_vis = camera:WorldToViewportPoint(origin)
+                local end_pos, end_vis = camera:WorldToViewportPoint(future_pos)
+                
+                if start_vis and end_vis then
+                    System.visuals.__cache.prediction_line.From = Vector2.new(start_pos.X, start_pos.Y)
+                    System.visuals.__cache.prediction_line.To = Vector2.new(end_pos.X, end_pos.Y)
+                    System.visuals.__cache.prediction_line.Visible = true
+                else
+                    System.visuals.__cache.prediction_line.Visible = false
+                end
             else
                 System.visuals.__cache.prediction_line.Visible = false
             end
-        else
-            System.visuals.__cache.prediction_line.Visible = false
         end
     else
         if System.visuals.__cache.prediction_line then
