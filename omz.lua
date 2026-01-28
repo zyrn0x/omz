@@ -242,7 +242,7 @@ function System.animation.play_grab_parry()
     if not sword_name then return end
     
     local sword_api = ReplicatedStorage.Shared.SwordAPI.Collection
-    local parry_animation = sword_api.Default:FindFirstChild('GrabParry')
+    local parry_animation = sword_api:FindFirstChild('Default') and sword_api.Default:FindFirstChild('GrabParry')
     if not parry_animation then return end
     
     local sword_data = ReplicatedStorage.Shared.ReplicatedInstances.Swords.GetSword:Invoke(sword_name)
@@ -2653,10 +2653,8 @@ local SpamConfigSection = SpamTab:Section({ Title = "Configuration", Side = "Lef
 
 SpamConfigSection:Slider({
     Title = "Spam Distance",
-    Value = 150,
+    Value = { Min = 10, Max = 500, Value = 150 },
     LeftText = "Studs",
-    Min = 10,
-    Max = 500,
     Callback = function(v)
         System.__properties.__spam_distance = v
     end
@@ -2664,10 +2662,8 @@ SpamConfigSection:Slider({
 
 SpamConfigSection:Slider({
     Title = "Spam Threshold",
-    Value = 1.5,
+    Value = { Min = 0.1, Max = 10, Value = 1.5 },
     LeftText = "Value",
-    Min = 0.1,
-    Max = 10,
     CustomStep = 0.1,
     Callback = function(v)
         System.__properties.__spam_threshold = v
@@ -6162,10 +6158,8 @@ DupeSection:Toggle({
 
 DupeSection:Slider({
     Title = "Desync Height",
-    Value = -500,
+    Value = { Min = -5000, Max = 5000, Value = -500 },
     LeftText = "Min",
-    Min = -5000,
-    Max = 5000,
     Callback = function(v)
         System.__properties.__desync_height = v
     end
