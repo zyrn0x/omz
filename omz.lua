@@ -97,6 +97,8 @@ local System = {
         __parries = 0,
         __parry_key = nil,
         __grab_animation = nil,
+        __last_parry_frame = 0,
+        __last_parry_tick = 0,
         __tornado_time = tick(),
         __first_parry_done = false,
         __connections = {},
@@ -454,6 +456,12 @@ end
 System.parry = {}
 
 function System.parry.execute()
+    local current_tick = tick()
+    if (current_tick - System.__properties.__last_parry_tick) < 0.015 then
+        return
+    end
+    System.__properties.__last_parry_tick = current_tick
+
     if System.__properties.__parries > 10000 or not LocalPlayer.Character then
         return
     end
@@ -500,7 +508,10 @@ function System.parry.execute()
         final_aim_target = vec2_mouse
     end
     
+    local fired_remotes = 0
     for remote, original_args in pairs(revertedRemotes) do
+        if fired_remotes >= 1 then break end -- Only fire the first parry remote to prevent queue exhaustion
+        
         local modified_args = {
             original_args[1],
             original_args[2],
@@ -514,8 +525,10 @@ function System.parry.execute()
         pcall(function()
             if remote:IsA('RemoteEvent') then
                 remote:FireServer(unpack(modified_args))
+                fired_remotes = fired_remotes + 1
             elseif remote:IsA('RemoteFunction') then
                 remote:InvokeServer(unpack(modified_args))
+                fired_remotes = fired_remotes + 1
             end
         end)
     end
@@ -6026,7 +6039,7 @@ local function trackBallVelocity()
 end
 
 local function shouldApplyDesync()
-    return state.enabled and getgenv().BallVelocityAbove800 == true
+    return state.enabled and (getgenv().BallVelocityAbove800 == true or (ballData.currentBall and ballData.currentBall:GetAttribute("target") == LocalPlayer.Name))
 end
 
 local function performDesync()
@@ -6038,28 +6051,31 @@ local function performDesync()
     
     local hrp = cache.hrp
     local current_pos = hrp.Position
+    local velocity = getgenv().BallPeakVelocity or 0
     
     desyncData.originalCFrame = hrp.CFrame
     desyncData.originalVelocity = hrp.AssemblyLinearVelocity
     
-    -- Walkable Immortal Logic
-    -- We spoof the position to a specific height but keep horizontal alignment
-    -- This bypasses many server-side checks if done correctly
+    -- Walkable Semi-Immortal Logic
     local target_y = System.__properties.__desync_height
     
-    -- If velocity is extreme, we use a different spoofing method
-    if getgenv().BallPeakVelocity and getgenv().BallPeakVelocity > 100000 then
-        target_y = target_y - 100000 -- Distant spoof for extreme speeds
+    -- Handle extreme velocities (1M+)
+    -- If the ball is fast, we need to spoof much further to exploit the engine
+    if velocity > 500 then
+        local multiplier = math.clamp(velocity / 100, 1, 50000)
+        target_y = target_y - (100 * multiplier)
     end
 
+    -- Teleport Server Side Bypass
+    -- We set the CFrame slightly before the physics step if possible, or just very fast back-and-forth
     hrp.CFrame = CFrame.new(
         Vector3.new(current_pos.X, target_y, current_pos.Z),
         desyncData.originalCFrame.LookVector
     )
     hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
     
-    -- The "Bypass" part: we stay desynced during physics but return for rendering
-    RunService.RenderStepped:Wait()
+    -- Yield for the physics step to process at the spoofed location
+    task.wait() -- Better than RenderStepped:Wait() for physics
     
     if state.enabled and cache.hrp then
         hrp.CFrame = desyncData.originalCFrame
@@ -6118,7 +6134,7 @@ function Invisibilidade.toggle(enabled)
         getgenv().BallVelocityAbove800 = false
     end
     
-    sendNotification(enabled and "Walkable Immortal ON" or "Walkable Immortal OFF")
+    sendNotification(enabled and "Walkable Semi-Immortal ON" or "Walkable Semi-Immortal OFF")
 end
 
 function Invisibilidade.setNotify(enabled)
@@ -6147,11 +6163,11 @@ hooks.oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
     return hooks.oldIndex(self, key)
 end))
 
-local DupeSection = ExclusiveTab:Section({ Title = "Dupe Ball", Side = "Right", Box = true, Opened = true })
+local DupeSection = ExclusiveTab:Section({ Title = "Semi-Immortal", Side = "Right", Box = true, Opened = true })
 
 DupeSection:Toggle({
-    Title = "Walkable Immortal [BLATANT!]",
-    Description = "Advanced desync that bypasses detections.",
+    Title = "Walkable Semi-Immortal [BLATANT!]",
+    Description = "Advanced desync that bypasses detections and handles 1M+ velocity.",
     Value = false,
     Callback = Invisibilidade.toggle
 })
@@ -6174,7 +6190,7 @@ DupeSection:Toggle({
 
 DupeSection:Slider({
     Title = 'Velocity Threshold',
-    Value = { Min = 800, Max = 1500, Value = 800 },
+    Value = { Min = 0, Max = 1500, Value = 100 },
     Callback = function(value)
         constants.velocityThreshold = value
     end
