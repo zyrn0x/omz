@@ -91,7 +91,9 @@ local System = {
         __parried = false,
         __training_parried = false,
         __spam_threshold = 1.5,
-        __spam_distance = 95,
+        __spam_distance = 150,
+        __walkable_immortal = false,
+        __desync_height = -500,
         __parries = 0,
         __parry_key = nil,
         __grab_animation = nil,
@@ -165,7 +167,7 @@ if LocalPlayer.PlayerGui:FindFirstChild("Hotbar") and LocalPlayer.PlayerGui.Hotb
 end
 
 local function update_divisor()
-    System.__properties.__divisor_multiplier = 0.7 + (System.__properties.__accuracy - 1) * (0.35 / 99)
+    System.__properties.__divisor_multiplier = 0.7 + (System.__properties.__accuracy - 1) * (0.5 / 99)
 end
 
 function isValidRemoteArgs(args)
@@ -301,12 +303,14 @@ function System.player.get_closest()
     local max_distance = math.huge
     local closest_entity = nil
     
-    if not Alive then return nil end
+    if not Alive or not LocalPlayer.Character or not LocalPlayer.Character.PrimaryPart then return nil end
+    local my_pos = LocalPlayer.Character.PrimaryPart.Position
     
     for _, entity in pairs(Alive:GetChildren()) do
-        if entity ~= LocalPlayer.Character then
-            if entity.PrimaryPart then
-                local distance = LocalPlayer:DistanceFromCharacter(entity.PrimaryPart.Position)
+        if entity ~= LocalPlayer.Character and entity:IsA("Model") then
+            local primary = entity.PrimaryPart or entity:FindFirstChild("HumanoidRootPart")
+            if primary then
+                local distance = (my_pos - primary.Position).Magnitude
                 if distance < max_distance then
                     max_distance = distance
                     closest_entity = entity
@@ -616,6 +620,23 @@ function System.detection.is_curved()
         end
     end
     
+    local backwards_detected = false
+    local horiz_direction = Vector3.new(player_pos.X - ball_pos.X, 0, player_pos.Z - ball_pos.Z)
+    if horiz_direction.Magnitude > 0 then
+        horiz_direction = horiz_direction.Unit
+        local away_from_player = -horiz_direction
+        local horiz_ball_dir = Vector3.new(ball_direction.X, 0, ball_direction.Z)
+        if horiz_ball_dir.Magnitude > 0 then
+            horiz_ball_dir = horiz_ball_dir.Unit
+            local backwards_angle = math.deg(math.acos(math.clamp(away_from_player:Dot(horiz_ball_dir), -1, 1)))
+            if backwards_angle < 85 then
+                backwards_detected = true
+            end
+        end
+    end
+
+    if backwards_detected then return true end
+    
     local enough_speed = speed > 160
     if enough_speed and reach_time > ping / 10 then
         if speed < 300 then
@@ -675,24 +696,13 @@ function System.detection.is_curved()
         local dot_difference = dot - intended_similarity
         
         if dot_difference < dot_threshold then return true end
+
+        local intended_difference2 = (ball_direction - ball_properties.__previous_velocity[2].Unit).Unit
+        local intended_similarity2 = direction:Dot(intended_difference2)
+        if (dot - intended_similarity2) < dot_threshold then return true end
     end
     
-    local backwards_detected = false
-    local horiz_direction = Vector3.new(player_pos.X - ball_pos.X, 0, player_pos.Z - ball_pos.Z)
-    if horiz_direction.Magnitude > 0 then
-        horiz_direction = horiz_direction.Unit
-        local away_from_player = -horiz_direction
-        local horiz_ball_dir = Vector3.new(ball_direction.X, 0, ball_direction.Z)
-        if horiz_ball_dir.Magnitude > 0 then
-            horiz_ball_dir = horiz_ball_dir.Unit
-            local backwards_angle = math.deg(math.acos(math.clamp(away_from_player:Dot(horiz_ball_dir), -1, 1)))
-            if backwards_angle < 85 then
-                backwards_detected = true
-            end
-        end
-    end
-    
-    return (dot < dot_threshold) or backwards_detected
+    return (dot < dot_threshold)
 end
 
 -- Advanced Velocity Tracking
@@ -1087,9 +1097,12 @@ ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent:Connect(function(_, root
     
     if not ball or not closest then return end
     
-    local target_distance = (LocalPlayer.Character.PrimaryPart.Position - closest.PrimaryPart.Position).Magnitude
-    local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
-    local direction = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Unit
+    local character = LocalPlayer.Character
+    if not character or not character.PrimaryPart then return end
+    
+    local target_distance = (character.PrimaryPart.Position - closest.PrimaryPart.Position).Magnitude
+    local distance = (character.PrimaryPart.Position - ball.Position).Magnitude
+    local direction = (character.PrimaryPart.Position - ball.Position).Unit
     local dot = direction:Dot(ball.AssemblyLinearVelocity.Unit)
     
     local curve_detected = System.detection.is_curved()
@@ -1112,9 +1125,10 @@ ReplicatedStorage.Remotes.ParrySuccess.OnClientEvent:Connect(function()
     
     -- Track performance for adaptive timing
     local ball = System.ball.get()
-    if ball then
+    local character = LocalPlayer.Character
+    if ball and character and character.PrimaryPart then
         local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
-        local timing = System.detection.calculate_optimal_parry_time(ball, LocalPlayer.Character.PrimaryPart.Position, ping)
+        local timing = System.detection.calculate_optimal_parry_time(ball, character.PrimaryPart.Position, ping)
         local timing_error = timing and timing.optimal or 0
         System.detection.track_parry_performance(true, timing_error)
     end
@@ -1125,7 +1139,9 @@ ReplicatedStorage.Remotes.ParrySuccess.OnClientEvent:Connect(function()
 end)
 
 ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent:Connect(function(a, b)
-    local Primary_Part = LocalPlayer.Character.PrimaryPart
+    local character = LocalPlayer.Character
+    if not character or not character.PrimaryPart then return end
+    local Primary_Part = character.PrimaryPart
     local Ball = System.ball.get()
 
     if not Ball then
@@ -1140,12 +1156,12 @@ ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent:Connect(function(a, b)
 
     local Speed = Zoomies.VectorVelocity.Magnitude
 
-    local Distance = (LocalPlayer.Character.PrimaryPart.Position - Ball.Position).Magnitude
+    local Distance = (Primary_Part.Position - Ball.Position).Magnitude
     local Velocity = Zoomies.VectorVelocity
 
     local Ball_Direction = Velocity.Unit
 
-    local Direction = (LocalPlayer.Character.PrimaryPart.Position - Ball.Position).Unit
+    local Direction = (Primary_Part.Position - Ball.Position).Unit
     local Dot = Direction:Dot(Ball_Direction)
 
     local Pings = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
@@ -1333,32 +1349,25 @@ function System.auto_spam.spam_service(params)
     local speed = params.Ball_Speed or 0
     local target_distance = params.Target_Distance or 999
     local ball_target = params.Ball_Target or ""
+    local dot = params.Dot or 0
     
     -- Base distance from configuration
     local base_range = System.__properties.__spam_distance
     
     -- Dynamic range calculation if enabled
     if System.__properties.__dynamic_spam_range then
-        -- Multi-factor calculation
-        local speed_factor = math.min(speed / 5, base_range * 0.8)
-        local ping_factor = ping * 1.5
-        local proximity_bonus = target_distance < 30 and 15 or 0
+        local Maximum_Spam_Distance = ping + math.min(speed / 6, base_range)
         
-        -- Adaptive formula
-        local effective_range = base_range + speed_factor + ping_factor + proximity_bonus
-        
-        -- Speed-based clamping for optimal performance
-        if speed < 400 then
-            effective_range = math.min(effective_range, 70)
-        elseif speed < 800 then
-            effective_range = math.min(effective_range, 90)
-        elseif speed < 1200 then
-            effective_range = math.min(effective_range, 110)
-        else
-            effective_range = math.min(effective_range, 130)
+        if speed < 600 then
+            Maximum_Spam_Distance = ping + math.min(speed / 7, 75)
         end
+
+        local Maximum_Speed = 5 - math.min(speed / 5, 5)
+        local Maximum_Dot = math.clamp(dot, -1, 0) * Maximum_Speed
         
-        return effective_range
+        local spam_accuracy = Maximum_Spam_Distance - Maximum_Dot
+        
+        return spam_accuracy
     else
         -- Original calculation for compatibility
         local calculated_dist = ping + math.min(speed / 6, base_range)
@@ -1411,7 +1420,8 @@ function System.auto_spam.start()
             Ping = ping_threshold,
             Ball_Speed = ball_speed,
             Target_Distance = target_distance,
-            Ball_Target = ball_target
+            Ball_Target = ball_target,
+            Dot = dot
         })
         local spam_accuracy = valid_range
         
@@ -1421,7 +1431,7 @@ function System.auto_spam.start()
         local pulsed = LocalPlayer.Character:GetAttribute('Pulsed')
         if pulsed then return end
         
-        if ball_target == LocalPlayer.Name and target_distance > 30 and distance > 30 then return end
+        if ball_target == LocalPlayer.Name and target_distance > 40 and distance > 40 then return end
         
         -- Dynamic threshold based on situation
         local base_threshold = System.__properties.__spam_threshold
@@ -2636,6 +2646,31 @@ PhantomSection:Toggle({
     Value = false,
     Callback = function(value)
         System.__config.__detections.__phantom = value
+    end
+})
+
+local SpamConfigSection = SpamTab:Section({ Title = "Configuration", Side = "Left", Box = true, Opened = true })
+
+SpamConfigSection:Slider({
+    Title = "Spam Distance",
+    Value = 150,
+    LeftText = "Studs",
+    Min = 10,
+    Max = 500,
+    Callback = function(v)
+        System.__properties.__spam_distance = v
+    end
+})
+
+SpamConfigSection:Slider({
+    Title = "Spam Threshold",
+    Value = 1.5,
+    LeftText = "Value",
+    Min = 0.1,
+    Max = 10,
+    CustomStep = 0.1,
+    Callback = function(v)
+        System.__properties.__spam_threshold = v
     end
 })
 
@@ -6001,26 +6036,39 @@ end
 local function performDesync()
     updateCache()
     
-    if not shouldApplyDesync() or not cache.hrp or not isInAliveFolder() then
+    if not state.enabled or not cache.hrp or not isInAliveFolder() then
         return
     end
     
     local hrp = cache.hrp
+    local current_pos = hrp.Position
+    
     desyncData.originalCFrame = hrp.CFrame
     desyncData.originalVelocity = hrp.AssemblyLinearVelocity
     
+    -- Walkable Immortal Logic
+    -- We spoof the position to a specific height but keep horizontal alignment
+    -- This bypasses many server-side checks if done correctly
+    local target_y = System.__properties.__desync_height
+    
+    -- If velocity is extreme, we use a different spoofing method
+    if getgenv().BallPeakVelocity and getgenv().BallPeakVelocity > 100000 then
+        target_y = target_y - 100000 -- Distant spoof for extreme speeds
+    end
+
     hrp.CFrame = CFrame.new(
-        Vector3.new(hrp.Position.X, constants.invisibleY, hrp.Position.Z),
-        hrp.CFrame.LookVector
+        Vector3.new(current_pos.X, target_y, current_pos.Z),
+        desyncData.originalCFrame.LookVector
     )
     hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
     
-    hrp.CFrame = hrp.CFrame + Vector3.new(0, 0, 0.1)
-    
+    -- The "Bypass" part: we stay desynced during physics but return for rendering
     RunService.RenderStepped:Wait()
     
-    hrp.CFrame = desyncData.originalCFrame
-    hrp.AssemblyLinearVelocity = desyncData.originalVelocity
+    if state.enabled and cache.hrp then
+        hrp.CFrame = desyncData.originalCFrame
+        hrp.AssemblyLinearVelocity = desyncData.originalVelocity
+    end
 end
 
 local function sendNotification(text)
@@ -6036,7 +6084,7 @@ function Invisibilidade.toggle(enabled)
     if state.enabled == enabled then return end
     
     state.enabled = enabled
-    getgenv().IDKEnabled = enabled
+    System.__properties.__walkable_immortal = enabled
     
     if enabled then
         if not state.ballTrackingConnection then
@@ -6074,7 +6122,7 @@ function Invisibilidade.toggle(enabled)
         getgenv().BallVelocityAbove800 = false
     end
     
-    sendNotification(enabled and "ON" or "OFF")
+    sendNotification(enabled and "Walkable Immortal ON" or "Walkable Immortal OFF")
 end
 
 function Invisibilidade.setNotify(enabled)
@@ -6106,10 +6154,21 @@ end))
 local DupeSection = ExclusiveTab:Section({ Title = "Dupe Ball", Side = "Right", Box = true, Opened = true })
 
 DupeSection:Toggle({
-    Title = "Dupe Ball [BLATANT!]",
-    Description = "Duplicity exploit",
+    Title = "Walkable Immortal [BLATANT!]",
+    Description = "Advanced desync that bypasses detections.",
     Value = false,
     Callback = Invisibilidade.toggle
+})
+
+DupeSection:Slider({
+    Title = "Desync Height",
+    Value = -500,
+    LeftText = "Min",
+    Min = -5000,
+    Max = 5000,
+    Callback = function(v)
+        System.__properties.__desync_height = v
+    end
 })
 
 DupeSection:Toggle({
