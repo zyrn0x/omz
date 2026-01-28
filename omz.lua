@@ -118,6 +118,7 @@ local System = {
         
         -- New advanced features
         __dynamic_spam_range = true,
+        __auto_threshold = true,
         __predictive_timing = true,
         __auto_accuracy_adjustment = false,
         __debug_trajectory = false,
@@ -1539,54 +1540,61 @@ function System.auto_spam.start()
         
         if ball_target == LocalPlayer.Name and target_distance > 40 and distance > 40 then return end
         
-        -- Dynamic threshold based on situation
+        -- Dynamic threshold base calculation
         local base_threshold = System.__properties.__spam_threshold
         local dynamic_threshold = base_threshold
         
-        -- Lower threshold when ball is fast
-        if ball_speed > 1000 then
-            dynamic_threshold = base_threshold * 0.7
-        end
+        -- Lower base threshold when ball is fast or close
+        if ball_speed > 1000 then dynamic_threshold = dynamic_threshold * 0.7 end
+        if distance < 40 then dynamic_threshold = dynamic_threshold * 0.5 end
         
-        -- Lower threshold when very close
-        if distance < 40 then
-            dynamic_threshold = base_threshold * 0.5
-        end
-        
-        -- Track velocity for advanced features
+        -- Track velocity and visualize for advanced features
         System.detection.track_velocity(ball)
-        
-        -- Visualize trajectory if debug enabled
         System.detection.visualize_trajectory(ball, 1.0)
         
         -- Ability Detection
         local abilities = System.detection.detect_abilities(ball)
+        if abilities.forcefield then return end
         
         -- Advanced Spam Detections
         if System.__config.__detections.__singularity and System.detection.detect_singularity(ball) then
             spam_accuracy = spam_accuracy * 1.5
         end
-        
         if System.__config.__detections.__dribble and System.detection.detect_dribble(ball) then
             spam_accuracy = spam_accuracy * 1.3
         end
-        
         if System.__config.__detections.__pulse and System.detection.detect_pulse() then
             return 
         end
         
-        -- Prevent feeding Forcefield
-        if abilities.forcefield then
-            return 
-        end
-        
-        if distance <= spam_accuracy and System.__properties.__parries > dynamic_threshold then
-            if getgenv().AutoSpamMode == "Keypress" then
-                if PF then PF() end
-            else
-                System.parry.execute()
-                if getgenv().AutoSpamAnimationFix and PF then
-                    PF()
+        if distance <= spam_accuracy then
+            -- STRICT TARGET VERIFICATION (Fixes 'one extra parry' death)
+            local current_target = ball:GetAttribute('target')
+            if current_target ~= LocalPlayer.Name then
+                return
+            end
+            
+            -- AUTOMATIC THRESHOLD LOGIC
+            local threshold_to_use = dynamic_threshold
+            if System.__properties.__auto_threshold then
+                -- Faster/Closer ball = lower threshold (more aggressive)
+                -- Slower/Further ball = higher threshold (safer)
+                local speed_factor = math.clamp(ball_speed / 500, 0.5, 2)
+                local dist_factor = math.clamp(distance / 100, 0.5, 2)
+                threshold_to_use = (dynamic_threshold / speed_factor) * dist_factor
+                
+                -- Clamp to sane values
+                threshold_to_use = math.clamp(threshold_to_use, 0.1, 5)
+            end
+
+            if System.__properties.__parries > threshold_to_use then
+                if getgenv().AutoSpamMode == "Keypress" then
+                    if PF then PF() end
+                else
+                    System.parry.execute()
+                    if getgenv().AutoSpamAnimationFix and PF then
+                        PF()
+                    end
                 end
             end
         end
@@ -2868,6 +2876,15 @@ SpamConfigSection:Toggle({
     Value = true,
     Callback = function(value)
         System.__properties.__dynamic_spam_range = value
+    end
+})
+
+SpamConfigSection:Toggle({
+    Title = 'Auto Adaptive Threshold',
+    Description = "Prevents 'one extra parry' death",
+    Value = true,
+    Callback = function(value)
+        System.__properties.__auto_threshold = value
     end
 })
 
