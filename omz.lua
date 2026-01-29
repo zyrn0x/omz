@@ -1512,26 +1512,86 @@ local function Parry(delay, curve_cframe, event_data, vec2_mouse)
 end
 
 function Auto_Parry.Parry(Parry_Type)
+    -- UwU-based parry logic to prevent HSH-2 kicks
+    if Parries > 10000 or not Player.Character then
+        return
+    end
+    
+    local success, mouse = pcall(function()
+        return UserInputService:GetMouseLocation()
+    end)
+    
+    if not success then return end
+    
+    local vec2_mouse = {mouse.X, mouse.Y}
+    local is_mobile = isMobile
+    
+    -- Generate event_data (player screen positions)
+    local event_data = {}
+    if workspace:FindFirstChild("Alive") then
+        for _, entity in pairs(workspace.Alive:GetChildren()) do
+            if entity.PrimaryPart then
+                local success2, screen_point = pcall(function()
+                    return Camera:WorldToScreenPoint(entity.PrimaryPart.Position)
+                end)
+                if success2 then
+                    event_data[entity.Name] = screen_point
+                end
+            end
+        end
+    end
+    
     local Parry_Data = Auto_Parry.Parry_Data(Parry_Type)
-
+    local curve_cframe = Parry_Data[2]
+    
+    -- First parry uses PF function
     if not firstParryFired then
-        performFirstPress(getgenv().firstParryType or 'F_Key')
+        if PF then
+            pcall(function() PF() end)
+        end
         firstParryFired = true
         return
+    end
+    
+    -- Subsequent parries use remote firing
+    local final_aim_target
+    if is_mobile then
+        local viewport = Camera.ViewportSize
+        final_aim_target = {viewport.X / 2, viewport.Y / 2}
     else
-        Parry(Parry_Data[1], Parry_Data[2], Parry_Data[3], Parry_Data[4])
+        final_aim_target = vec2_mouse
     end
-
-    -- Anti-spam protection (increased limit to prevent false positives)
-    if Parries > 15 then
-        return false
+    
+    for remote, original_args in pairs(revertedRemotes) do
+        if not original_args or type(original_args) ~= "table" or #original_args < 7 then
+            continue
+        end
+        
+        local modified_args = {
+            original_args[1],
+            original_args[2],
+            original_args[3],
+            curve_cframe,
+            event_data,
+            final_aim_target,
+            original_args[7]
+        }
+        
+        pcall(function()
+            if remote:IsA('RemoteEvent') then
+                remote:FireServer(unpack(modified_args))
+            elseif remote:IsA('RemoteFunction') then
+                remote:InvokeServer(unpack(modified_args))
+            end
+        end)
     end
-
-    Parries += 1
-
+    
+    if Parries > 10000 then return end
+    
+    Parries = Parries + 1
     task.delay(0.5, function()
         if Parries > 0 then
-            Parries -= 1
+            Parries = Parries - 1
         end
     end)
 end
