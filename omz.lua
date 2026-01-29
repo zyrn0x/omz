@@ -1463,6 +1463,15 @@ end
 local function Parry(delay, curve_cframe, event_data, vec2_mouse)
     task.wait(delay or 0)
     
+    -- Anti-cheat validation: ensure arguments are valid
+    if not curve_cframe or typeof(curve_cframe) ~= "CFrame" then
+        curve_cframe = Camera.CFrame
+    end
+    
+    if not event_data or type(event_data) ~= "table" then
+        event_data = {}
+    end
+    
     local final_aim_target
     if isMobile then
         local viewport = Camera.ViewportSize
@@ -1471,13 +1480,23 @@ local function Parry(delay, curve_cframe, event_data, vec2_mouse)
         final_aim_target = vec2_mouse or {Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2}
     end
     
+    -- Validate final_aim_target
+    if type(final_aim_target) ~= "table" or #final_aim_target ~= 2 then
+        final_aim_target = {Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2}
+    end
+    
     for remote, original_args in pairs(revertedRemotes) do
+        -- Validate original_args before using
+        if not original_args or type(original_args) ~= "table" or #original_args < 7 then
+            continue
+        end
+        
         local modified_args = {
             original_args[1],
             original_args[2],
             original_args[3],
-            curve_cframe or Camera.CFrame,
-            event_data or {},
+            curve_cframe,
+            event_data,
             final_aim_target,
             original_args[7]
         }
@@ -1498,11 +1517,13 @@ function Auto_Parry.Parry(Parry_Type)
     if not firstParryFired then
         performFirstPress(getgenv().firstParryType or 'F_Key')
         firstParryFired = true
+        return
     else
         Parry(Parry_Data[1], Parry_Data[2], Parry_Data[3], Parry_Data[4])
     end
 
-    if Parries > 7 then
+    -- Anti-spam protection (increased limit to prevent false positives)
+    if Parries > 15 then
         return false
     end
 
