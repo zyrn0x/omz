@@ -113,15 +113,22 @@ local System = {
         __is_mobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled,
         __mobile_guis = {},
         
-        -- New advanced features
+        -- [[ GOD TIER SETTINGS (DEFAULT ENABLED) ]] --
         __dynamic_spam_range = true,
         __predictive_timing = true,
-        __auto_accuracy_adjustment = false,
+        __auto_accuracy_adjustment = true,
         __debug_trajectory = false,
         __calibration_offset = 0,
         __recent_parries = {},
         __success_rate = 1.0,
-        __average_timing_error = 0
+        __average_timing_error = 0,
+        
+        -- New Features Defaults
+        __dribble_enabled = true,
+        __visuals_enabled = true,
+        __auto_spam_enabled = true,
+        __ability_counters_enabled = true,
+        __god_mode_active = true
     },
 
     
@@ -453,340 +460,356 @@ function System.curve.get_cframe()
     return curve_functions[System.__properties.__curve_mode]()
 end
 
-System.parry = {}
-
-function System.parry.execute()
-    local current_tick = tick()
-    if (current_tick - System.__properties.__last_parry_tick) < 0.015 then
-        return
-    end
-    System.__properties.__last_parry_tick = current_tick
-
-    if System.__properties.__parries > 10000 or not LocalPlayer.Character then
-        return
-    end
-    
-    local camera = workspace.CurrentCamera
-    local success, mouse = pcall(function()
-        return UserInputService:GetMouseLocation()
-    end)
-    
-    if not success then return end
-    
-    local vec2_mouse = {mouse.X, mouse.Y}
-    local is_mobile = System.__properties.__is_mobile
-    
-    local event_data = {}
-    if Alive then
-        for _, entity in pairs(Alive:GetChildren()) do
-            if entity.PrimaryPart then
-                local success2, screen_point = pcall(function()
-                    return camera:WorldToScreenPoint(entity.PrimaryPart.Position)
-                end)
-                if success2 then
-                    event_data[entity.Name] = screen_point
-                end
-            end
-        end
-    end
-    
-    local curve_cframe = System.curve.get_cframe()
-    
-    if not System.__properties.__first_parry_done then
-        for _, connection in pairs(getconnections(LocalPlayer.PlayerGui.Hotbar.Block.Activated)) do
-            connection:Fire()
-        end
-        System.__properties.__first_parry_done = true
-        return
-    end
-
-    local final_aim_target
-    if is_mobile then
-        local viewport = camera.ViewportSize
-        final_aim_target = {viewport.X / 2, viewport.Y / 2}
-    else
-        final_aim_target = vec2_mouse
-    end
-    
-    local fired_remotes = 0
-    for remote, original_args in pairs(revertedRemotes) do
-        if fired_remotes >= 1 then break end -- Only fire the first parry remote to prevent queue exhaustion
-        
-        local modified_args = {
-            original_args[1],
-            original_args[2],
-            original_args[3],
-            curve_cframe,
-            event_data,
-            final_aim_target,
-            original_args[7]
-        }
-        
-        pcall(function()
-            if remote:IsA('RemoteEvent') then
-                remote:FireServer(unpack(modified_args))
-                fired_remotes = fired_remotes + 1
-            elseif remote:IsA('RemoteFunction') then
-                remote:InvokeServer(unpack(modified_args))
-                fired_remotes = fired_remotes + 1
-            end
-        end)
-    end
-    
-    if System.__properties.__parries > 10000 then return end
-    
-    System.__properties.__parries = System.__properties.__parries + 1
-    task.delay(0.5, function()
-        if System.__properties.__parries > 0 then
-            System.__properties.__parries = System.__properties.__parries - 1
-        end
-    end)
-end
-
-function System.parry.keypress()
-    if System.__properties.__parries > 10000 or not LocalPlayer.Character then
-        return
-    end
-
-    PF()
-
-    if System.__properties.__parries > 10000 then return end
-    
-    System.__properties.__parries = System.__properties.__parries + 1
-    task.delay(0.5, function()
-        if System.__properties.__parries > 0 then
-            System.__properties.__parries = System.__properties.__parries - 1
-        end
-    end)
-end
-
--- // aqqqqq
-
-function System.parry.execute_action()
-    System.animation.play_grab_parry()
-    System.parry.execute()
-end
-
-local function linear_predict(a, b, time_volume)
-    return a + (b - a) * time_volume
-end
-
-System.detection = {
-    __ball_properties = {
-        __aerodynamic_time = tick(),
-        __last_warping = tick(),
-        __lerp_radians = 0,
-        __curving = tick(),
-        __previous_velocity = {},
-        
-        -- Advanced velocity tracking
-        __velocity_acceleration = {},
-        __smoothed_velocity = Vector3.zero,
-        __predicted_position = Vector3.zero,
-        __velocity_jerk = 0,
-        
-        -- Curve tracking
-        __curve_intensity = 0,
-        __curve_type = 1,  -- 1=STRAIGHT, 2=SLIGHT, 3=MEDIUM, 4=HARD, 5=BACKWARDS, 6=SPIRAL
-        __curve_commitment = 0
+-- [[ UNIVERSAL PHYSICS ENGINE V4 (GOD TIER) ]] --
+System.physics = {
+    __cache = {
+        last_velocity = Vector3.zero,
+        acceleration = Vector3.zero,
+        jerk = 0,
+        last_tick = 0
     }
 }
 
-function System.detection.is_curved()
-    local ball_properties = System.detection.__ball_properties
-    local ball = System.ball.get()
+function System.physics.get_trajectory(ball)
+    if not ball or not ball:FindFirstChild("zoomies") then return nil end
+    local velocity = ball.zoomies.VectorVelocity
+    local position = ball.Position
+    local tick_now = tick()
+    local dt = tick_now - System.physics.__cache.last_tick
     
-    if not ball then return false end
+    -- Acceleration & Jerk Calculation (For Curve/Switch Prediction)
+    local acceleration = (velocity - System.physics.__cache.last_velocity) / math.max(dt, 0.001)
+    local jerk = (acceleration - System.physics.__cache.acceleration).Magnitude
     
-    local zoomies = ball:FindFirstChild('zoomies')
-    if not zoomies then return false end
-    
-    local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue()
-    local velocity = zoomies.VectorVelocity
-    local ball_direction = velocity.Unit
-    
-    local player_pos = LocalPlayer.Character.PrimaryPart.Position
-    local ball_pos = ball.Position
-    local direction = (player_pos - ball_pos).Unit
-    local dot = direction:Dot(ball_direction)
-    local speed = velocity.Magnitude
-    
-    local speed_threshold = math.min(speed / 100, 40)
-    local distance = (player_pos - ball_pos).Magnitude
-    local reach_time = distance / speed - (ping / 1000)
-    
-    local ball_distance_threshold = 15 - math.min(distance / 1000, 15) + speed_threshold
-    
-    table.insert(ball_properties.__previous_velocity, velocity)
-    if #ball_properties.__previous_velocity > 4 then
-        table.remove(ball_properties.__previous_velocity, 1)
-    end
-    
-    if ball:FindFirstChild('AeroDynamicSlashVFX') then
-        ball.AeroDynamicSlashVFX:Destroy()
-        ball_properties.__aerodynamic_time = tick()
-    end
-    
-    if Runtime:FindFirstChild('Tornado') then
-        if (tick() - ball_properties.__aerodynamic_time) < ((Runtime.Tornado:GetAttribute("TornadoTime") or 1) + 0.314159) then
-            return true
-        end
-    end
-    
-    local backwards_detected = false
-    local horiz_direction = Vector3.new(player_pos.X - ball_pos.X, 0, player_pos.Z - ball_pos.Z)
-    if horiz_direction.Magnitude > 0 then
-        horiz_direction = horiz_direction.Unit
-        local away_from_player = -horiz_direction
-        local horiz_ball_dir = Vector3.new(ball_direction.X, 0, ball_direction.Z)
-        if horiz_ball_dir.Magnitude > 0 then
-            horiz_ball_dir = horiz_ball_dir.Unit
-            local backwards_angle = math.deg(math.acos(math.clamp(away_from_player:Dot(horiz_ball_dir), -1, 1)))
-            if backwards_angle < 85 then
-                backwards_detected = true
-            end
-        end
-    end
+    System.physics.__cache.last_velocity = velocity
+    System.physics.__cache.acceleration = acceleration
+    System.physics.__cache.last_tick = tick_now
+    System.physics.__cache.jerk = jerk
 
-    if backwards_detected then return true end
-    
-    local enough_speed = speed > 160
-    if enough_speed and reach_time > ping / 10 then
-        if speed < 300 then
-            ball_distance_threshold = math.max(ball_distance_threshold - 15, 15)
-        elseif speed < 600 then
-            ball_distance_threshold = math.max(ball_distance_threshold - 16, 16)
-        elseif speed < 1000 then
-            ball_distance_threshold = math.max(ball_distance_threshold - 17, 17)
-        elseif speed < 1500 then
-            ball_distance_threshold = math.max(ball_distance_threshold - 19, 19)
-        else
-            ball_distance_threshold = math.max(ball_distance_threshold - 20, 20)
-        end
-    end
-
-    if distance < ball_distance_threshold then
-        return false
-    end
-    
-    if speed < 300 then
-        if (tick() - ball_properties.__curving) < (reach_time / 1.2) then return true end
-    elseif speed < 450 then
-        if (tick() - ball_properties.__curving) < (reach_time / 1.21) then return true end
-    elseif speed < 600 then
-        if (tick() - ball_properties.__curving) < (reach_time / 1.335) then return true end
-    else
-        if (tick() - ball_properties.__curving) < (reach_time / 1.5) then return true end
-    end
-    
-    local dot_threshold = (0.5 - ping / 1000)
-    local direction_difference = (ball_direction - velocity.Unit)
-    local direction_similarity = direction:Dot(direction_difference.Unit)
-    local dot_difference = dot - direction_similarity
-    
-    if dot_difference < dot_threshold then return true end
-    
-    local clamped_dot = math.clamp(dot, -1, 1)
-    local radians = math.deg(math.asin(clamped_dot))
-    
-    ball_properties.__lerp_radians = linear_predict(ball_properties.__lerp_radians, radians, 0.8)
-    if speed < 300 then
-        if ball_properties.__lerp_radians < 0.02 then
-            ball_properties.__last_warping = tick()
-        end
-        if (tick() - ball_properties.__last_warping) < (reach_time / 1.19) then return true end
-    else
-        if ball_properties.__lerp_radians < 0.018 then
-            ball_properties.__last_warping = tick()
-        end
-        if (tick() - ball_properties.__last_warping) < (reach_time / 1.5) then return true end
-    end
-    
-    if #ball_properties.__previous_velocity == 4 then
-        local intended_difference = (ball_direction - ball_properties.__previous_velocity[1].Unit).Unit
-        local intended_similarity = direction:Dot(intended_difference)
-        local dot_threshold = (0.5 - ping / 1000)
-        local dot_difference = dot - intended_similarity
-        
-        if dot_difference < dot_threshold then return true end
-
-        local intended_difference2 = (ball_direction - ball_properties.__previous_velocity[2].Unit).Unit
-        local intended_similarity2 = direction:Dot(intended_difference2)
-        if (dot - intended_similarity2) < dot_threshold then return true end
-    end
-    
-    return (dot < dot_threshold)
-end
-
--- Advanced Velocity Tracking
-function System.detection.track_velocity(ball)
-    local ball_properties = System.detection.__ball_properties
-    local zoomies = ball:FindFirstChild('zoomies')
-    if not zoomies then return end
-    
-    local current_velocity = zoomies.VectorVelocity
-    
-    -- Calculate acceleration
-    if #ball_properties.__previous_velocity > 0 then
-        local last_velocity = ball_properties.__previous_velocity[#ball_properties.__previous_velocity]
-        local acceleration = current_velocity - last_velocity
-        
-        table.insert(ball_properties.__velocity_acceleration, acceleration)
-        if #ball_properties.__velocity_acceleration > 4 then
-            table.remove(ball_properties.__velocity_acceleration, 1)
-        end
-        
-        -- Calculate jerk (rate of acceleration change)
-        if #ball_properties.__velocity_acceleration >= 2 then
-            local last_accel = ball_properties.__velocity_acceleration[#ball_properties.__velocity_acceleration - 1]
-            ball_properties.__velocity_jerk = (acceleration - last_accel).Magnitude
-        end
-    end
-    
-    -- Smooth velocity using exponential moving average
-    local alpha = 0.3
-    ball_properties.__smoothed_velocity = ball_properties.__smoothed_velocity:Lerp(current_velocity, alpha)
-    
-    -- Predict future position
-    if #ball_properties.__previous_velocity >= 2 then
-        local velocity_trend = current_velocity - ball_properties.__previous_velocity[1]
-        ball_properties.__predicted_position = ball.Position + current_velocity * 0.5 + velocity_trend * 0.25
-    end
-end
-
--- Predictive Parry Timing
-function System.detection.calculate_optimal_parry_time(ball, player_pos, ping)
-    if not ball or not ball:FindFirstChild('zoomies') then return nil end
-    
-    local velocity = ball:FindFirstChild('zoomies').VectorVelocity
-    local ball_pos = ball.Position
-    local distance = (player_pos - ball_pos).Magnitude
-    local speed = velocity.Magnitude
-    
-    if speed < 1 then return nil end
-    
-    -- Basic time to impact
-    local time_to_impact = distance / speed
-    
-    -- Network latency compensation
-    local latency_offset = ping / 1000
-    
-    -- Animation delay (average parry animation time)
-    local animation_delay = 0.08
-    
-    -- Curve adjustment
-    local curve_detected = System.detection.is_curved()
-    local curve_offset = curve_detected and 0.05 or 0
-    
-    -- Calibration offset from performance tracking
-    local calibration = System.__properties.__calibration_offset
-    
     return {
-        earliest = time_to_impact - latency_offset - animation_delay - curve_offset - calibration - 0.07,
-        optimal = time_to_impact - latency_offset - animation_delay - curve_offset - calibration,
-        latest = time_to_impact - latency_offset - curve_offset - calibration + 0.03
+        velocity = velocity,
+        speed = velocity.Magnitude,
+        position = position,
+        acceleration = acceleration,
+        jerk = jerk,
+        is_curved = jerk > 50 or System.detection.is_curved_legacy(ball) -- Hybrid check
     }
 end
+
+-- Reusing legacy curve logic as a fallback/hybrid layer
+function System.detection.is_curved_legacy(ball)
+    -- ... (Keep basic dot product check if needed, or rely purely on physics jerk)
+    -- Optimized version of the old is_curved for backup
+    local zoomies = ball:FindFirstChild('zoomies')
+    if not zoomies then return false end
+    local velocity = zoomies.VectorVelocity
+    local direction = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Unit
+    return direction:Dot(velocity.Unit) < 0.4
+end
+
+-- [[ COMBAT ENGINE V4 (DELTA COMPATIBLE) ]] --
+System.combat = {
+    __state = {
+        is_parrying = false,
+        spam_active = false,
+        target_locked = false,
+        last_parry = 0
+    }
+}
+
+function System.combat.calculate_intercept(ball, player_root)
+    local state = System.physics.get_trajectory(ball)
+    if not state then return nil end
+    
+    local rel_pos = state.position - player_root.Position
+    local distance = rel_pos.Magnitude
+    local closure_rate = -rel_pos.Unit:Dot(state.velocity.Unit) * state.speed
+    
+    -- If ball is moving away, closure_rate is negative. 
+    if closure_rate < 0 and distance > 20 then return nil end -- Not targeting us
+    
+    -- Kinematic Time-To-Impact
+    -- t = d / v (Basic) -> Enhanced with Acceleration
+    -- d = v*t + 0.5*a*t^2 -> Solve for t? 
+    -- Approximating:
+    local time_to_impact = distance / math.max(state.speed, 1)
+    
+    return {
+        time = time_to_impact,
+        distance = distance,
+        state = state
+    }
+end
+
+function System.combat.auto_parry()
+    if not System.__properties.__autoparry_enabled then return end
+    if System.combat.__state.is_parrying then return end
+    
+    local ball = System.ball.get()
+    local player = LocalPlayer.Character
+    if not ball or not player or not player.PrimaryPart then return end
+    
+    local intercept = System.combat.calculate_intercept(ball, player.PrimaryPart)
+    if not intercept then return end
+    
+    -- [[ GOD TIER TIMING CALCULATOR ]] --
+    local ping = (Stats.Network.ServerStatsItem['Data Ping']:GetValue() / 1000)
+    local jitter = 0.05 -- 50ms safety buffer
+    local reaction_time = 0.0 -- Zero delay for bot
+    local server_tick = 1/60
+    
+    -- Dynamic Window based on Speed & Curve
+    local parry_window = math.max(0.15, 0.4 - (intercept.state.speed / 500)) -- Tighter window at high speed
+    if intercept.state.is_curved then
+        parry_window = parry_window + 0.1 -- Widen for curves
+    end
+    
+    local reach_threshold = ping + jitter + server_tick + (parry_window * 0.5)
+    
+    -- 1v10 Clash Logic / Spam Detect
+    if intercept.distance < 25 and intercept.state.speed > 50 then
+        System.combat.execute_parry("Clash")
+        return
+    end
+    
+    -- Predicted Impact
+    if intercept.time <= reach_threshold then
+        System.combat.execute_parry("Standard")
+    end
+end
+
+function System.combat.execute_parry(mode)
+    local now = tick()
+    if now - System.combat.__state.last_parry < 0.1 then return end -- Cooldown safety
+    
+    System.combat.__state.last_parry = now
+    
+    -- Execute Physics-Based Curve Aim
+    local curve_cframe = System.curve.get_cframe()
+    
+    -- Delta-Safe Remote Firing
+    local args = {
+        0.5, -- Adjust based on observed remote args
+        curve_cframe, 
+        {}, -- Enemeies map (Optional efficiency)
+        {400, 300}, -- Target screen (Center)
+        false
+    }
+    
+    -- Fire ALL Parry Remotes (Universal Bypass)
+    -- Using the cached reverted remotes
+    local fired = 0
+    for remote, def_args in pairs(revertedRemotes) do
+         if fired > 0 then break end
+         
+         -- Construct args exactly as the game expects them to avoid "Invalid Args" kicks
+         -- Note: We only replace the CFrame and Directional data
+         local call_args = {
+             def_args[1], -- ID/Key
+             def_args[2],
+             def_args[3],
+             curve_cframe,
+             def_args[5],
+             def_args[6], -- Boolean
+             def_args[7]
+         }
+         
+         if remote.ClassName == "RemoteEvent" then
+             remote:FireServer(unpack(call_args))
+         elseif remote.ClassName == "RemoteFunction" then
+             task.spawn(function() remote:InvokeServer(unpack(call_args)) end)
+         end
+         fired = fired + 1
+    end
+    
+    -- Visual Feedback
+    if System.__properties.__play_animation then
+         System.animation.play_grab_parry()
+    end
+end
+
+-- [[ AUTO SPAM V4 (GOD MODE) ]] --
+function System.combat.auto_spam()
+    if not System.__properties.__auto_spam_enabled then return end
+    
+    local ball = System.ball.get()
+    if not ball then return end
+    
+    local player = LocalPlayer.Character
+    if not player or not player.PrimaryPart then return end
+    
+    local dist = (player.PrimaryPart.Position - ball.Position).Magnitude
+    local speed = ball.zoomies.VectorVelocity.Magnitude
+    
+    -- Dynamic Thresholds based on ping and speed
+    local spam_dist = System.__properties.__spam_distance or 15
+    local spam_speed_min = 60
+    
+    -- Clash Detection (Ping Pong state)
+    local is_clashing = dist < 25 and speed > 80
+    
+    if is_clashing or (dist < spam_dist and speed > spam_speed_min) then
+        if not System.combat.__state.spam_active then
+             System.combat.__state.spam_active = true
+             -- Start High-Tick Spam
+             task.spawn(function()
+                 local start = tick()
+                 while (tick() - start) < 1.5 do -- Burst limit
+                     System.combat.execute_parry("Spam")
+                     RunService.Heartbeat:Wait()
+                     if not System.ball.get() then break end
+                     local d = (LocalPlayer.Character.PrimaryPart.Position - System.ball.get().Position).Magnitude
+                     if d > 30 then break end -- Exit if ball moves away
+                 end
+                 System.combat.__state.spam_active = false
+             end)
+        end
+    end
+end
+
+-- [[ ABILITY HANDLER (GOD TIER) ]] --
+System.abilities = {}
+
+function System.abilities.handler(ball)
+    if not ball then return end
+
+    -- 1. DEFENSIVE COUNTERS (Hard Counters)
+    local velocity = ball.zoomies.VectorVelocity
+    
+    -- Rapture (Vertical Spike)
+    if velocity.Y > 50 and ball.Position.Y > LocalPlayer.Character.PrimaryPart.Position.Y + 10 then
+        System.combat.execute_parry("Rapture Counter")
+    end
+    
+    -- Telekinesis / Pull (Forced Movement)
+    if LocalPlayer.Character.HumanoidRootPart.Velocity.Magnitude > 50 and not System.movement.is_moving() then
+         System.combat.execute_parry("Pull Counter")
+    end
+    
+    -- Freeze (Alpha/Ice detection)
+    if LocalPlayer.Character:FindFirstChild("IceEffect") or LocalPlayer.Character:GetAttribute("Frozen") then
+         System.combat.execute_parry("Freeze Counter")
+    end
+    
+    -- 2. OFFENSIVE UTILITIES
+    -- Pulse Dribble (The "Fix")
+    if System.__properties.__dribble_enabled then
+        System.abilities.pulse_dribble(ball)
+    end
+end
+
+System.movement = {
+    is_moving = function()
+        if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Humanoid") then return false end
+        return LocalPlayer.Character.Humanoid.MoveDirection.Magnitude > 0
+    end
+}
+
+function System.abilities.pulse_dribble(ball)
+    -- Syncs block spam with directional changes to maintain control
+    local move_dir = LocalPlayer.Character.Humanoid.MoveDirection
+    local last_dir = System.abilities.__last_dir or Vector3.zero
+    
+    -- Detect significant direction change (Pulse)
+    if (move_dir - last_dir).Magnitude > 0.5 then
+        System.combat.execute_parry("Dribble Pulse")
+    end
+    
+    System.abilities.__last_dir = move_dir
+end
+
+    System.abilities.__last_dir = move_dir
+end
+
+-- [[ VISUALS ENGINE (GOD TIER) ]] --
+System.visuals = {
+    __beams = {},
+    __indicators = {}
+}
+
+function System.visuals.update(ball, intercept)
+    if not ball then 
+        System.visuals.clear()
+        return 
+    end
+    
+    -- 1. Trajectory Beam
+    local beam_data = System.visuals.__beams[ball]
+    if not beam_data then
+        local att0 = Instance.new("Attachment", ball)
+        local att1 = Instance.new("Attachment", workspace.Terrain)
+        local beam = Instance.new("Beam", ball)
+        beam.Attachment0 = att0
+        beam.Attachment1 = att1
+        beam.Width0 = 0.5
+        beam.Width1 = 0.5
+        beam.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 255, 0))
+        })
+        beam.FaceCamera = true
+        beam.Transparency = NumberSequence.new(0.2)
+        
+        System.visuals.__beams[ball] = {beam = beam, att0 = att0, att1 = att1}
+        beam_data = System.visuals.__beams[ball]
+    end
+    
+    -- Update Beam Target
+    if intercept then
+        beam_data.att1.WorldPosition = intercept.state.predicted_position or ball.Position + ball.zoomies.VectorVelocity
+        beam_data.beam.Enabled = true
+        
+        -- Color Gradient based on Danger (Time)
+        local danger = math.clamp(1 - (intercept.time / 1.0), 0, 1)
+        beam_data.beam.Color = ColorSequence.new({
+             ColorSequenceKeypoint.new(0, Color3.fromHSV(0.3 * (1-danger), 1, 1)), -- Green to Red
+             ColorSequenceKeypoint.new(1, Color3.fromHSV(0.3 * (1-danger), 1, 1))
+        })
+    else
+        beam_data.beam.Enabled = false
+    end
+end
+
+function System.visuals.clear()
+    for ball, data in pairs(System.visuals.__beams) do
+        if data.beam then data.beam:Destroy() end
+        if data.att0 then data.att0:Destroy() end
+        if data.att1 then data.att1:Destroy() end
+    end
+    System.visuals.__beams = {}
+end
+
+-- [[ MAIN EXECUTION LOOP ]] --
+local __run_connection
+function System.init_loop()
+    if __run_connection then __run_connection:Disconnect() end
+    
+    __run_connection = RunService.Heartbeat:Connect(function()
+        if not Alive then return end
+        
+        local ball = System.ball.get()
+        if ball then
+            -- 1. Physics Update
+            local trajectory = System.physics.get_trajectory(ball)
+            local intercept = System.combat.calculate_intercept(ball, LocalPlayer.Character.PrimaryPart)
+            
+            -- 2. Combat Logic
+            System.combat.auto_parry()
+            System.combat.auto_spam()
+            
+            -- 3. Ability Logic
+            System.abilities.handler(ball)
+            
+            -- 4. Visuals Update
+            System.visuals.update(ball, intercept)
+        else
+            System.visuals.clear()
+        end
+    end)
+end
+
+-- Start the loop
+System.init_loop()
 
 -- Auto Accuracy Adjustment
 function System.detection.auto_adjust_accuracy(ball_speed, curve_detected, ping)
