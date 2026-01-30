@@ -1121,6 +1121,7 @@ do
     local dropdown3 = module:Dropdown({
         Title = 'First Parry Type',
         Flag = 'First_Parry_Type',
+        Value = 'F_Key',
         Values = {
             'F_Key',
             'Left_Click',
@@ -1417,6 +1418,7 @@ do
             'Legit',
             'Blatant'
         },
+        Value = 'Legit',
         Multi = false,
         Callback = function(value)
         end
@@ -2463,7 +2465,7 @@ end)
 
     task.spawn(function()
         while task.wait(1) do
-            if getgenv().skinChangerEnabled and getgenv().changeSwordModel then
+            if LocalPlayer and getgenv().skinChangerEnabled and getgenv().changeSwordModel then
                 local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
                 
                 if LocalPlayer:GetAttribute("CurrentlyEquippedSword") ~= getgenv().swordModel then
