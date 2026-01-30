@@ -3738,39 +3738,6 @@ SkinSection:Input({
             end
         end
     })
-
-    local SkinChanger = misc:Section({ Title = 'Skin Changer' })
-
-    SkinChanger:Toggle({
-        Title = 'Enabled',
-        Flag = 'SkinChanger',
-        Default = false,
-        Callback = function(value)
-            getgenv().skinChanger = value
-            if value then
-                getgenv().updateSword()
-            end
-        end
-    })
-
-    SkinChanger:Paragraph({
-        Title = "⚠️EVERYONE CAN SEE ANIMATIONS",
-        Text = "IF YOU USE SKIN CHANGER BACKSWORD YOU MUST EQUIP AN ACTUAL BACKSWORD"
-    })
-
-    SkinChanger:Input({
-        Title = "￬ Skin Name (Case Sensitive) ￬",
-        Placeholder = "Enter Sword Skin Name... ",
-        Flag = "SkinChangerTextbox",
-        Callback = function(text)
-            getgenv().swordModel = text
-            getgenv().swordAnimations = text
-            getgenv().swordFX = text
-            if getgenv().skinChanger then
-                getgenv().updateSword()
-            end
-        end
-    })
     
     local AutoPlayModule = {}
     AutoPlayModule.CONFIG = {
