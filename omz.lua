@@ -3832,8 +3832,11 @@ do
         local getServiceFunction = game.GetService
         
         local function getClonerefPermission()
-            local permission = cloneref(getServiceFunction(game, "ReplicatedFirst"))
-            return permission
+            if not cloneref then return false end
+            local success, permission = pcall(function()
+                return cloneref(getServiceFunction(game, "ReplicatedFirst"))
+            end)
+            return success and permission
         end
         
         AutoPlayModule.clonerefPermission = getClonerefPermission()
@@ -4331,7 +4334,10 @@ do
                         end
                     end
                 else
-                    local VirtualUser = cloneref(game:GetService("VirtualUser"))
+                    local VirtualUser = game:GetService("VirtualUser")
+                    if cloneref then
+                        VirtualUser = cloneref(VirtualUser)
+                    end
                     Players.LocalPlayer.Idled:Connect(function()
                         VirtualUser:CaptureController()
                         VirtualUser:ClickButton2(Vector2.new())
