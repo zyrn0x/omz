@@ -2351,6 +2351,137 @@ task.spawn(function()
     end
 end)
 
+    -- Skin Changer Logic (Re-inserted & Safe)
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local LocalPlayer = game:GetService("Players").LocalPlayer
+    
+    local swordInstances
+    local success, err = pcall(function()
+        local swordInstancesInstance = ReplicatedStorage:WaitForChild("Shared", 9e9):WaitForChild("ReplicatedInstances", 9e9):WaitForChild("Swords", 9e9)
+        swordInstances = require(swordInstancesInstance)
+    end)
+    if not success then warn("Skin Changer Error: " .. tostring(err)) end
+
+    local swordsController
+
+    task.spawn(function()
+        while task.wait(1) do
+            if not swordsController then
+                for i,v in pairs(getconnections(ReplicatedStorage.Remotes.FireSwordInfo.OnClientEvent)) do
+                    if v.Function and islclosure(v.Function) then
+                        local upvalues = getupvalues(v.Function)
+                        if #upvalues == 1 and type(upvalues[1]) == "table" then
+                            swordsController = upvalues[1]
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end)
+
+    local function getSlashName(swordName)
+        if not swordInstances then return "SlashEffect" end
+        local slashName = swordInstances:GetSword(swordName)
+        return (slashName and slashName.SlashName) or "SlashEffect"
+    end
+
+    local function setSword()
+        if not getgenv().skinChangerEnabled or not swordInstances then return end
+        
+        if setupvalue then
+            setupvalue(rawget(swordInstances,"EquipSwordTo"), 3, false)
+        end
+        
+        if getgenv().changeSwordModel then
+            swordInstances:EquipSwordTo(LocalPlayer.Character, getgenv().swordModel)
+        end
+        
+        if getgenv().changeSwordAnimation and swordsController then
+            swordsController:SetSword(getgenv().swordAnimations)
+        end
+    end
+
+    local playParryFunc
+    local parrySuccessAllConnection
+
+    task.spawn(function()
+        while task.wait(0.5) do
+             if not parrySuccessAllConnection then
+                for i,v in pairs(getconnections(ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent)) do
+                    if v.Function and getinfo(v.Function).name == "parrySuccessAll" then
+                        parrySuccessAllConnection = v
+                        playParryFunc = v.Function
+                        v:Disable()
+                        break
+                    end
+                end
+            end
+        end
+    end)
+
+    local parrySuccessClientConnection
+    task.spawn(function()
+        while task.wait(0.5) do
+             if not parrySuccessClientConnection then
+                for i,v in pairs(getconnections(ReplicatedStorage.Remotes.ParrySuccessClient.Event)) do
+                    if v.Function and getinfo(v.Function).name == "parrySuccessAll" then
+                        parrySuccessClientConnection = v
+                        v:Disable()
+                        break
+                    end
+                end
+            end
+        end
+    end)
+
+    getgenv().swordFX = "Default"
+    getgenv().slashName = getSlashName(getgenv().swordFX)
+
+    local lastOtherParryTimestamp = 0
+    
+    ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent:Connect(function(...)
+        setthreadidentity(2)
+        local args = {...}
+        if LocalPlayer and args[4] and tostring(args[4]) ~= LocalPlayer.Name then
+            lastOtherParryTimestamp = tick()
+        elseif getgenv().skinChangerEnabled and getgenv().changeSwordFX then
+            args[1] = getgenv().slashName
+            args[3] = getgenv().swordFX
+        end
+        if playParryFunc then
+            return playParryFunc(unpack(args))
+        end
+    end)
+
+    getgenv().updateSword = function()
+        if getgenv().changeSwordFX then
+            getgenv().slashName = getSlashName(getgenv().swordFX)
+        end
+        setSword()
+    end
+
+    task.spawn(function()
+        while task.wait(1) do
+            if getgenv().skinChangerEnabled and getgenv().changeSwordModel then
+                local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+                
+                if LocalPlayer:GetAttribute("CurrentlyEquippedSword") ~= getgenv().swordModel then
+                    setSword()
+                end
+                
+                if char and (not char:FindFirstChild(getgenv().swordModel)) then
+                    setSword()
+                end
+                
+                for _,v in pairs((char and char:GetChildren()) or {}) do
+                    if v:IsA("Model") and v.Name ~= getgenv().swordModel then
+                        v:Destroy()
+                    end
+                end
+            end
+        end
+    end)
 local SkinSection = misc:Section({ Title = "Skin Changer" })
 
 SkinSection:Toggle({
