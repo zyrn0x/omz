@@ -407,40 +407,6 @@ task.spawn(function()
 end)
 
 local Parries = 0
-
-function create_animation(object, info, value)
-    local animation = game:GetService('TweenService'):Create(object, info, value)
-
-    animation:Play()
-    task.wait(info.Time)
-
-    Debris:AddItem(animation, 0)
-
-    animation:Destroy()
-    animation = nil
-end
-
-local Animation = {}
-Animation.storage = {}
-
-Animation.current = nil
-Animation.track = nil
-
-for _, v in pairs(game:GetService("ReplicatedStorage").Misc.Emotes:GetChildren()) do
-    if v:IsA("Animation") and v:GetAttribute("EmoteName") then
-        local Emote_Name = v:GetAttribute("EmoteName")
-        Animation.storage[Emote_Name] = v
-    end
-end
-
-local Emotes_Data = {}
-
-for Object in pairs(Animation.storage) do
-    table.insert(Emotes_Data, Object)
-end
-
-table.sort(Emotes_Data)
-
 local Auto_Parry = {}
 
 function Auto_Parry.Parry_Animation()
@@ -690,9 +656,7 @@ function Auto_Parry.Parry(Parry_Type)
     local Parry_Data = Auto_Parry.Parry_Data(Parry_Type)
 
     if not firstParryFired then
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0.001)
-        task.wait(0.1)
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0.001)
+        performFirstPress(firstParryType)
         firstParryFired = true
     else
         for remote, originalArgs in pairs(revertedRemotes) do
@@ -1369,9 +1333,13 @@ do
         if newType then
             Selected_Parry_Type = parryTypeMap[newType] or newType
             
-            -- WindUI support for Set not guaranteed, attempting Set() as best guess replacement for update()
-            if dropdown.Set then
-                dropdown:Set(newType) 
+            -- WindUI safety check
+            if dropdown then
+                if dropdown.Set then
+                    dropdown:Set(newType)
+                elseif dropdown.SetValue then
+                    dropdown:SetValue(newType)
+                end
             end
             
             if getgenv().HotkeyParryTypeNotify then
@@ -2420,67 +2388,6 @@ do
             end
         end
     })
-    
-    local Animations = player:Section({ Title = 'Emotes' })
-    
-    Animations:Toggle({
-        Title = 'Enabled',
-        Flag = 'Emotes',
-        Callback = function(value)
-            getgenv().Animations = value
-    
-            if value then
-                Connections_Manager['Animations'] = RunService.Heartbeat:Connect(function()
-                    if not Player.Character or not Player.Character.PrimaryPart then
-                        return
-                    end
-    
-                    local Speed = Player.Character.PrimaryPart.AssemblyLinearVelocity.Magnitude
-    
-                    if Speed > 30 then
-                        if Animation.track then
-                            Animation.track:Stop()
-                            Animation.track:Destroy()
-                            Animation.track = nil
-                        end
-                    else
-                        if not Animation.track and Animation.current then
-                            Auto_Parry.Play_Animation(Animation.current)
-                        end
-                    end
-                end)
-            else
-                if Animation.track then
-                    Animation.track:Stop()
-                    Animation.track:Destroy()
-                    Animation.track = nil
-                end
-    
-                if Connections_Manager['Animations'] then
-                    Connections_Manager['Animations']:Disconnect()
-                    Connections_Manager['Animations'] = nil
-                end
-            end
-        end
-    })
-   
-    local selected_animation = Emotes_Data[1]
-    
-    local AnimationChoice = Animations:Dropdown({
-        Title = 'Animation Type',
-        Flag = 'Selected_Animation',
-        Values = Emotes_Data,
-        Multi = false,
-        Callback = function(value)
-            selected_animation = value
-    
-            if getgenv().Animations then
-                Auto_Parry.Play_Animation(value)
-            end
-        end
-    })
-    
-    AnimationChoice:Set(selected_animation)
 
     _G.PlayerCosmeticsCleanup = {}
     
@@ -2873,31 +2780,42 @@ do
     })
 
     local initialOptions = getPlayerNames()
-    if #initialOptions > 0 then
-        followDropdown = PlayerFollow:Dropdown({
-            Title = "Follow Target",
-            Flag = "Follow_Target",
-            Values = initialOptions,
-            Multi = false,
-            Callback = function(value)
-                if value then
-                    SelectedPlayerFollow = value
-                    if getgenv().FollowNotifyEnabled then
-                        WindUI:Notify({
-                            Title = "Module Notification",
-                            Content = "Now following: " .. value,
-                            Duration = 3
-                        })
-                    end
+    if #initialOptions == 0 then
+        initialOptions = {"None"}
+    end
+
+    followDropdown = PlayerFollow:Dropdown({
+        Title = "Follow Target",
+        Flag = "Follow_Target",
+        Values = initialOptions,
+        Multi = false,
+        Callback = function(value)
+            if value and value ~= "None" then
+                SelectedPlayerFollow = value
+                if getgenv().FollowNotifyEnabled then
+                    WindUI:Notify({
+                        Title = "Module Notification",
+                        Content = "Now following: " .. value,
+                        Duration = 3
+                    })
                 end
             end
-        })
+        end
+    })
+    
+    if #initialOptions > 0 and initialOptions[1] ~= "None" then
         SelectedPlayerFollow = initialOptions[1]
-        followDropdown:Set(SelectedPlayerFollow)
+        
+        if followDropdown then
+            if followDropdown.Set then
+                followDropdown:Set(SelectedPlayerFollow)
+            elseif followDropdown.SetValue then
+                followDropdown:SetValue(SelectedPlayerFollow)
+            end
+        end
         getgenv().FollowDropdown = followDropdown
     else
         SelectedPlayerFollow = nil
-        -- Consider initializing an empty dropdown if no players
     end
     
     local lastOptionsString = table.concat(initialOptions, ",")
@@ -2919,7 +2837,13 @@ do
 
                         if not table.find(newOptions, SelectedPlayerFollow) then
                             SelectedPlayerFollow = newOptions[1]
-                            followDropdown:Set(SelectedPlayerFollow)
+                            if followDropdown then
+                                if followDropdown.Set then
+                                    followDropdown:Set(SelectedPlayerFollow)
+                                elseif followDropdown.SetValue then
+                                    followDropdown:SetValue(SelectedPlayerFollow)
+                                end
+                            end
                         end
                     else
                         SelectedPlayerFollow = nil
@@ -3022,6 +2946,7 @@ do
             hit_Sound:Play()
         end
     end)
+
 
     local soundOptions = {
         ["Eeyuh"] = "rbxassetid://16190782181",
@@ -3832,11 +3757,8 @@ do
         local getServiceFunction = game.GetService
         
         local function getClonerefPermission()
-            if not cloneref then return false end
-            local success, permission = pcall(function()
-                return cloneref(getServiceFunction(game, "ReplicatedFirst"))
-            end)
-            return success and permission
+            local permission = cloneref(getServiceFunction(game, "ReplicatedFirst"))
+            return permission
         end
         
         AutoPlayModule.clonerefPermission = getClonerefPermission()
@@ -3918,7 +3840,7 @@ do
     function AutoPlayModule.isLimited()
         local passedTime = tick() - AutoPlayModule.LAST_GENERATION
         return passedTime < AutoPlayModule.CONFIG.GENERATION_THRESHOLD
-    }
+    end
     
     function AutoPlayModule.percentageCheck(limit)
         if AutoPlayModule.isLimited() then
@@ -4334,10 +4256,7 @@ do
                         end
                     end
                 else
-                    local VirtualUser = game:GetService("VirtualUser")
-                    if cloneref then
-                        VirtualUser = cloneref(VirtualUser)
-                    end
+                    local VirtualUser = cloneref(game:GetService("VirtualUser"))
                     Players.LocalPlayer.Idled:Connect(function()
                         VirtualUser:CaptureController()
                         VirtualUser:ClickButton2(Vector2.new())
