@@ -264,7 +264,81 @@ type tableInfo = {
 
 
 local Parries = 0
-local Auto_Parry = {}
+local Auto_Parry = {
+    __velocity_history = {},
+    __max_history = 10,
+    __last_ball = nil,
+    __acceleration = Vector3.zero
+}
+
+function Auto_Parry.Update_Velocity(Ball)
+    if not Ball then 
+        Auto_Parry.__velocity_history = {}
+        return 
+    end
+
+    if Auto_Parry.__last_ball ~= Ball then
+        Auto_Parry.__velocity_history = {}
+        Auto_Parry.__last_ball = Ball
+    end
+
+    local zoomies = Ball:FindFirstChild("zoomies")
+    if not zoomies then return end
+
+    local velocity = zoomies.VectorVelocity
+    table.insert(Auto_Parry.__velocity_history, velocity)
+
+    if #Auto_Parry.__velocity_history > Auto_Parry.__max_history then
+        table.remove(Auto_Parry.__velocity_history, 1)
+    end
+
+    if #Auto_Parry.__velocity_history >= 2 then
+        local v1 = Auto_Parry.__velocity_history[#Auto_Parry.__velocity_history - 1]
+        local v2 = Auto_Parry.__velocity_history[#Auto_Parry.__velocity_history]
+        Auto_Parry.__acceleration = (v2 - v1) / (1 / 60) -- Approximate delta time
+    else
+        Auto_Parry.__acceleration = Vector3.zero
+    end
+end
+
+function Auto_Parry.Get_TTI(Ball)
+    if not Ball then return 1e9 end
+    
+    local zoomies = Ball:FindFirstChild("zoomies")
+    if not zoomies then return 1e9 end
+
+    local velocity = zoomies.VectorVelocity
+    local speed = velocity.Magnitude
+    if speed < 1 then return 1e9 end
+
+    local playerPos = Player.Character.PrimaryPart.Position
+    local ballPos = Ball.Position
+    local distance = (playerPos - ballPos).Magnitude
+    
+    -- Basic TTI
+    local tti = distance / speed
+    
+    -- Kinematic TTI (considering acceleration towards player)
+    local dirToPlayer = (playerPos - ballPos).Unit
+    local accelMag = Auto_Parry.__acceleration:Dot(dirToPlayer)
+    
+    if math.abs(accelMag) > 0.1 then
+        -- solve d = v*t + 0.5*a*t^2 => 0.5*a*t^2 + v*t - d = 0
+        -- t = (-v + sqrt(v^2 - 4*0.5*a*(-d))) / (2*0.5*a)
+        -- t = (-v + sqrt(v^2 + 2*a*d)) / a
+        local v = speed
+        local a = accelMag
+        local discriminant = v^2 + 2 * a * distance
+        if discriminant > 0 then
+            local t = (-v + math.sqrt(discriminant)) / a
+            if t > 0 then
+                tti = t
+            end
+        end
+    end
+
+    return tti
+end
 
 function Auto_Parry.Parry_Animation()
     local Parry_Animation = game:GetService("ReplicatedStorage").Shared.SwordAPI.Collection.Default:FindFirstChild('GrabParry')
@@ -1014,29 +1088,24 @@ do
                         local One_Target = One_Ball:GetAttribute('target')
 
                         local Velocity = Zoomies.VectorVelocity
-
                         local Distance = (Player.Character.PrimaryPart.Position - Ball.Position).Magnitude
-
-                        local Ping = game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue() / 10
-
-                        local Ping_Threshold = math.clamp(Ping / 10, 5, 17)
-
                         local Speed = Velocity.Magnitude
 
-                        local cappedSpeedDiff = math.min(math.max(Speed - 9.5, 0), 650)
-                        local speed_divisor_base = 2.4 + cappedSpeedDiff * 0.002
+                        -- Kinematic Update
+                        Auto_Parry.Update_Velocity(Ball)
+                        local TTI = Auto_Parry.Get_TTI(Ball)
 
-                        local effectiveMultiplier = Speed_Divisor_Multiplier
-                        if getgenv().RandomParryAccuracyEnabled then
-                            if Speed < 200 then
-                                effectiveMultiplier = 0.7 + (math.random(40, 100) - 1) * (0.35 / 99)
-                            else
-                                effectiveMultiplier = 0.7 + (math.random(1, 100) - 1) * (0.35 / 99)
-                            end
-                        end
+                        -- Network & Buffer
+                        local RawPing = game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue()
+                        local Network_Delay = (RawPing / 1000)
+                        
+                        -- Custom Slider Mapping: Accuracy (1-100)
+                        -- 100 accuracy = 0ms buffer (tight)
+                        -- 1 accuracy = ~200ms buffer (safe/early)
+                        local Global_Delay = (100 - (Library._config._flags["Parry_Accuracy"] or 100)) * 0.002
+                        local Dynamic_Offset = math.clamp(Network_Delay, 0.005, 0.15) -- Auto-adjust based on ping
 
-                        local speed_divisor = speed_divisor_base * effectiveMultiplier
-                        local Parry_Accuracy = Ping_Threshold + math.max(Speed / speed_divisor, 9.5)
+                        local Threshold_TTI = Network_Delay + Global_Delay + Dynamic_Offset
 
                         local Curved = Auto_Parry.Is_Curved()
 
@@ -1076,13 +1145,13 @@ do
                             return
                         end
 
-                        if Ball_Target == tostring(Player) and Distance <= Parry_Accuracy then
+                        if Ball_Target == tostring(Player) and TTI <= Threshold_TTI then
                             if getgenv().AutoAbility and AutoAbility() then
                                 return
                             end
                         end
 
-                        if Ball_Target == tostring(Player) and Distance <= Parry_Accuracy then
+                        if Ball_Target == tostring(Player) and TTI <= Threshold_TTI then
                             if getgenv().CooldownProtection and cooldownProtection() then
                                 return
                             end
@@ -1347,29 +1416,20 @@ do
                     end
 
                     Auto_Parry.Closest_Player()
+                    Auto_Parry.Update_Velocity(Ball)
+                    
+                    local TTI = Auto_Parry.Get_TTI(Ball)
+                    local RawPing = game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue()
+                    local Network_Delay = (RawPing / 1000)
 
-                    local Ping = game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue()
-
-                    local Ping_Threshold = math.clamp(Ping / 10, 1, 16)
+                    -- Spam Window Slider Mapping
+                    local Spam_Window = (100 - (Library._config._flags["Spam_Threshold"] or 50)) * 0.003
+                    local Spam_Threshold_TTI = Network_Delay + Spam_Window + 0.05 -- Base 50ms buffer for spam
 
                     local Ball_Target = Ball:GetAttribute('target')
 
-                    local Ball_Properties = Auto_Parry:Get_Ball_Properties()
-                    local Entity_Properties = Auto_Parry:Get_Entity_Properties()
-
-                    local Spam_Accuracy = Auto_Parry.Spam_Service({
-                        Ball_Properties = Ball_Properties,
-                        Entity_Properties = Entity_Properties,
-                        Ping = Ping_Threshold
-                    })
-
                     local Target_Position = Closest_Entity.PrimaryPart.Position
                     local Target_Distance = Player:DistanceFromCharacter(Target_Position)
-
-                    local Direction = (Player.Character.PrimaryPart.Position - Ball.Position).Unit
-                    local Ball_Direction = Zoomies.VectorVelocity.Unit
-
-                    local Dot = Direction:Dot(Ball_Direction)
 
                     local Distance = Player:DistanceFromCharacter(Ball.Position)
 
@@ -1377,7 +1437,8 @@ do
                         return
                     end
 
-                    if Target_Distance > Spam_Accuracy or Distance > Spam_Accuracy then
+                    -- Safety: Only spam if ball is coming towards us or target is close
+                    if Target_Distance > 40 and Distance > 40 then
                         return
                     end
                     
@@ -1391,9 +1452,7 @@ do
                         return
                     end
 
-                    local threshold = ParryThreshold
-
-                    if Distance <= Spam_Accuracy and Parries > threshold then
+                    if TTI <= Spam_Threshold_TTI and Parries > 2.5 then -- Using fixed 2.5 threshold for spam stability
                         if getgenv().SpamParryKeypress then
                             VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game) 
                         else
@@ -1424,15 +1483,15 @@ do
     })
 
     SpamParry:Slider({
-        Title = "Parry Threshold",
-        Flag = "Parry_Threshold",
+        Title = "Spam Window",
+        Flag = "Spam_Threshold",
         Value = {
             Min = 1,
-            Max = 3,
-            Default = 2.5
+            Max = 100,
+            Default = 50
         },
         Callback = function(value)
-            ParryThreshold = value
+            -- Slider value stored in flag for TTI mapping
         end
     })
 
