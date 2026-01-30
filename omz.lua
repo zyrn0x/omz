@@ -1145,8 +1145,9 @@ do
     }
 
     local dropdown = module:Dropdown({
-        Title = 'Parry Type',
-        Flag = 'Parry_Type',
+        Title = 'Target',
+        Flag = 'Auto_Parry_Target',
+        Value = 'Camera',
         Values = {
             'Camera',
             'Random',
@@ -1158,12 +1159,10 @@ do
             'Random Target'
         },
         Multi = false,
-        Callback = function(value)
+        Callback = function(value: string)
             Selected_Parry_Type = parryTypeMap[value] or value
         end
     })
-
-
 
     local UserInputService = game:GetService("UserInputService")
 
