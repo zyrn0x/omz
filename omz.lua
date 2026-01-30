@@ -298,16 +298,8 @@ function Auto_Parry.Parry_Animation()
         end
     end
 
-    local char = Player.Character
-    local humanoid = char and char:FindFirstChild("Humanoid")
-    local animator = humanoid and humanoid:FindFirstChild("Animator")
-
-    if animator and Parry_Animation then
-        Grab_Parry = animator:LoadAnimation(Parry_Animation)
-        if Grab_Parry then
-            Grab_Parry:Play()
-        end
-    end
+    Grab_Parry = Player.Character.Humanoid.Animator:LoadAnimation(Parry_Animation)
+    Grab_Parry:Play()
 end
 
 function Auto_Parry.Play_Animation(v)
@@ -362,16 +354,13 @@ end
 local Closest_Entity = nil
 
 function Auto_Parry.Closest_Player()
-    local char = Player.Character
-    if not char or not char:FindFirstChild("PrimaryPart") then return nil end
-
     local Max_Distance = math.huge
     local Found_Entity = nil
     
     for _, Entity in pairs(workspace.Alive:GetChildren()) do
-        if Entity ~= char then
-            if Entity:FindFirstChild("PrimaryPart") then
-                local Distance = (char.PrimaryPart.Position - Entity.PrimaryPart.Position).Magnitude
+        if tostring(Entity) ~= tostring(Player) then
+            if Entity.PrimaryPart then  -- Check if PrimaryPart exists
+                local Distance = Player:DistanceFromCharacter(Entity.PrimaryPart.Position)
                 if Distance < Max_Distance then
                     Max_Distance = Distance
                     Found_Entity = Entity
@@ -391,18 +380,9 @@ function Auto_Parry:Get_Entity_Properties()
         return false
     end
 
-    local char = Player.Character
-    if not char or not char:FindFirstChild("PrimaryPart") or not Closest_Entity:FindFirstChild("PrimaryPart") then
-        return {
-            Velocity = Vector3.zero,
-            Direction = Vector3.new(0,0,1),
-            Distance = 999
-        }
-    end
-
-    local Entity_Velocity = Closest_Entity.PrimaryPart.AssemblyLinearVelocity or Closest_Entity.PrimaryPart.Velocity or Vector3.zero
-    local Entity_Direction = (char.PrimaryPart.Position - Closest_Entity.PrimaryPart.Position).Unit
-    local Entity_Distance = (char.PrimaryPart.Position - Closest_Entity.PrimaryPart.Position).Magnitude
+    local Entity_Velocity = Closest_Entity.PrimaryPart.Velocity
+    local Entity_Direction = (Player.Character.PrimaryPart.Position - Closest_Entity.PrimaryPart.Position).Unit
+    local Entity_Distance = (Player.Character.PrimaryPart.Position - Closest_Entity.PrimaryPart.Position).Magnitude
 
     return {
         Velocity = Entity_Velocity,
@@ -596,12 +576,7 @@ function Auto_Parry.Is_Curved()
     local Velocity = Zoomies.VectorVelocity
     local Ball_Direction = Velocity.Unit
 
-    local char = Player.Character
-    if not char or not char:FindFirstChild("PrimaryPart") then
-        return false
-    end
-
-    local playerPos = char.PrimaryPart.Position
+    local playerPos = Player.Character.PrimaryPart.Position
     local ballPos = Ball.Position
     local Direction = (playerPos - ballPos).Unit
     local Dot = Direction:Dot(Ball_Direction)
@@ -610,7 +585,7 @@ function Auto_Parry.Is_Curved()
     local Speed_Threshold = math.min(Speed/100, 40)
     local Angle_Threshold = 40 * math.max(Dot, 0)
     local Distance = (playerPos - ballPos).Magnitude
-    local Reach_Time = Distance / math.max(Speed, 1) - (Ping / 1000)
+    local Reach_Time = Distance / Speed - (Ping / 1000)
     
     local Ball_Distance_Threshold = 15 - math.min(Distance/1000, 15) + Speed_Threshold
 
@@ -734,18 +709,12 @@ end
 
 function Auto_Parry:Get_Ball_Properties()
     local Ball = Auto_Parry.Get_Ball()
-    if not Ball then return { Velocity = Vector3.zero, Direction = Vector3.new(0,0,1), Distance = 999, Dot = 0 } end
 
-    local char = Player.Character
-    if not char or not char:FindFirstChild("PrimaryPart") then
-         return { Velocity = Vector3.zero, Direction = Vector3.new(0,0,1), Distance = 999, Dot = 0 }
-    end
-
-    local Ball_Velocity = (Ball:FindFirstChild("zoomies") and Ball.zoomies.VectorVelocity) or Ball.AssemblyLinearVelocity or Vector3.zero
+    local Ball_Velocity = Vector3.zero
     local Ball_Origin = Ball
 
-    local Ball_Direction = (char.PrimaryPart.Position - Ball_Origin.Position).Unit
-    local Ball_Distance = (char.PrimaryPart.Position - Ball.Position).Magnitude
+    local Ball_Direction = (Player.Character.PrimaryPart.Position - Ball_Origin.Position).Unit
+    local Ball_Distance = (Player.Character.PrimaryPart.Position - Ball.Position).Magnitude
     local Ball_Dot = Ball_Direction:Dot(Ball_Velocity.Unit)
 
     return {
@@ -758,39 +727,48 @@ end
 
 function Auto_Parry.Spam_Service(self)
     local Ball = Auto_Parry.Get_Ball()
-    local Entity = Auto_Parry.Closest_Player()
-    local char = Player.Character
 
-    if not Ball or not Entity or not char or not char:FindFirstChild("PrimaryPart") or not Entity:FindFirstChild("PrimaryPart") then
-        return 0
+    local Entity = Auto_Parry.Closest_Player()
+
+    if not Ball then
+        return false
     end
+
+    if not Entity or not Entity.PrimaryPart then
+        return false
+    end
+
+    local Spam_Accuracy = 0
 
     local Velocity = Ball.AssemblyLinearVelocity
     local Speed = Velocity.Magnitude
-    local Direction = (char.PrimaryPart.Position - Ball.Position).Unit
+
+    local Direction = (Player.Character.PrimaryPart.Position - Ball.Position).Unit
     local Dot = Direction:Dot(Velocity.Unit)
 
     local Target_Position = Entity.PrimaryPart.Position
     local Target_Distance = Player:DistanceFromCharacter(Target_Position)
 
-    local Maximum_Spam_Distance = (self.Ping or 0) + math.min(Speed / 6, 95)
+    local Maximum_Spam_Distance = self.Ping + math.min(Speed / 6, 95)
 
-    if self.Entity_Properties and self.Entity_Properties.Distance > Maximum_Spam_Distance then
-        return 0
+    if self.Entity_Properties.Distance > Maximum_Spam_Distance then
+        return Spam_Accuracy
     end
 
-    if self.Ball_Properties and self.Ball_Properties.Distance > Maximum_Spam_Distance then
-        return 0
+    if self.Ball_Properties.Distance > Maximum_Spam_Distance then
+        return Spam_Accuracy
     end
 
     if Target_Distance > Maximum_Spam_Distance then
-        return 0
+        return Spam_Accuracy
     end
 
     local Maximum_Speed = 5 - math.min(Speed / 5, 5)
     local Maximum_Dot = math.clamp(Dot, -1, 0) * Maximum_Speed
 
-    return Maximum_Spam_Distance - Maximum_Dot
+    Spam_Accuracy = Maximum_Spam_Distance - Maximum_Dot
+
+    return Spam_Accuracy
 end
 
 local Connections_Manager = {}
@@ -966,39 +944,20 @@ local function isCooldownInEffect2(uigradient)
 end
 
 local function cooldownProtection()
-    if not ParryCD or not ParryCD.Parent then return false end
     if isCooldownInEffect1(ParryCD) then
-        local remote = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("AbilityButtonPress")
-        if remote then
-            remote:Fire()
-        end
+        game:GetService("ReplicatedStorage").Remotes.AbilityButtonPress:Fire()
         return true
     end
     return false
 end
 
 local function AutoAbility()
-    if not AbilityCD or not AbilityCD.Parent then return false end
-    local char = Player.Character
-    local abilities = char and char:FindFirstChild("Abilities")
-    if isCooldownInEffect2(AbilityCD) and abilities then
-        local names = {"Raging Deflection", "Rapture", "Calming Deflection", "Aerodynamic Slash", "Fracture", "Death Slash"}
-        local found = false
-        for _, n in ipairs(names) do
-            local a = abilities:FindFirstChild(n)
-            if a and a.Enabled then
-                found = true
-                break
-            end
-        end
-
-        if found then
+    if isCooldownInEffect2(AbilityCD) then
+        if Player.Character.Abilities["Raging Deflection"].Enabled or Player.Character.Abilities["Rapture"].Enabled or Player.Character.Abilities["Calming Deflection"].Enabled or Player.Character.Abilities["Aerodynamic Slash"].Enabled or Player.Character.Abilities["Fracture"].Enabled or Player.Character.Abilities["Death Slash"].Enabled then
             Parried = true
-            local remote = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("AbilityButtonPress")
-            if remote then remote:Fire() end
+            game:GetService("ReplicatedStorage").Remotes.AbilityButtonPress:Fire()
             task.wait(2.432)
-            local dsRemote = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("DeathSlashShootActivation")
-            if dsRemote then dsRemote:FireServer(true) end
+            game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("DeathSlashShootActivation"):FireServer(true)
             return true
         end
     end
@@ -1028,42 +987,40 @@ do
                 end
             end
             if value then
-                Connections_Manager['Auto Parry'] = RunService.PreSimulation:Connect(function() 
-                    local char = Player.Character
-                    if not char or not char:FindFirstChild("PrimaryPart") then return end
-
+                Connections_Manager['Auto Parry'] = RunService.PreSimulation:Connect(function()
                     local One_Ball = Auto_Parry.Get_Ball()
                     local Balls = Auto_Parry.Get_Balls()
 
                     for _, Ball in pairs(Balls) do
-                        if not Ball or not Ball:IsDescendantOf(workspace) then
-                            continue
+
+                        if not Ball then
+                            return
                         end
 
                         local Zoomies = Ball:FindFirstChild('zoomies')
                         if not Zoomies then
-                            continue
+                            return
                         end
+
+                        Ball:GetAttributeChangedSignal('target'):Once(function()
+                            Parried = false
+                        end)
 
                         if Parried then
                             return
                         end
 
                         local Ball_Target = Ball:GetAttribute('target')
-                        local One_Target = One_Ball and One_Ball:GetAttribute('target')
+                        local One_Target = One_Ball:GetAttribute('target')
 
                         local Velocity = Zoomies.VectorVelocity
-                        local Distance = (char.PrimaryPart.Position - Ball.Position).Magnitude
 
-                        local Stats = game:GetService('Stats')
-                        local PingItem = Stats.Network:FindFirstChild("ServerStatsItem")
-                        local Ping = 0
-                        
-                        if PingItem and PingItem:FindFirstChild("Data Ping") then
-                            Ping = PingItem["Data Ping"]:GetValue() / 10
-                        end
+                        local Distance = (Player.Character.PrimaryPart.Position - Ball.Position).Magnitude
+
+                        local Ping = game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue() / 10
 
                         local Ping_Threshold = math.clamp(Ping / 10, 5, 17)
+
                         local Speed = Velocity.Magnitude
 
                         local cappedSpeedDiff = math.min(math.max(Speed - 9.5, 0), 650)
