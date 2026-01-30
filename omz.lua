@@ -625,6 +625,18 @@ task.spawn(System.detectors.loop)
 System.parry = {}
 function System.parry.execute()
     if System.__properties.__parries > 10000 or not Player.Character then return end
+    
+    -- First parry logic from UwU.txt - fire Block button connections directly
+    if not System.__properties.__first_parry_done then
+        pcall(function()
+            for _, connection in pairs(getconnections(Player.PlayerGui.Hotbar.Block.Activated)) do
+                connection:Fire()
+            end
+        end)
+        System.__properties.__first_parry_done = true
+        return
+    end
+    
     local camera = workspace.CurrentCamera
     local success, mouse_loc = pcall(function() return UserInputService:GetMouseLocation() end)
     if not success then return end
@@ -660,7 +672,18 @@ end
 
 function System.parry.keypress()
     if System.__properties.__parries > 10000 or not Player.Character then return end
-    if PF then PF() end
+    
+    -- Use PF if available, otherwise fallback to firing Block connections directly (fixes HSH-2)
+    if PF then
+        PF()
+    else
+        pcall(function()
+            for _, connection in pairs(getconnections(Player.PlayerGui.Hotbar.Block.Activated)) do
+                connection:Fire()
+            end
+        end)
+    end
+    
     System.__properties.__parries = System.__properties.__parries + 1
     task.delay(0.5, function() System.__properties.__parries = math.max(0, System.__properties.__parries - 1) end)
 end
