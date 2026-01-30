@@ -2315,7 +2315,7 @@ local clashConnections = {}
 ReplicatedStorage.Remotes.ParrySuccessAll.OnClientEvent:Connect(function(...)
     setthreadidentity(2)
     local args = {...}
-    if tostring(args[4]) ~= LocalPlayer.Name then
+    if LocalPlayer and tostring(args[4]) ~= LocalPlayer.Name then
         lastOtherParryTimestamp = tick()
     elseif getgenv().skinChangerEnabled and getgenv().changeSwordFX then
         args[1] = getgenv().slashName
