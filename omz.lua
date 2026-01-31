@@ -308,7 +308,7 @@ function Auto_Parry.Get_TTI(Ball)
     if not zoomies then return 1e9 end
 
     local velocity = zoomies.VectorVelocity
-    local speed = velocity.Magnitude
+    local speed = velocity.Magnitude * (Speed_Divisor_Multiplier or 1)
     if speed < 1 then return 1e9 end
 
     local playerPos = Player.Character.PrimaryPart.Position
@@ -337,6 +337,7 @@ function Auto_Parry.Get_TTI(Ball)
         end
     end
 
+    -- Return the more accurate TTI
     return tti
 end
 
@@ -1100,13 +1101,11 @@ do
                         local Network_Delay = (RawPing / 1000)
                         
                         -- Custom Slider Mapping: Accuracy (1-100)
-                        -- 100 accuracy = 0ms buffer (tight)
-                        -- 1 accuracy = ~200ms buffer (safe/early)
-                        local Global_Delay = (100 - (Library._config._flags["Parry_Accuracy"] or 100)) * 0.002
-                        local Dynamic_Offset = math.clamp(Network_Delay, 0.005, 0.15) -- Auto-adjust based on ping
+                        local Accuracy = Library._config._flags["Parry_Accuracy"] or 100
+                        local Global_Delay = (100 - Accuracy) * 0.002
+                        local Dynamic_Offset = math.clamp(Network_Delay, 0.01, 0.1) -- Optimized ping compensation
 
                         local Threshold_TTI = Network_Delay + Global_Delay + Dynamic_Offset
-
                         local Curved = Auto_Parry.Is_Curved()
 
                         if Ball:FindFirstChild('AeroDynamicSlashVFX') then
@@ -1116,12 +1115,8 @@ do
 
                         if Runtime:FindFirstChild('Tornado') then
                             if (tick() - Tornado_Time) < (Runtime.Tornado:GetAttribute("TornadoTime") or 1) + 0.314159 then
-                            return
+                                return
                             end
-                        end
-
-                        if One_Target == tostring(Player) and Curved then
-                            return
                         end
 
                         if Ball:FindFirstChild("ComboCounter") then
@@ -1145,13 +1140,20 @@ do
                             return
                         end
 
-                        if Ball_Target == tostring(Player) and TTI <= Threshold_TTI then
+                        -- Adjustable Curved Threshold: Allow parry even if curved if it's about to hit
+                        local Final_Threshold = Threshold_TTI
+                        if Curved then
+                            Final_Threshold = Network_Delay + 0.05 -- Tighter window for curves to avoid being baited
+                        end
+                        
+                        -- Emergency check: if the ball is extremely close, parry regardless of TTI/Curve
+                        local Is_Emergency = Distance < (Speed * Network_Delay) + 15
+
+                        if Ball_Target == tostring(Player) and (TTI <= Final_Threshold or Is_Emergency) then
                             if getgenv().AutoAbility and AutoAbility() then
                                 return
                             end
-                        end
 
-                        if Ball_Target == tostring(Player) and TTI <= Threshold_TTI then
                             if getgenv().CooldownProtection and cooldownProtection() then
                                 return
                             end
