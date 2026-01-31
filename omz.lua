@@ -1140,14 +1140,16 @@ do
                             return
                         end
 
-                        -- Adjustable Curved Threshold: Allow parry even if curved if it's about to hit
+                        -- Adjustable Curved Threshold: Ensure accuracy slider still applies to curves
                         local Final_Threshold = Threshold_TTI
                         if Curved then
-                            Final_Threshold = Network_Delay + 0.05 -- Tighter window for curves to avoid being baited
+                            -- For curves, we parry slightly later to avoid being baited, 
+                            -- but it still scales with the Accuracy slider.
+                            Final_Threshold = (Network_Delay + Global_Delay + Dynamic_Offset) * 0.85
                         end
                         
                         -- Emergency check: if the ball is extremely close, parry regardless of TTI/Curve
-                        local Is_Emergency = Distance < (Speed * Network_Delay) + 15
+                        local Is_Emergency = Distance < (Speed * Network_Delay) + 18
 
                         if Ball_Target == tostring(Player) and (TTI <= Final_Threshold or Is_Emergency) then
                             if getgenv().AutoAbility and AutoAbility() then
@@ -1289,7 +1291,8 @@ do
             Default = 100
         },
         Callback = function(value)
-            Speed_Divisor_Multiplier = 0.7 + (value - 1) * (0.35 / 99)
+            -- 1 = Early/Safe (1.5 multiplier), 100 = Perfect/Tight (0.9 multiplier)
+            Speed_Divisor_Multiplier = 1.5 - (value - 1) * (0.6 / 99)
         end
     })
 
