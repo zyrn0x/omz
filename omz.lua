@@ -835,7 +835,23 @@ function Auto_Parry.Parry(Parry_Type)
         performFirstPress(firstParryType)
         firstParryFired = true
     else
-        Parry(Parry_Data[1], Parry_Data[2], Parry_Data[3], Parry_Data[4])
+        for remote, originalArgs in pairs(revertedRemotes) do
+            local modifiedArgs = {
+                originalArgs[1],
+                originalArgs[2],
+                originalArgs[3],
+                Parry_Data[2],
+                originalArgs[5],
+                originalArgs[6],
+                originalArgs[7]
+            }
+            
+            if remote:IsA("RemoteEvent") then
+                remote:FireServer(unpack(modifiedArgs))
+            elseif remote:IsA("RemoteFunction") then
+                remote:InvokeServer(unpack(modifiedArgs))
+            end
+        end
     end
 
     if Parries > 7 then
