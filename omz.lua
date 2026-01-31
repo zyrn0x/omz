@@ -268,7 +268,9 @@ local Auto_Parry = {
     __velocity_history = {},
     __max_history = 10,
     __last_ball = nil,
-    __acceleration = Vector3.zero
+    __acceleration = Vector3.zero,
+    __jerk = 0,
+    __last_tick = tick()
 }
 
 function Auto_Parry.Update_Velocity(Ball)
@@ -277,9 +279,15 @@ function Auto_Parry.Update_Velocity(Ball)
         return 
     end
 
+    local tick_now = tick()
+    local dt = math.max(tick_now - Auto_Parry.__last_tick, 0.001)
+    Auto_Parry.__last_tick = tick_now
+
     if Auto_Parry.__last_ball ~= Ball then
         Auto_Parry.__velocity_history = {}
         Auto_Parry.__last_ball = Ball
+        Auto_Parry.__acceleration = Vector3.zero
+        Auto_Parry.__jerk = 0
     end
 
     local zoomies = Ball:FindFirstChild("zoomies")
@@ -295,9 +303,13 @@ function Auto_Parry.Update_Velocity(Ball)
     if #Auto_Parry.__velocity_history >= 2 then
         local v1 = Auto_Parry.__velocity_history[#Auto_Parry.__velocity_history - 1]
         local v2 = Auto_Parry.__velocity_history[#Auto_Parry.__velocity_history]
-        Auto_Parry.__acceleration = (v2 - v1) / (1 / 60) -- Approximate delta time
+        
+        local new_accel = (v2 - v1) / dt
+        Auto_Parry.__jerk = (new_accel - Auto_Parry.__acceleration).Magnitude
+        Auto_Parry.__acceleration = new_accel
     else
         Auto_Parry.__acceleration = Vector3.zero
+        Auto_Parry.__jerk = 0
     end
 end
 
@@ -313,31 +325,23 @@ function Auto_Parry.Get_TTI(Ball)
 
     local playerPos = Player.Character.PrimaryPart.Position
     local ballPos = Ball.Position
-    local distance = (playerPos - ballPos).Magnitude
+    local rel_pos = ballPos - playerPos
+    local distance = rel_pos.Magnitude
     
-    -- Basic TTI
-    local tti = distance / speed
+    -- Closure Rate: velocity of ball towards player
+    local direction_to_player = -rel_pos.Unit
+    local closure_rate = velocity:Dot(direction_to_player)
     
-    -- Kinematic TTI (considering acceleration towards player)
-    local dirToPlayer = (playerPos - ballPos).Unit
-    local accelMag = Auto_Parry.__acceleration:Dot(dirToPlayer)
-    
-    if math.abs(accelMag) > 0.1 then
-        -- solve d = v*t + 0.5*a*t^2 => 0.5*a*t^2 + v*t - d = 0
-        -- t = (-v + sqrt(v^2 - 4*0.5*a*(-d))) / (2*0.5*a)
-        -- t = (-v + sqrt(v^2 + 2*a*d)) / a
-        local v = speed
-        local a = accelMag
-        local discriminant = v^2 + 2 * a * distance
-        if discriminant > 0 then
-            local t = (-v + math.sqrt(discriminant)) / a
-            if t > 0 then
-                tti = t
-            end
-        end
-    end
+    -- If ball is moving away, TTI is huge
+    if closure_rate < 0 and distance > 20 then return 1e9 end
 
-    -- Return the more accurate TTI
+    -- Kinematic TTI with Acceleration & Jerk Compensation
+    local tti = distance / math.max(closure_rate, speed * 0.5, 1)
+    
+    -- Penalty for Jerk (Higher jerk = predicted sudden shift = we need to be ready earlier)
+    local jerk_compensation = math.clamp(Auto_Parry.__jerk / 500, 0, 0.15)
+    tti = tti - jerk_compensation
+
     return tti
 end
 
@@ -1092,21 +1096,36 @@ do
                         local Distance = (Player.Character.PrimaryPart.Position - Ball.Position).Magnitude
                         local Speed = Velocity.Magnitude
 
-                        -- Kinematic Update
+                        -- [[ GOD-TIER PHYSICS UPDATE ]] --
                         Auto_Parry.Update_Velocity(Ball)
                         local TTI = Auto_Parry.Get_TTI(Ball)
 
-                        -- Network & Buffer
+                        -- [[ LATENCY & TIMING CALCULATOR ]] --
                         local RawPing = game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue()
                         local Network_Delay = (RawPing / 1000)
+                        local Server_Tick = 1/60
+                        local Jitter = 0.035 -- 35ms safety buffer
                         
-                        -- Custom Slider Mapping: Accuracy (1-100)
+                        -- Dynamic Window: Faster balls need tighter windows
+                        local Base_Window = math.max(0.12, 0.35 - (Speed / 600))
+                        
+                        -- Accuracy Slider Mapping (1 = very early/safe, 100 = tight/perfect)
                         local Accuracy = Library._config._flags["Parry_Accuracy"] or 100
-                        local Global_Delay = (100 - Accuracy) * 0.002
-                        local Dynamic_Offset = math.clamp(Network_Delay, 0.01, 0.1) -- Optimized ping compensation
+                        local Global_Delay = (100 - Accuracy) * 0.0025
+                        
+                        -- [[ GOD-TIER THRESHOLD ]] --
+                        local Threshold_TTI = Network_Delay + Jitter + Server_Tick + Global_Delay + (Base_Window * 0.5)
 
-                        local Threshold_TTI = Network_Delay + Global_Delay + Dynamic_Offset
-                        local Curved = Auto_Parry.Is_Curved()
+                        -- Curve/Jerk Handling
+                        -- If jerk is high, we widen the threshold to catch sudden snaps
+                        if Auto_Parry.__jerk > 50 then
+                            Threshold_TTI = Threshold_TTI + math.clamp(Auto_Parry.__jerk / 2000, 0, 0.1)
+                        end
+
+                        -- [[ GOD-MODE CLASH LOGIC ]] --
+                        -- Extreme close range logic for high-intensity duels
+                        local Clash_Threshold = 22 + (Network_Delay * 55) -- Scale clash range with ping
+                        local is_clashing = Distance < Clash_Threshold and Speed > 60
 
                         if Ball:FindFirstChild('AeroDynamicSlashVFX') then
                             Debris:AddItem(Ball.AeroDynamicSlashVFX, 0)
@@ -1140,18 +1159,8 @@ do
                             return
                         end
 
-                        -- Adjustable Curved Threshold: Ensure accuracy slider still applies to curves
-                        local Final_Threshold = Threshold_TTI
-                        if Curved then
-                            -- For curves, we parry slightly later to avoid being baited, 
-                            -- but it still scales with the Accuracy slider.
-                            Final_Threshold = (Network_Delay + Global_Delay + Dynamic_Offset) * 0.85
-                        end
-                        
-                        -- Emergency check: if the ball is extremely close, parry regardless of TTI/Curve
-                        local Is_Emergency = Distance < (Speed * Network_Delay) + 18
-
-                        if Ball_Target == tostring(Player) and (TTI <= Final_Threshold or Is_Emergency) then
+                        -- [[ FINAL TRIGGER LOGIC ]] --
+                        if Ball_Target == tostring(Player) and (TTI <= Threshold_TTI or is_clashing) then
                             if getgenv().AutoAbility and AutoAbility() then
                                 return
                             end
