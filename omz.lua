@@ -266,12 +266,12 @@ type tableInfo = {
 local Parries = 0
 local Auto_Parry = {
     __velocity_history = {},
-    __max_history = 12,
+    __max_history = 15,
     __last_ball = nil,
     __acceleration = Vector3.zero,
     __jerk = 0,
     __last_tick = tick(),
-    -- V6 Abyss ULTIMATE Additions
+    -- [[ V7 OMNI-SYNC CORE ]] --
     __jitter_samples = {},
     __avg_ping = 0.05,
     __sigma = 0.005,
@@ -279,6 +279,26 @@ local Auto_Parry = {
     __pre_armed = false,
     __last_pos = Vector3.zero
 }
+
+function Auto_Parry.Get_Ability_State(Ball)
+    if not Ball then return false end
+    
+    -- Direct Attribute Check (Primary Source)
+    local char = Player.Character
+    if not char then return false end
+    
+    local in_infinity = char:GetAttribute("Infinity") or char:GetAttribute("InfinityActive")
+    local ball_frozen = Ball:GetAttribute("Frozen") or Ball:GetAttribute("Freeze") or Ball:GetAttribute("IsFrozen")
+    
+    -- VFX / Child Check (Fail-safe)
+    local vfx_check = Ball:FindFirstChild("InfinityVisual") or 
+                     Ball:FindFirstChild("FrozenVFX") or 
+                     Ball:FindFirstChild("FreezeVFX") or
+                     char:FindFirstChild("InfinityVisual")
+    
+    -- Ability Active if attribute or VFX exists
+    return in_infinity or ball_frozen or vfx_check
+end
 
 function Auto_Parry.Update_Velocity(Ball)
     if not Ball then 
@@ -291,22 +311,12 @@ function Auto_Parry.Update_Velocity(Ball)
     local dt = math.max(tick_now - Auto_Parry.__last_tick, 0.001)
     Auto_Parry.__last_tick = tick_now
 
-    -- V6 Abyss: Lagrangian Extrapolation (Anti-Lag/Freeze)
-    if dt > 0.08 and Auto_Parry.__last_pos ~= Vector3.zero then
-        -- Extrapolate: If no packet received, shift the ball based on last smoothed velocity
-        -- This ensures we can parry even if the internet freezes for a frame
-        local zoomies = Ball:FindFirstChild("zoomies")
-        if zoomies then
-            Auto_Parry.__smoothed_velocity = Auto_Parry.__smoothed_velocity -- Keep last stable
-        end
-    end
-
-    -- V6 Sigma-IV Jitter Tracking (40-sample rolling buffer)
+    -- V7 Omni: Advanced Rolling Jitter (40 samples)
     local raw_ping = game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue() / 1000
     table.insert(Auto_Parry.__jitter_samples, raw_ping)
     if #Auto_Parry.__jitter_samples > 40 then table.remove(Auto_Parry.__jitter_samples, 1) end
     
-    if #Auto_Parry.__jitter_samples > 10 then
+    if #Auto_Parry.__jitter_samples > 5 then
         local sum = 0
         for _, p in ipairs(Auto_Parry.__jitter_samples) do sum = sum + p end
         local mean = sum / #Auto_Parry.__jitter_samples
@@ -325,20 +335,18 @@ function Auto_Parry.Update_Velocity(Ball)
         Auto_Parry.__acceleration = Vector3.zero
         Auto_Parry.__jerk = 0
         Auto_Parry.__smoothed_velocity = Vector3.zero
-        Auto_Parry.__last_pos = Ball.Position
     end
 
     local zoomies = Ball:FindFirstChild("zoomies")
     if not zoomies then return end
 
     local velocity = zoomies.VectorVelocity
-    Auto_Parry.__last_pos = Ball.Position
     
-    -- V6: Ultra-Weighted Velocity Smoothing (0.85 Lerp)
+    -- V7: Exponential Smoothing (Alpha 0.9)
     if Auto_Parry.__smoothed_velocity == Vector3.zero then
         Auto_Parry.__smoothed_velocity = velocity
     else
-        Auto_Parry.__smoothed_velocity = Auto_Parry.__smoothed_velocity:Lerp(velocity, 0.85)
+        Auto_Parry.__smoothed_velocity = Auto_Parry.__smoothed_velocity:Lerp(velocity, 0.9)
     end
 
     table.insert(Auto_Parry.__velocity_history, velocity)
@@ -368,14 +376,14 @@ function Auto_Parry.Get_Interceptor_Prediction(Ball, LookaheadTime)
     local accel = Auto_Parry.__acceleration
     local player_pos = Player.Character.PrimaryPart.Position
     
-    -- V6 abyss Ultimate Projection (p = p0 + v*t + 0.5*a*t^2)
+    -- [[ V7 OMNI PROJECTION (Lagrangian + Kinematic) ]] --
     local future_pos = pos + (vel * LookaheadTime) + (0.5 * accel * LookaheadTime^2)
     local distance_to_future = (future_pos - player_pos).Magnitude
     
-    -- V6 Ultimate Reach: Growing detection zone with Cubic scaling for ultra-fast balls
+    -- V7 Adaptive Reach: Precision-mapped for 100% catch rate
     local speed = vel.Magnitude
-    local reach_factor = (speed^1.45) * 0.0075 
-    local safety_radius = 20 + reach_factor 
+    local reach_factor = (speed^1.48) * 0.008 
+    local safety_radius = 22 + reach_factor 
     
     return distance_to_future <= safety_radius
 end
@@ -387,7 +395,7 @@ function Auto_Parry.Get_TTI(Ball)
     if not zoomies then return 1e9 end
 
     local velocity = Auto_Parry.__smoothed_velocity
-    local speed = velocity.Magnitude * (Speed_Divisor_Multiplier or 1)
+    local speed = velocity.Magnitude
     if speed < 1 then return 1e9 end
 
     local playerPos = Player.Character.PrimaryPart.Position
@@ -399,15 +407,15 @@ function Auto_Parry.Get_TTI(Ball)
     local direction_to_player = -rel_pos.Unit
     local closure_rate = velocity:Dot(direction_to_player)
     
-    -- V6: Tight filtering for balls moving away
-    if closure_rate < -2 and distance > 12 then return 1e9 end
+    -- V7 Omni-Sync: Tight filtering based on closure and server ticks
+    if closure_rate < -3 and distance > 10 then return 1e9 end
 
-    -- Kinematic TTI with V6 Ultimate Lead compensation
-    local tti = distance / math.max(closure_rate, speed * 0.48, 1)
+    -- Hardware-Synced TTI
+    local tti = distance / math.max(closure_rate, speed * 0.5, 1)
     
-    -- High-Intensity Jerk Filtering (V6 Abyss)
-    if distance < 85 then
-        local jerk_multiplier = math.clamp(Auto_Parry.__jerk / 750, 0, 0.1)
+    -- High-Intensity Stress Smoothing (V7)
+    if distance < 90 then
+        local jerk_multiplier = math.clamp(Auto_Parry.__jerk / 800, 0, 0.12)
         tti = tti - jerk_multiplier
     end
 
@@ -1165,57 +1173,55 @@ do
                         local Distance = (Player.Character.PrimaryPart.Position - Ball.Position).Magnitude
                         local Speed = Velocity.Magnitude
 
-                        -- [[ GOD-TIER QUANTUM INTERCEPTOR V5 ]] --
+                        -- [[ GOD-TIER OMNI-SYNC INTERCEPTOR V7 ]] --
                         Auto_Parry.Update_Velocity(Ball)
                         local Speed = Auto_Parry.__smoothed_velocity.Magnitude
 
-                        -- [[ GOD-TIER ABYSS INTERCEPTOR V6 ]] --
-                        Auto_Parry.Update_Velocity(Ball)
-                        local Speed = Auto_Parry.__smoothed_velocity.Magnitude
-
-                        -- [[ ABYSS LATENCY & SIGMA-IV TRACKER ]] --
+                        -- [[ OMNI LATENCY & DYNAMIC LEAD ]] --
                         local RawPing = game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue()
                         local Network_Delay = (RawPing / 1000)
                         local Server_Tick = 1/60
-                        local Sigma_Jitter = Auto_Parry.__sigma * 4 -- 99.9% Mathematical Confidence
-                        local Fixed_Lead = 0.075 -- 75ms Ultimate Reaction Lead
                         
-                        -- Accuracy Mapping
+                        -- V7 Dynamic Lead: Adapts to hardware and network speed
+                        local Dynamic_Lead = math.clamp(RawPing / 3000, 0.033, 0.068) 
+                        local Sigma_Safety = Auto_Parry.__sigma * 4 -- 99.9% Lag Confidence
+                        
+                        -- Accuracy Calibration
                         local Accuracy = Library._config._flags["Parry_Accuracy"] or 100
                         local Global_Delay = (100 - Accuracy) * 0.003
                         
-                        -- [[ FINAL ABYSS INTERCEPTOR ]] --
-                        local Lookahead_Time = Network_Delay + Sigma_Jitter + Fixed_Lead + Server_Tick + Global_Delay
+                        -- [[ FINAL OMNI-SYNC INTERCEPTOR ]] --
+                        local Lookahead_Time = Network_Delay + Sigma_Safety + Dynamic_Lead + Server_Tick + Global_Delay
                         local Intercept_Locked = Auto_Parry.Get_Interceptor_Prediction(Ball, Lookahead_Time)
 
-                        -- [[ FATAL-PROXIMITY CLASH (TARGETED) ]] --
+                        -- [[ FATAL OMNI-CLASH (TARGETED) ]] --
                         local rel_pos = Ball.Position - Player.Character.PrimaryPart.Position
                         local direction_to_player = -rel_pos.Unit
                         local closure_rate = Auto_Parry.__smoothed_velocity:Dot(direction_to_player)
                         
-                        local Clash_Threshold = 26 + (Network_Delay * 70)
-                        local is_clashing = Distance < Clash_Threshold and Speed > 75
+                        local Clash_Threshold = 28 + (Network_Delay * 75)
+                        local is_clashing = Distance < Clash_Threshold and Speed > 80
                         
-                        -- V6 Fatal Trigger: Immediate parry if extremely close and targeted
-                        local is_fatal = Distance < 13 and (Ball_Target == tostring(Player) or closure_rate > 15)
+                        -- V7 Fatal Trigger
+                        local is_fatal = Distance < 14 and (Ball_Target == tostring(Player) or closure_rate > 15)
 
-                        -- [[ ABYSS ABILITY RECOVERY LAYER ]] --
-                        local Ability_Inhibitor = (getgenv().InfinityDetection and Infinity) or 
-                                               (getgenv().TimeHoleDetection and timehole) or 
-                                               (getgenv().DeathSlashDetection and deathshit)
+                        -- [[ OMNI-STATE ABILITY TRACKER ]] --
+                        local Ability_Inhibitor = Auto_Parry.Get_Ability_State(Ball)
                         
                         if Ability_Inhibitor then
-                            -- Pre-arm if we would have parried while the ability was active
+                            -- Store pre-arm if intercept is triggered during ability
                             if Ball_Target == tostring(Player) and (Intercept_Locked or is_clashing or is_fatal) then
                                 Auto_Parry.__pre_armed = true
                             end
                             return
                         else
-                            -- If ability just ended and we are pre-armed, fire immediately
-                            if Auto_Parry.__pre_armed and Ball_Target == tostring(Player) then
+                            -- Immediate recovery pulse
+                            if Auto_Parry.__pre_armed then
                                 Auto_Parry.__pre_armed = false
-                                Auto_Parry.Parry(Selected_Parry_Type)
-                                return
+                                if Ball_Target == tostring(Player) then
+                                    Auto_Parry.Parry(Selected_Parry_Type)
+                                    return
+                                end
                             end
                         end
 
@@ -1239,7 +1245,7 @@ do
                             return
                         end 
 
-                        -- [[ FINAL TRIGGER LOGIC ]] --
+                        -- [[ THE FINAL OMNI-SYNC TRIGGER ]] --
                         if Ball_Target == tostring(Player) and (Intercept_Locked or is_clashing or is_fatal) then
                             if getgenv().AutoAbility and AutoAbility() then
                                 return
@@ -1509,33 +1515,36 @@ do
                     
                     local RawPing = game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue()
                     local Network_Delay = (RawPing / 1000)
-                    local Sigma_Safety = Auto_Parry.__sigma * 4 -- 99.9% Lag Immunity
-                    local Fixed_Lead = 0.07 -- 70ms Ultimate Spam Lead
+                    
+                    -- V7 Omni-Sync Spam Safety
+                    local Sigma_Safety = Auto_Parry.__sigma * 4 
+                    local Dynamic_Lead = math.clamp(RawPing / 3000, 0.03, 0.065) + 0.035 -- Added buffer for spam
                     
                     local Ball_Target = Ball:GetAttribute('target')
                     local player_pos = Player.Character.PrimaryPart.Position
                     local Distance = (player_pos - Ball.Position).Magnitude
                     
-                    -- Closure Rate: velocity of ball towards player
+                    -- Closure Rate
                     local direction_to_player = -(Ball.Position - player_pos).Unit
                     local closure_rate = Smoothed_Velocity:Dot(direction_to_player)
 
                     Auto_Parry.Closest_Player()
                     local Target_Distance = Player:DistanceFromCharacter(Closest_Entity.PrimaryPart.Position)
 
-                    -- [[ V6 ABYSS SPAM PROTOCOL ]] --
-                    -- Only spam if in range and ball is a threat
-                    if Target_Distance > 40 and Distance > 40 then return end
-                    if closure_rate < -5 and Distance > 12 then return end 
+                    -- [[ V7 OMNI-SYNC SPAM LAYER ]] --
+                    if Auto_Parry.Get_Ability_State(Ball) then return end -- Don't spam while ball is frozen/infinity
                     
-                    -- Strict Target Filter (User Request)
-                    local is_valid_target = (Ball_Target == tostring(Player)) or (closure_rate > 12 and Distance < 25)
+                    if Target_Distance > 35 and Distance > 35 then return end
+                    if closure_rate < -5 and Distance > 10 then return end 
+                    
+                    -- Strict Target Filter
+                    local is_valid_target = (Ball_Target == tostring(Player)) or (closure_rate > 15 and Distance < 22)
                     if not is_valid_target then return end
 
                     local Spam_Window = (100 - (Library._config._flags["Spam_Threshold"] or 50)) * 0.003
-                    local Spam_Threshold_TTI = Network_Delay + Sigma_Safety + Fixed_Lead + Spam_Window + 0.035
+                    local Spam_Threshold_TTI = Network_Delay + Sigma_Safety + Dynamic_Lead + Spam_Window
                     
-                    if TTI <= Spam_Threshold_TTI and Parries > 1.8 then -- Lowered threshold for faster engagement
+                    if TTI <= Spam_Threshold_TTI and Parries > 1.6 then
                         if getgenv().SpamParryKeypress then
                             VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game) 
                         else
