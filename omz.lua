@@ -457,6 +457,41 @@ local System_Metrics = {
     }
 }
 
+local Last_Parry = 0
+local Selected_Parry_Type = 'Camera'
+local Parried = false
+
+-- [[ GOD-TIER UNIVERSAL PARRY EXECUTION ]] --
+function Parry(id, cframe, events, mouse_loc)
+    -- Try using detected playParryFunc first (official method)
+    if typeof(playParryFunc) == "function" then
+        pcall(function()
+            playParryFunc(id, cframe, events, mouse_loc)
+        end)
+    end
+
+    -- Global fallback/bypass via captured remotes
+    for remote, original_args in pairs(revertedRemotes) do
+        local modified_args = {
+            original_args[1], -- Remote ID
+            original_args[2], -- Key (if exists)
+            os.clock(),
+            cframe or original_args[4],
+            events or original_args[5],
+            mouse_loc or original_args[6],
+            original_args[7]
+        }
+        
+        pcall(function()
+            if remote:IsA('RemoteEvent') then 
+                remote:FireServer(unpack(modified_args))
+            elseif remote:IsA('RemoteFunction') then 
+                remote:InvokeServer(unpack(modified_args)) 
+            end
+        end)
+    end
+end
+
 function Auto_Parry.Update_Metrics()
     local Current_Tick = tick()
     System_Metrics.Frame_Delta = Current_Tick - System_Metrics.Last_Tick
