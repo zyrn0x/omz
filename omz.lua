@@ -107,11 +107,21 @@ getgenv().System = {
 }
 
 getgenv().Auto_Parry = {
-    Play_Animation = function() end,
+    Play_Animation = function(v) 
+        if System.animation and System.animation.play_grab_parry then 
+            System.animation.play_grab_parry() 
+        end 
+    end,
     Parry = function(type) System.parry.execute_action() end,
     Get_Balls = function() 
         local b = workspace:FindFirstChild("Balls")
-        return b and b:GetChildren() or {}
+        local balls = {}
+        if b then
+            for _, ball in pairs(b:GetChildren()) do
+                if ball:IsA("BasePart") then table.insert(balls, ball) end
+            end
+        end
+        return balls
     end,
     Get_Ball = function()
         local balls = workspace:FindFirstChild("Balls")
@@ -119,11 +129,79 @@ getgenv().Auto_Parry = {
         for _, b in pairs(balls:GetChildren()) do
             if b:GetAttribute("target") == Player.Name then return b end
         end
-        return balls:GetChildren()[1] -- Fallback to first ball
+        return balls:GetChildren()[1]
     end,
     Lobby_Balls = function()
         local lb = workspace:FindFirstChild("TrainingBalls") or workspace:FindFirstChild("LobbyBalls")
-        return lb and lb:GetChildren()[1]
+        if lb then
+            for _, b in pairs(lb:GetChildren()) do
+                if b:IsA("BasePart") then return b end
+            end
+        end
+        return nil
+    end,
+    Closest_Player = function()
+        local max_dist = math.huge
+        local found = nil
+        local alive = workspace:FindFirstChild("Alive")
+        if not alive then return nil end
+        for _, entity in pairs(alive:GetChildren()) do
+            if entity ~= Player.Character and entity.PrimaryPart then
+                local dist = (Player.Character.PrimaryPart.Position - entity.PrimaryPart.Position).Magnitude
+                if dist < max_dist then
+                    max_dist = dist
+                    found = entity
+                end
+            end
+        end
+        getgenv().Closest_Entity = found
+        return found
+    end,
+    Get_Entity_Properties = function(self)
+        local entity = Auto_Parry.Closest_Player()
+        if not entity or not entity.PrimaryPart or not Player.Character or not Player.Character.PrimaryPart then return nil end
+        return {
+            Velocity = entity.PrimaryPart.AssemblyLinearVelocity,
+            Direction = (Player.Character.PrimaryPart.Position - entity.PrimaryPart.Position).Unit,
+            Distance = (Player.Character.PrimaryPart.Position - entity.PrimaryPart.Position).Magnitude
+        }
+    end,
+    Get_Ball_Properties = function(self)
+        local ball = Auto_Parry.Get_Ball()
+        if not ball then return nil end
+        local zoomies = ball:FindFirstChild("zoomies")
+        local vel = zoomies and zoomies.VectorVelocity or Vector3.zero
+        return {
+            Velocity = vel,
+            Direction = (Player.Character.PrimaryPart.Position - ball.Position).Unit,
+            Distance = (Player.Character.PrimaryPart.Position - ball.Position).Magnitude,
+            Dot = (Player.Character.PrimaryPart.Position - ball.Position).Unit:Dot(vel.Unit)
+        }
+    end,
+    Linear_Interpolation = function(a, b, t) return a + (b - a) * t end,
+    Is_Curved = function() return false end, -- Placeholder for now, DHP handles curves
+    Spam_Service = function(data)
+        local ball_props = data.Ball_Properties
+        local entity_props = data.Entity_Properties
+        if not ball_props or not entity_props then return 0 end
+        local ping = data.Ping or 10
+        local speed = ball_props.Velocity.Magnitude
+        local max_dist = ping + math.min(speed / 6, 95)
+        if entity_props.Distance > max_dist or ball_props.Distance > max_dist then return 0 end
+        return max_dist -- Simplified for compatibility
+    end,
+    Parry_Animation = function() System.animation.play_grab_parry() end,
+    Parry_Data = function(type)
+        local camera = workspace.CurrentCamera
+        local mouse = UserInputService:GetMouseLocation()
+        local events = {}
+        for _, v in pairs(workspace.Alive:GetChildren()) do
+            if v ~= Player.Character and v.PrimaryPart then
+                events[v.Name] = camera:WorldToScreenPoint(v.PrimaryPart.Position)
+            end
+        end
+        if type == "Camera" then return {0, camera.CFrame, events, {mouse.X, mouse.Y}} end
+        return {0, camera.CFrame, events, {mouse.X, mouse.Y}}
     end
 }
 getgenv().Selected_Parry_Type = "Camera"
@@ -1213,136 +1291,12 @@ end
 
 table.sort(Emotes_Data)
 
-local Auto_Parry = {}
+-- Legacy Auto_Parry table removed and consolidated into global system
+local Auto_Parry = getgenv().Auto_Parry
 
-function Auto_Parry.Parry_Animation()
-    local Parry_Animation = game:GetService("ReplicatedStorage").Shared.SwordAPI.Collection.Default:FindFirstChild('GrabParry')
-    local Current_Sword = Player.Character:GetAttribute('CurrentlyEquippedSword')
+-- Redundant Auto_Parry utilities removed (merged into global)
 
-    if not Current_Sword then
-        return
-    end
-
-    if not Parry_Animation then
-        return
-    end
-
-    local Sword_Data = game:GetService("ReplicatedStorage").Shared.ReplicatedInstances.Swords.GetSword:Invoke(Current_Sword)
-
-    if not Sword_Data or not Sword_Data['AnimationType'] then
-        return
-    end
-
-    for _, object in pairs(game:GetService('ReplicatedStorage').Shared.SwordAPI.Collection:GetChildren()) do
-        if object.Name == Sword_Data['AnimationType'] then
-            if object:FindFirstChild('GrabParry') or object:FindFirstChild('Grab') then
-                local sword_animation_type = 'GrabParry'
-
-                if object:FindFirstChild('Grab') then
-                    sword_animation_type = 'Grab'
-                end
-
-                Parry_Animation = object[sword_animation_type]
-            end
-        end
-    end
-
-    Grab_Parry = Player.Character.Humanoid.Animator:LoadAnimation(Parry_Animation)
-    Grab_Parry:Play()
-end
-
-function Auto_Parry.Play_Animation(v)
-    local Animations = Animation.storage[v]
-
-    if not Animations then
-        return false
-    end
-
-    local Animator = Player.Character.Humanoid.Animator
-
-    if Animation.track then
-        Animation.track:Stop()
-    end
-
-    Animation.track = Animator:LoadAnimation(Animations)
-    Animation.track:Play()
-
-    Animation.current = v
-end
-
-function Auto_Parry.Get_Balls()
-    local Balls = {}
-
-    for _, Instance in pairs(workspace.Balls:GetChildren()) do
-        if Instance:GetAttribute('realBall') then
-            Instance.CanCollide = false
-            table.insert(Balls, Instance)
-        end
-    end
-    return Balls
-end
-
-function Auto_Parry.Get_Ball()
-    for _, Instance in pairs(workspace.Balls:GetChildren()) do
-        if Instance:GetAttribute('realBall') then
-            Instance.CanCollide = false
-            return Instance
-        end
-    end
-end
-
-function Auto_Parry.Lobby_Balls()
-    for _, Instance in pairs(workspace.TrainingBalls:GetChildren()) do
-        if Instance:GetAttribute("realBall") then
-            return Instance
-        end
-    end
-end
-
-
-local Closest_Entity = nil
-
-function Auto_Parry.Closest_Player()
-    local Max_Distance = math.huge
-    local Found_Entity = nil
-    
-    for _, Entity in pairs(workspace.Alive:GetChildren()) do
-        if tostring(Entity) ~= tostring(Player) then
-            if Entity.PrimaryPart then  -- Check if PrimaryPart exists
-                local Distance = Player:DistanceFromCharacter(Entity.PrimaryPart.Position)
-                if Distance < Max_Distance then
-                    Max_Distance = Distance
-                    Found_Entity = Entity
-                end
-            end
-        end
-    end
-    
-    Closest_Entity = Found_Entity
-    return Found_Entity
-end
-
-function Auto_Parry:Get_Entity_Properties()
-    Auto_Parry.Closest_Player()
-
-    if not Closest_Entity then
-        return false
-    end
-
-    if not Closest_Entity or not Closest_Entity.PrimaryPart or not Player.Character or not Player.Character.PrimaryPart then
-        return nil
-    end
-
-    local Entity_Velocity = Closest_Entity.PrimaryPart.Velocity
-    local Entity_Direction = (Player.Character.PrimaryPart.Position - Closest_Entity.PrimaryPart.Position).Unit
-    local Entity_Distance = (Player.Character.PrimaryPart.Position - Closest_Entity.PrimaryPart.Position).Magnitude
-
-    return {
-        Velocity = Entity_Velocity,
-        Direction = Entity_Direction,
-        Distance = Entity_Distance
-    }
-end
+-- Redundant entity properties removed
 
 local function create_mobile_button(name, position_y, color)
     local gui = Instance.new('ScreenGui')
@@ -1466,513 +1420,24 @@ end
 local isMobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
 
 
-function Auto_Parry.Parry_Data(Parry_Type)
-    Auto_Parry.Closest_Player()
-    
-    local Events = {}
-    local Camera = workspace.CurrentCamera
-    local Vector2_Mouse_Location
-    
-    if Last_Input == Enum.UserInputType.MouseButton1 or (Enum.UserInputType.MouseButton2 or Last_Input == Enum.UserInputType.Keyboard) then
-        local Mouse_Location = UserInputService:GetMouseLocation()
-        Vector2_Mouse_Location = {Mouse_Location.X, Mouse_Location.Y}
-    else
-        Vector2_Mouse_Location = {Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2}
-    end
-    
-    if isMobile then
-        Vector2_Mouse_Location = {Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2}
-    end
-    
-    local Players_Screen_Positions = {}
-    for _, v in pairs(workspace.Alive:GetChildren()) do
-        if v ~= Player.Character then
-            local worldPos = v.PrimaryPart.Position
-            local screenPos, isOnScreen = Camera:WorldToScreenPoint(worldPos)
-            
-            if isOnScreen then
-                Players_Screen_Positions[v] = Vector2.new(screenPos.X, screenPos.Y)
-            end
-            
-            Events[tostring(v)] = screenPos
-        end
-    end
-    
-    if Parry_Type == 'Camera' then
-        return {0, Camera.CFrame, Events, Vector2_Mouse_Location}
-    end
-    
-    if Parry_Type == 'Backwards' then
-        local Backwards_Direction = Camera.CFrame.LookVector * -10000
-        Backwards_Direction = Vector3.new(Backwards_Direction.X, 0, Backwards_Direction.Z)
-        return {0, CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + Backwards_Direction), Events, Vector2_Mouse_Location}
-    end
-
-    if Parry_Type == 'Straight' then
-        local Aimed_Player = nil
-        local Closest_Distance = math.huge
-        local Mouse_Vector = Vector2.new(Vector2_Mouse_Location[1], Vector2_Mouse_Location[2])
-        
-        for _, v in pairs(workspace.Alive:GetChildren()) do
-            if v ~= Player.Character then
-                local worldPos = v.PrimaryPart.Position
-                local screenPos, isOnScreen = Camera:WorldToScreenPoint(worldPos)
-                
-                if isOnScreen then
-                    local playerScreenPos = Vector2.new(screenPos.X, screenPos.Y)
-                    local distance = (Mouse_Vector - playerScreenPos).Magnitude
-                    
-                    if distance < Closest_Distance then
-                        Closest_Distance = distance
-                        Aimed_Player = v
-                    end
-                end
-            end
-        end
-        
-        if Aimed_Player then
-            return {0, CFrame.new(Player.Character.PrimaryPart.Position, Aimed_Player.PrimaryPart.Position), Events, Vector2_Mouse_Location}
-        else
-            return {0, CFrame.new(Player.Character.PrimaryPart.Position, Closest_Entity.PrimaryPart.Position), Events, Vector2_Mouse_Location}
-        end
-    end
-    
-    if Parry_Type == 'Random' then
-        return {0, CFrame.new(Camera.CFrame.Position, Vector3.new(math.random(-4000, 4000), math.random(-4000, 4000), math.random(-4000, 4000))), Events, Vector2_Mouse_Location}
-    end
-    
-    if Parry_Type == 'High' then
-        local High_Direction = Camera.CFrame.UpVector * 10000
-        return {0, CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + High_Direction), Events, Vector2_Mouse_Location}
-    end
-    
-    if Parry_Type == 'Left' then
-        local Left_Direction = Camera.CFrame.RightVector * 10000
-        return {0, CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position - Left_Direction), Events, Vector2_Mouse_Location}
-    end
-    
-    if Parry_Type == 'Right' then
-        local Right_Direction = Camera.CFrame.RightVector * 10000
-        return {0, CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + Right_Direction), Events, Vector2_Mouse_Location}
-    end
-
-    if Parry_Type == 'RandomTarget' then
-        local candidates = {}
-        for _, v in pairs(workspace.Alive:GetChildren()) do
-            if v ~= Player.Character and v.PrimaryPart then
-                local screenPos, isOnScreen = Camera:WorldToScreenPoint(v.PrimaryPart.Position)
-                if isOnScreen then
-                    table.insert(candidates, {
-                        character = v,
-                        screenXY  = { screenPos.X, screenPos.Y }
-                    })
-                end
-            end
-        end
-        if #candidates > 0 then
-            local pick = candidates[ math.random(1, #candidates) ]
-            local lookCFrame = CFrame.new(Player.Character.PrimaryPart.Position, pick.character.PrimaryPart.Position)
-            return {0, lookCFrame, Events, pick.screenXY}
-        else
-            return {0, Camera.CFrame, Events, { Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2 }}
-        end
-    end
-    
-    return Parry_Type
-end
-
--- [[ FIRST PARRY FUNCTION ]]
-local function performFirstPress(parry_type)
-    -- Use the extracted PF function for the first parry
-    if PF then
-        pcall(function()
-            PF()
-        end)
-    end
-end
-
--- [[ PARRY REMOTE FIRING FUNCTION ]]
-local function Parry(delay, curve_cframe, event_data, vec2_mouse)
-    task.wait(delay or 0)
-    
-    -- Anti-cheat validation: ensure arguments are valid
-    if not curve_cframe or typeof(curve_cframe) ~= "CFrame" then
-        curve_cframe = Camera.CFrame
-    end
-    
-    if not event_data or type(event_data) ~= "table" then
-        event_data = {}
-    end
-    
-    local final_aim_target
-    if isMobile then
-        local viewport = Camera.ViewportSize
-        final_aim_target = {viewport.X / 2, viewport.Y / 2}
-    else
-        final_aim_target = vec2_mouse or {Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2}
-    end
-    
-    -- Validate final_aim_target
-    if type(final_aim_target) ~= "table" or #final_aim_target ~= 2 then
-        final_aim_target = {Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2}
-    end
-    
-    for remote, original_args in pairs(revertedRemotes) do
-        -- Validate original_args before using
-        if not original_args or type(original_args) ~= "table" or #original_args < 7 then
-            continue
-        end
-        
-        local modified_args = {
-            original_args[1],
-            original_args[2],
-            original_args[3],
-            curve_cframe,
-            event_data,
-            final_aim_target,
-            original_args[7]
-        }
-        
-        pcall(function()
-            if remote:IsA('RemoteEvent') then
-                remote:FireServer(unpack(modified_args))
-            elseif remote:IsA('RemoteFunction') then
-                remote:InvokeServer(unpack(modified_args))
-            end
-        end)
-    end
-end
-
-function Auto_Parry.Parry(Parry_Type)
-    -- UwU-based parry logic to prevent HSH-2 kicks
-    if Parries > 10000 or not Player.Character then
-        return
-    end
-    
-    local success, mouse = pcall(function()
-        return UserInputService:GetMouseLocation()
-    end)
-    
-    if not success then return end
-    
-    local vec2_mouse = {mouse.X, mouse.Y}
-    local is_mobile = isMobile
-    
-    -- Generate event_data (player screen positions)
-    local event_data = {}
-    if workspace:FindFirstChild("Alive") then
-        for _, entity in pairs(workspace.Alive:GetChildren()) do
-            if entity.PrimaryPart then
-                local success2, screen_point = pcall(function()
-                    return Camera:WorldToScreenPoint(entity.PrimaryPart.Position)
-                end)
-                if success2 then
-                    event_data[entity.Name] = screen_point
-                end
-            end
-        end
-    end
-    
-    local Parry_Data = Auto_Parry.Parry_Data(Parry_Type)
-    local curve_cframe = Parry_Data[2]
-    
-    -- First parry uses PF function
-    if not firstParryFired then
-        if PF then
-            pcall(function() PF() end)
-        end
-        firstParryFired = true
-        return
-    end
-    
-    -- Subsequent parries use remote firing
-    local final_aim_target
-    if is_mobile then
-        local viewport = Camera.ViewportSize
-        final_aim_target = {viewport.X / 2, viewport.Y / 2}
-    else
-        final_aim_target = vec2_mouse
-    end
-    
-    for remote, original_args in pairs(revertedRemotes) do
-        if not original_args or type(original_args) ~= "table" or #original_args < 7 then
-            continue
-        end
-        
-        local modified_args = {
-            original_args[1],
-            original_args[2],
-            original_args[3],
-            curve_cframe,
-            event_data,
-            final_aim_target,
-            original_args[7]
-        }
-        
-        pcall(function()
-            if remote:IsA('RemoteEvent') then
-                remote:FireServer(unpack(modified_args))
-            elseif remote:IsA('RemoteFunction') then
-                remote:InvokeServer(unpack(modified_args))
-            end
-        end)
-    end
-    
-    if Parries > 10000 then return end
-    
-    Parries = Parries + 1
-    task.delay(0.5, function()
-        if Parries > 0 then
-            Parries = Parries - 1
-        end
-    end)
-end
-
-local Lerp_Radians = 0
-local Last_Warping = tick()
-
-function Auto_Parry.Linear_Interpolation(a, b, time_volume)
-    return a + (b - a) * time_volume
-end
-
-local Previous_Velocity = {}
-local Curving = tick()
-
-local Runtime = workspace.Runtime
-
-function Auto_Parry.Is_Curved()
-    local Ball = Auto_Parry.Get_Ball()
-
-    if not Ball then
-        return false
-    end
-
-    local Zoomies = Ball:FindFirstChild('zoomies')
-    if not Zoomies then
-        return false
-    end
-
-    local Ping = getPing()
-    local Velocity = Zoomies.VectorVelocity
-    local Ball_Direction = Velocity.Unit
-
-    local char = Player.Character
-    if not char or not char.PrimaryPart then return false end
-    
-    local playerPos = char.PrimaryPart.Position
-    local ballPos = Ball.Position
-    local Direction = (playerPos - ballPos).Unit
-    local Dot = Direction:Dot(Ball_Direction)
-    local Speed = Velocity.Magnitude
-
-    local Speed_Threshold = math.min(Speed/100, 40)
-    local Angle_Threshold = 40 * math.max(Dot, 0)
-    local Distance = (playerPos - ballPos).Magnitude
-    local Reach_Time = Distance / Speed - (Ping / 1000)
-    
-    local Ball_Distance_Threshold = 15 - math.min(Distance/1000, 15) + Speed_Threshold
-
-    table.insert(Previous_Velocity, Velocity)
-    if #Previous_Velocity > 4 then
-        table.remove(Previous_Velocity, 1)
-    end
-
-    if Ball:FindFirstChild('AeroDynamicSlashVFX') then
-        Debris:AddItem(Ball.AeroDynamicSlashVFX, 0)
-        Tornado_Time = tick()
-    end
-
-    if Runtime:FindFirstChild('Tornado') then
-        if (tick() - Tornado_Time) < ((Runtime.Tornado:GetAttribute("TornadoTime") or 1) + 0.314159) then
-            return true
-        end
-    end
-
-    local Enough_Speed = Speed > 160
-    if Enough_Speed and Reach_Time > Ping / 10 then
-        if Speed < 300 then
-            Ball_Distance_Threshold = math.max(Ball_Distance_Threshold - 15, 15)
-        elseif Speed > 300 and Speed < 600 then
-            Ball_Distance_Threshold = math.max(Ball_Distance_Threshold - 16, 16)
-        elseif Speed > 600 and Speed < 1000 then
-            Ball_Distance_Threshold = math.max(Ball_Distance_Threshold - 17, 17)
-        elseif Speed > 1000 and Speed < 1500 then
-            Ball_Distance_Threshold = math.max(Ball_Distance_Threshold - 19, 19)
-        elseif Speed > 1500 then
-            Ball_Distance_Threshold = math.max(Ball_Distance_Threshold - 20, 20)
-        end
-    end
-
-    if Distance < Ball_Distance_Threshold then
-        return false
-    end
-
-    if Speed < 300 then
-        if (tick() - Curving) < (Reach_Time / 1.2) then
-            return true
-        end
-    elseif Speed >= 300 and Speed < 450 then
-        if (tick() - Curving) < (Reach_Time / 1.21) then
-            return true
-        end
-    elseif Speed > 450 and Speed < 600 then
-        if (tick() - Curving) < (Reach_Time / 1.335) then
-            return true
-        end
-    elseif Speed > 600 then
-        if (tick() - Curving) < (Reach_Time / 1.5) then
-            return true
-        end
-    end
-    
-    local Dot_Threshold = (0.5 - Ping / 1000)
-    local Direction_Difference = (Ball_Direction - Velocity.Unit)
-    local Direction_Similarity = Direction:Dot(Direction_Difference.Unit)
-    local Dot_Difference = Dot - Direction_Similarity
-
-    if Dot_Difference < Dot_Threshold then
-        return true
-    end
-
-    local Clamped_Dot = math.clamp(Dot, -1, 1)
-    local Radians = math.deg(math.asin(Clamped_Dot))
-
-    Lerp_Radians = Auto_Parry.Linear_Interpolation(Lerp_Radians, Radians, 0.8)
-    if Speed < 300 then
-        if Lerp_Radians < 0.02 then
-            Last_Warping = tick()
-        end
-        if (tick() - Last_Warping) < (Reach_Time / 1.19) then
-            return true
-        end
-    else
-        if Lerp_Radians < 0.018 then
-            Last_Warping = tick()
-        end
-        if (tick() - Last_Warping) < (Reach_Time / 1.5) then
-            return true
-        end
-    end
-
-    if #Previous_Velocity == 4 then
-        local Intended_Direction_Difference = (Ball_Direction - Previous_Velocity[1].Unit).Unit
-        local Intended_Dot = Direction:Dot(Intended_Direction_Difference)
-        local Intended_Dot_Difference = Dot - Intended_Dot
-
-        local Intended_Direction_Difference2 = (Ball_Direction - Previous_Velocity[2].Unit).Unit
-        local Intended_Dot2 = Direction:Dot(Intended_Direction_Difference2)
-        local Intended_Dot_Difference2 = Dot - Intended_Dot2
-
-        if Intended_Dot_Difference < Dot_Threshold or Intended_Dot_Difference2 < Dot_Threshold then
-            return true
-        end
-    end
-
-    local backwardsCurveDetected = false
-    local backwardsAngleThreshold = 85
-
-    local horizDirection = Vector3.new(playerPos.X - ballPos.X, 0, playerPos.Z - ballPos.Z)
-    if horizDirection.Magnitude > 0 then
-        horizDirection = horizDirection.Unit
-    end
-
-    local awayFromPlayer = -horizDirection
-
-    local horizBallDir = Vector3.new(Ball_Direction.X, 0, Ball_Direction.Z)
-    if horizBallDir.Magnitude > 0 then
-        horizBallDir = horizBallDir.Unit
-        local backwardsAngle = math.deg(math.acos(math.clamp(awayFromPlayer:Dot(horizBallDir), -1, 1)))
-        if backwardsAngle < backwardsAngleThreshold then
-            backwardsCurveDetected = true
-        end
-    end
-
-    return (Dot < Dot_Threshold) or backwardsCurveDetected
-end
-
-function Auto_Parry:Get_Ball_Properties()
-    local Ball = Auto_Parry.Get_Ball()
-
-    local Ball_Velocity = Vector3.zero
-    local Ball_Origin = Ball
-
-    local Ball_Direction = (Player.Character.PrimaryPart.Position - Ball_Origin.Position).Unit
-    local Ball_Distance = (Player.Character.PrimaryPart.Position - Ball.Position).Magnitude
-    local Ball_Dot = Ball_Direction:Dot(Ball_Velocity.Unit)
-
-    return {
-        Velocity = Ball_Velocity,
-        Direction = Ball_Direction,
-        Distance = Ball_Distance,
-        Dot = Ball_Dot
-    }
-end
-
-function Auto_Parry.Spam_Service(self)
-    local Ball = Auto_Parry.Get_Ball()
-
-    local Entity = Auto_Parry.Closest_Player()
-
-    if not Ball then
-        return false
-    end
-
-    if not Entity or not Entity.PrimaryPart then
-        return false
-    end
-
-    local Spam_Accuracy = 0
-
-    local Velocity = Ball.AssemblyLinearVelocity
-    local Speed = Velocity.Magnitude
-
-    local Direction = (Player.Character.PrimaryPart.Position - Ball.Position).Unit
-    local Dot = Direction:Dot(Velocity.Unit)
-
-    local Target_Position = Entity.PrimaryPart.Position
-    local Target_Distance = Player:DistanceFromCharacter(Target_Position)
-
-    local Maximum_Spam_Distance = self.Ping + math.min(Speed / 6, 95)
-
-    if self.Entity_Properties.Distance > Maximum_Spam_Distance then
-        return Spam_Accuracy
-    end
-
-    if self.Ball_Properties.Distance > Maximum_Spam_Distance then
-        return Spam_Accuracy
-    end
-
-    if Target_Distance > Maximum_Spam_Distance then
-        return Spam_Accuracy
-    end
-
-    local Maximum_Speed = 5 - math.min(Speed / 5, 5)
-    local Maximum_Dot = math.clamp(Dot, -1, 0) * Maximum_Speed
-
-    Spam_Accuracy = Maximum_Spam_Distance - Maximum_Dot
-
-    return Spam_Accuracy
-end
-
-local Connections_Manager = {}
-local Selected_Parry_Type = nil
-
-local Parried = false
-local Last_Parry = 0
-
-
+-- [[ CORE DETECTION FLAGS ]]
 local deathshit = false
 local Infinity = false
 local timehole = false
+getgenv().Selected_Parry_Type = "Camera"
 
 local function connectRemote(path, callback)
-    local parts = string.split(path, ".")
-    local current = game
-    for _, part in ipairs(parts) do
-        current = current:FindFirstChild(part)
-        if not current then return nil end
-    end
-    if current:IsA("RemoteEvent") then
+    local success, current = pcall(function()
+        local parts = string.split(path, ".")
+        local obj = game
+        for _, part in ipairs(parts) do
+            obj = obj:FindFirstChild(part)
+            if not obj then return nil end
+        end
+        return obj
+    end)
+    
+    if success and current and current:IsA("RemoteEvent") then
         return current.OnClientEvent:Connect(callback)
     end
 end
@@ -1990,35 +1455,7 @@ connectRemote("ReplicatedStorage.Remotes.TimeHoleHoldBall", function(e, f)
 end)
 
 
-local AutoParry = true
-
-local Balls = workspace:WaitForChild('Balls')
-local CurrentBall = nil
-local InputTask = nil
-local Cooldown = 0.02
-local RunTime = workspace:FindFirstChild("Runtime")
-
-
-
-local function GetBall()
-    for _, Ball in ipairs(Balls:GetChildren()) do
-        if Ball:FindFirstChild("ff") then
-            return Ball
-        end
-    end
-    return nil
-end
-
-local function SpamInput(Label)
-    if InputTask then return end
-    InputTask = task.spawn(function()
-        while AutoParry do
-            Auto_Parry.Parry(Selected_Parry_Type)
-            task.wait(Cooldown)
-        end
-        InputTask = nil
-    end)
-end
+-- Redundant parry loop removed
 
 Balls.ChildAdded:Connect(function(Value)
     Value.ChildAdded:Connect(function(Child)
