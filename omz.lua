@@ -270,12 +270,17 @@ local Auto_Parry = {
     __last_ball = nil,
     __acceleration = Vector3.zero,
     __jerk = 0,
-    __last_tick = tick()
+    __last_tick = tick(),
+    -- V4.5 Additions
+    __jitter_samples = {},
+    __avg_jitter = 0.02,
+    __smoothed_velocity = Vector3.zero
 }
 
 function Auto_Parry.Update_Velocity(Ball)
     if not Ball then 
         Auto_Parry.__velocity_history = {}
+        Auto_Parry.__smoothed_velocity = Vector3.zero
         return 
     end
 
@@ -283,17 +288,39 @@ function Auto_Parry.Update_Velocity(Ball)
     local dt = math.max(tick_now - Auto_Parry.__last_tick, 0.001)
     Auto_Parry.__last_tick = tick_now
 
+    -- Jitter Tracking
+    local raw_ping = game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue() / 1000
+    table.insert(Auto_Parry.__jitter_samples, raw_ping)
+    if #Auto_Parry.__jitter_samples > 20 then table.remove(Auto_Parry.__jitter_samples, 1) end
+    
+    if #Auto_Parry.__jitter_samples > 1 then
+        local sum_dev = 0
+        for i = 2, #Auto_Parry.__jitter_samples do
+            sum_dev = sum_dev + math.abs(Auto_Parry.__jitter_samples[i] - Auto_Parry.__jitter_samples[i-1])
+        end
+        Auto_Parry.__avg_jitter = math.clamp(sum_dev / (#Auto_Parry.__jitter_samples - 1), 0.01, 0.15)
+    end
+
     if Auto_Parry.__last_ball ~= Ball then
         Auto_Parry.__velocity_history = {}
         Auto_Parry.__last_ball = Ball
         Auto_Parry.__acceleration = Vector3.zero
         Auto_Parry.__jerk = 0
+        Auto_Parry.__smoothed_velocity = Vector3.zero
     end
 
     local zoomies = Ball:FindFirstChild("zoomies")
     if not zoomies then return end
 
     local velocity = zoomies.VectorVelocity
+    
+    -- Velocity Smoothing (V4.5 Vector Filtering)
+    if Auto_Parry.__smoothed_velocity == Vector3.zero then
+        Auto_Parry.__smoothed_velocity = velocity
+    else
+        Auto_Parry.__smoothed_velocity = Auto_Parry.__smoothed_velocity:Lerp(velocity, 0.75)
+    end
+
     table.insert(Auto_Parry.__velocity_history, velocity)
 
     if #Auto_Parry.__velocity_history > Auto_Parry.__max_history then
@@ -313,13 +340,33 @@ function Auto_Parry.Update_Velocity(Ball)
     end
 end
 
+function Auto_Parry.Get_Interceptor_Prediction(Ball, LookaheadTime)
+    if not Ball then return false end
+    
+    local pos = Ball.Position
+    local vel = Auto_Parry.__smoothed_velocity
+    local accel = Auto_Parry.__acceleration
+    local player_pos = Player.Character.PrimaryPart.Position
+    
+    -- V4.5 Vector Projection
+    -- p(t) = p0 + v*t + 0.5*a*t^2
+    local future_pos = pos + (vel * LookaheadTime) + (0.5 * accel * LookaheadTime^2)
+    local distance_to_future = (future_pos - player_pos).Magnitude
+    
+    -- Safety Sphere (Dynamic based on speed)
+    local speed = vel.Magnitude
+    local safety_radius = 18 + (speed * 0.05) 
+    
+    return distance_to_future <= safety_radius
+end
+
 function Auto_Parry.Get_TTI(Ball)
     if not Ball then return 1e9 end
     
     local zoomies = Ball:FindFirstChild("zoomies")
     if not zoomies then return 1e9 end
 
-    local velocity = zoomies.VectorVelocity
+    local velocity = Auto_Parry.__smoothed_velocity
     local speed = velocity.Magnitude * (Speed_Divisor_Multiplier or 1)
     if speed < 1 then return 1e9 end
 
@@ -333,14 +380,16 @@ function Auto_Parry.Get_TTI(Ball)
     local closure_rate = velocity:Dot(direction_to_player)
     
     -- If ball is moving away, TTI is huge
-    if closure_rate < 0 and distance > 20 then return 1e9 end
+    if closure_rate < 0 and distance > 25 then return 1e9 end
 
     -- Kinematic TTI with Acceleration & Jerk Compensation
-    local tti = distance / math.max(closure_rate, speed * 0.5, 1)
+    local tti = distance / math.max(closure_rate, speed * 0.4, 1)
     
-    -- Penalty for Jerk (Higher jerk = predicted sudden shift = we need to be ready earlier)
-    local jerk_compensation = math.clamp(Auto_Parry.__jerk / 500, 0, 0.15)
-    tti = tti - jerk_compensation
+    -- V4.5 Stability: Jerk penalty only applies at close range to prevent early triggers
+    if distance < 60 then
+        local jerk_compensation = math.clamp(Auto_Parry.__jerk / 650, 0, 0.12)
+        tti = tti - jerk_compensation
+    end
 
     return tti
 end
@@ -1096,36 +1145,31 @@ do
                         local Distance = (Player.Character.PrimaryPart.Position - Ball.Position).Magnitude
                         local Speed = Velocity.Magnitude
 
-                        -- [[ GOD-TIER PHYSICS UPDATE ]] --
+                        -- [[ GOD-TIER INTERCEPTOR V4.5 ]] --
                         Auto_Parry.Update_Velocity(Ball)
                         local TTI = Auto_Parry.Get_TTI(Ball)
+                        local Speed = Auto_Parry.__smoothed_velocity.Magnitude
 
-                        -- [[ LATENCY & TIMING CALCULATOR ]] --
+                        -- [[ LATENCY & JITTER TRACKER ]] --
                         local RawPing = game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue()
                         local Network_Delay = (RawPing / 1000)
                         local Server_Tick = 1/60
-                        local Jitter = 0.035 -- 35ms safety buffer
+                        local Jitter = Auto_Parry.__avg_jitter -- Active tracking from physics core
                         
-                        -- Dynamic Window: Faster balls need tighter windows
-                        local Base_Window = math.max(0.12, 0.35 - (Speed / 600))
+                        -- Dynamic Window: Weighted by speed and jitter
+                        local Base_Window = math.max(0.1, 0.32 - (Speed / 700))
                         
-                        -- Accuracy Slider Mapping (1 = very early/safe, 100 = tight/perfect)
+                        -- Accuracy Slider Mapping (1 = safe, 100 = tight)
                         local Accuracy = Library._config._flags["Parry_Accuracy"] or 100
-                        local Global_Delay = (100 - Accuracy) * 0.0025
+                        local Global_Delay = (100 - Accuracy) * 0.003
                         
-                        -- [[ GOD-TIER THRESHOLD ]] --
-                        local Threshold_TTI = Network_Delay + Jitter + Server_Tick + Global_Delay + (Base_Window * 0.5)
-
-                        -- Curve/Jerk Handling
-                        -- If jerk is high, we widen the threshold to catch sudden snaps
-                        if Auto_Parry.__jerk > 50 then
-                            Threshold_TTI = Threshold_TTI + math.clamp(Auto_Parry.__jerk / 2000, 0, 0.1)
-                        end
+                        -- [[ GOD-TIER INTERCEPTOR TRIGGER ]] --
+                        local Lookahead_Time = Network_Delay + Jitter + Server_Tick + Global_Delay + (Base_Window * 0.5)
+                        local Intercept_Locked = Auto_Parry.Get_Interceptor_Prediction(Ball, Lookahead_Time)
 
                         -- [[ GOD-MODE CLASH LOGIC ]] --
-                        -- Extreme close range logic for high-intensity duels
-                        local Clash_Threshold = 22 + (Network_Delay * 55) -- Scale clash range with ping
-                        local is_clashing = Distance < Clash_Threshold and Speed > 60
+                        local Clash_Threshold = 24 + (Network_Delay * 60)
+                        local is_clashing = Distance < Clash_Threshold and Speed > 65
 
                         if Ball:FindFirstChild('AeroDynamicSlashVFX') then
                             Debris:AddItem(Ball.AeroDynamicSlashVFX, 0)
@@ -1160,7 +1204,7 @@ do
                         end
 
                         -- [[ FINAL TRIGGER LOGIC ]] --
-                        if Ball_Target == tostring(Player) and (TTI <= Threshold_TTI or is_clashing) then
+                        if Ball_Target == tostring(Player) and (Intercept_Locked or is_clashing) then
                             if getgenv().AutoAbility and AutoAbility() then
                                 return
                             end
@@ -1418,55 +1462,40 @@ do
             if value then
                 Connections_Manager['Auto Spam'] = RunService.PreSimulation:Connect(function()
                     local Ball = Auto_Parry.Get_Ball()
-
-                    if not Ball then
-                        return
-                    end
+                    if not Ball then return end
 
                     local Zoomies = Ball:FindFirstChild('zoomies')
+                    if not Zoomies then return end
 
-                    if not Zoomies then
-                        return
-                    end
-
-                    Auto_Parry.Closest_Player()
                     Auto_Parry.Update_Velocity(Ball)
-                    
                     local TTI = Auto_Parry.Get_TTI(Ball)
+                    local Smoothed_Velocity = Auto_Parry.__smoothed_velocity
+                    local Speed = Smoothed_Velocity.Magnitude
+                    
                     local RawPing = game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue()
                     local Network_Delay = (RawPing / 1000)
-
-                    -- Spam Window Slider Mapping
-                    local Spam_Window = (100 - (Library._config._flags["Spam_Threshold"] or 50)) * 0.003
-                    local Spam_Threshold_TTI = Network_Delay + Spam_Window + 0.05 -- Base 50ms buffer for spam
-
-                    local Ball_Target = Ball:GetAttribute('target')
-
-                    local Target_Position = Closest_Entity.PrimaryPart.Position
-                    local Target_Distance = Player:DistanceFromCharacter(Target_Position)
-
-                    local Distance = Player:DistanceFromCharacter(Ball.Position)
-
-                    if not Ball_Target then
-                        return
-                    end
-
-                    -- Safety: Only spam if ball is coming towards us or target is close
-                    if Target_Distance > 40 and Distance > 40 then
-                        return
-                    end
+                    local Jitter = Auto_Parry.__avg_jitter
                     
-                    local Pulsed = Player.Character:GetAttribute('Pulsed')
+                    local Ball_Target = Ball:GetAttribute('target')
+                    local player_pos = Player.Character.PrimaryPart.Position
+                    local Distance = (player_pos - Ball.Position).Magnitude
+                    
+                    -- Closure Rate: velocity of ball towards player
+                    local direction_to_player = -(Ball.Position - player_pos).Unit
+                    local closure_rate = Smoothed_Velocity:Dot(direction_to_player)
 
-                    if Pulsed then
-                        return
-                    end
+                    Auto_Parry.Closest_Player()
+                    local Target_Distance = Player:DistanceFromCharacter(Closest_Entity.PrimaryPart.Position)
 
-                    if Ball_Target == tostring(Player) and Target_Distance > 30 and Distance > 30 then
-                        return
-                    end
+                    -- [[ V4.5 SPAM STABILITY LAYER ]] --
+                    -- Only spam if ball is actually coming towards us or we are in a close clash
+                    if Target_Distance > 45 and Distance > 45 then return end
+                    if closure_rate < -5 and Distance > 15 then return end -- Ignoring balls moving away
 
-                    if TTI <= Spam_Threshold_TTI and Parries > 2.5 then -- Using fixed 2.5 threshold for spam stability
+                    local Spam_Window = (100 - (Library._config._flags["Spam_Threshold"] or 50)) * 0.003
+                    local Spam_Threshold_TTI = Network_Delay + Jitter + Spam_Window + 0.04
+                    
+                    if TTI <= Spam_Threshold_TTI and Parries > 2.2 then
                         if getgenv().SpamParryKeypress then
                             VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game) 
                         else
