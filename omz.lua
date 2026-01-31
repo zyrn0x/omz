@@ -106,6 +106,85 @@ getgenv().System = {
     autoparry = { start = function() end, stop = function() end }
 }
 
+-- [[ CORE UTILITIES ]]
+local function getPing()
+    local ping = 100
+    pcall(function()
+        ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())
+    end)
+    return ping
+end
+
+function System.animation.play_grab_parry()
+    local char = Player.Character
+    if not char then return end
+    
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
+    if not animator then return end
+    
+    local anim = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SwordAPI"):WaitForChild("Collection"):WaitForChild("Default"):FindFirstChild("GrabParry")
+    if anim then
+        local track = animator:LoadAnimation(anim)
+        track:Play()
+        getgenv().Grab_Parry = track
+    end
+end
+
+function System.parry.execute_action()
+    local type = getgenv().Selected_Parry_Type or "Camera"
+    local data = Auto_Parry.Parry_Data(type)
+    
+    for remote, capturedArgs in pairs(getgenv().System.__properties.__reverted_remotes or {}) do
+        if remote:IsA("RemoteEvent") then
+            remote:FireServer(capturedArgs[1], getgenv().System.__properties.__parry_key, data[1], data[2], data[3], data[4], capturedArgs[7])
+        elseif remote:IsA("RemoteFunction") then
+            remote:InvokeServer(capturedArgs[1], getgenv().System.__properties.__parry_key, data[1], data[2], data[3], data[4], capturedArgs[7])
+        end
+    end
+    
+    System.__properties.__parries = System.__properties.__parries + 1
+    if System.__properties.__play_animation then
+        System.animation.play_grab_parry()
+    end
+end
+
+function System.Check_DHP_Intersection(ball)
+    local char = Player.Character
+    if not char or not char.PrimaryPart then return false end
+    
+    local zoomies = ball:FindFirstChild("zoomies")
+    if not zoomies then return false end
+    
+    local velocity = zoomies.VectorVelocity
+    local speed = velocity.Magnitude
+    if speed < 1 then return false end
+    
+    local ping = getPing()
+    local pos = ball.Position
+    local my_pos = char.PrimaryPart.Position
+    
+    local dist = (my_pos - pos).Magnitude
+    local time_to_hit = dist / speed
+    
+    local lead_time = (ping / 1000) * System.__properties.__dhp_config.jitter_padding
+    local threshold = lead_time + (System.__properties.__accuracy / 1000)
+    
+    return time_to_hit <= threshold
+end
+
+getgenv().Parries = 0
+getgenv().Parried = false
+getgenv().Grab_Parry = nil
+getgenv().Training_Parried = false
+getgenv().LobbyAP_Speed_Divisor_Multiplier = 1
+getgenv().firstParryType = "F_Key"
+getgenv().firstParryFired = false
+getgenv().ParryThreshold = 0
+getgenv().Selected_Parry_Type = "Camera"
+getgenv().Connections_Manager = {}
+getgenv().Speed_Divisor_Multiplier = 1
+
 getgenv().Auto_Parry = {
     Play_Animation = function(v) 
         if System.animation and System.animation.play_grab_parry then 
@@ -351,8 +430,10 @@ local PrivateKey = nil
 local PropertyChangeOrder = {}
 
 local revertedRemotes = {}
+System.__properties.__reverted_remotes = revertedRemotes
 local originalMetatables = {}
 local Parry_Key = nil
+System.__properties.__parry_key = nil
 local SC = nil
 local Camera = workspace.CurrentCamera
 
@@ -366,11 +447,14 @@ end
 
 -- Note: PF variable from user snippet seems to be local and not used elsewhere in their snippet, keeping internal for bypass logic.
 local PF = nil
-if Player.PlayerGui:FindFirstChild("Hotbar") and Player.PlayerGui.Hotbar:FindFirstChild("Block") then
-    for _, v in next, getconnections(Player.PlayerGui.Hotbar.Block.Activated) do
-        if SC and getfenv(v.Function).script == SC then
-            PF = v.Function
-            break
+if Player:FindFirstChild("PlayerGui") and Player.PlayerGui:FindFirstChild("Hotbar") and Player.PlayerGui.Hotbar:FindFirstChild("Block") then
+    if getconnections then
+        for _, v in next, getconnections(Player.PlayerGui.Hotbar.Block.Activated) do
+            if SC and getfenv(v.Function).script == SC then
+                PF = v.Function
+                getgenv().PF = PF
+                break
+            end
         end
     end
 end
@@ -401,6 +485,7 @@ function hookRemote(remote)
                         if isValidRemoteArgs(args) and not revertedRemotes[self] then
                             revertedRemotes[self] = args
                             Parry_Key = args[2]
+                            System.__properties.__parry_key = args[2]
                         end
                         return oldIndex(self, key)(self, unpack(args))
                     end
@@ -1651,7 +1736,7 @@ do
                     })
                 end
             end
-                Connections_Manager['Auto Parry'] = RunService.PreSimulation:Connect(function()
+                getgenv().Connections_Manager['Auto Parry'] = RunService.PreSimulation:Connect(function()
                     if getgenv().parryCooldown and tick() < getgenv().parryCooldown then return end
                     
                     local balls = Auto_Parry.Get_Balls()
@@ -1743,9 +1828,9 @@ do
                     end
                 end)
             else
-                if Connections_Manager['Auto Parry'] then
-                    Connections_Manager['Auto Parry']:Disconnect()
-                    Connections_Manager['Auto Parry'] = nil
+                if getgenv().Connections_Manager['Auto Parry'] then
+                    getgenv().Connections_Manager['Auto Parry']:Disconnect()
+                    getgenv().Connections_Manager['Auto Parry'] = nil
                 end
             end
         end
@@ -1761,7 +1846,7 @@ do
         },
         Multi = false,
         Callback = function(value)
-            firstParryType = value
+            getgenv().firstParryType = value
         end
     })
 
@@ -1791,7 +1876,7 @@ do
         },
         Multi = false,
         Callback = function(value)
-            Selected_Parry_Type = parryTypeMap[value] or value
+            getgenv().Selected_Parry_Type = parryTypeMap[value] or value
         end
     })
 
@@ -1820,7 +1905,7 @@ do
 
         local newType = parryOptions[input.KeyCode]
         if newType then
-            Selected_Parry_Type = parryTypeMap[newType] or newType
+            getgenv().Selected_Parry_Type = parryTypeMap[newType] or newType
             
             -- WindUI support for Set not guaranteed, using SetValue() with safety check
             if dropdown and dropdown.SetValue then
@@ -1849,7 +1934,7 @@ do
         },
         Callback = function(value)
             System.__properties.__accuracy = value
-            Speed_Divisor_Multiplier = 0.7 + (value - 1) * (0.35 / 99)
+            getgenv().Speed_Divisor_Multiplier = 0.7 + (value - 1) * (0.35 / 99)
         end
     })
 
@@ -1911,7 +1996,7 @@ do
             end
 
             if value then
-                Connections_Manager['Auto Spam'] = RunService.PreSimulation:Connect(function()
+                getgenv().Connections_Manager['Auto Spam'] = RunService.PreSimulation:Connect(function()
                     local ball = Auto_Parry.Get_Ball()
                     if not ball then return end
                     
@@ -2056,9 +2141,9 @@ do
                         end
                     end)
                 else
-                    if Connections_Manager['Animation Fix'] then
-                        Connections_Manager['Animation Fix']:Disconnect()
-                        Connections_Manager['Animation Fix'] = nil
+                    if getgenv().Connections_Manager['Animation Fix'] then
+                        getgenv().Connections_Manager['Animation Fix']:Disconnect()
+                        getgenv().Connections_Manager['Animation Fix'] = nil
                     end
                 end
             end
@@ -2287,7 +2372,7 @@ do
                 end
             end
             if state then
-                Connections_Manager['Lobby AP'] = RunService.Heartbeat:Connect(function()
+                getgenv().Connections_Manager['Lobby AP'] = RunService.Heartbeat:Connect(function()
                     local Ball = Auto_Parry.Lobby_Balls()
                     if not Ball then
                         return
@@ -2299,10 +2384,10 @@ do
                     end
     
                     Ball:GetAttributeChangedSignal('target'):Once(function()
-                        Training_Parried = false
+                        getgenv().Training_Parried = false
                     end)
     
-                    if Training_Parried then
+                    if getgenv().Training_Parried then
                         return
                     end
     
@@ -2327,15 +2412,15 @@ do
                             if getgenv().LobbyAPKeypress then
                                 VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game) 
                             else
-                                Auto_Parry.Parry(Selected_Parry_Type)
+                                getgenv().Auto_Parry.Parry(getgenv().Selected_Parry_Type)
                             end
-                        Training_Parried = true
+                        getgenv().Training_Parried = true
                     end
                     local Last_Parrys = tick()
                     repeat 
                         RunService.PreSimulation:Wait() 
-                    until (tick() - Last_Parrys) >= 1 or not Training_Parried
-                    Training_Parried = false
+                    until (tick() - Last_Parrys) >= 1 or not getgenv().Training_Parried
+                    getgenv().Training_Parried = false
                 end)
             else
                 if Connections_Manager['Lobby AP'] then
@@ -2425,9 +2510,9 @@ do
                     getgenv().originalCameraSubject = cam.CameraSubject
                 end
                 
-                Connections_Manager['BallTP_Added'] = workspace.Balls.ChildAdded:Connect(function(v)
+                getgenv().Connections_Manager['BallTP_Added'] = workspace.Balls.ChildAdded:Connect(function(v)
                     if v:IsA("BasePart") then
-                        Connections_Manager['BallTP_Changed_' .. v.Name] = v.Changed:Connect(function(prop)
+                        getgenv().Connections_Manager['BallTP_Changed_' .. v.Name] = v.Changed:Connect(function(prop)
                             local c = plr.Character
                             if not c then return end
                             local hrp = c:FindFirstChild("HumanoidRootPart")
@@ -2458,10 +2543,10 @@ do
                     end
                 end)
             else
-                for connName, conn in pairs(Connections_Manager) do
+                for connName, conn in pairs(getgenv().Connections_Manager) do
                     if string.find(connName, "BallTP") then
                         conn:Disconnect()
-                        Connections_Manager[connName] = nil
+                        getgenv().Connections_Manager[connName] = nil
                     end
                 end
                 
@@ -2487,13 +2572,13 @@ do
                 
                 for _, ball in ipairs(workspace.Balls:GetChildren()) do
                     if ball:IsA("BasePart") then
-                        Connections_Manager['InstantBallTP_Attr_' .. ball.Name] = ball:GetAttributeChangedSignal("target"):Connect(function()
+                        getgenv().Connections_Manager['InstantBallTP_Attr_' .. ball.Name] = ball:GetAttributeChangedSignal("target"):Connect(function()
                             handleBallTargetChange(ball)
                         end)
                     end
                 end
                 
-                Connections_Manager['InstantBallTP_Added'] = workspace.Balls.ChildAdded:Connect(function(ball)
+                getgenv().Connections_Manager['InstantBallTP_Added'] = workspace.Balls.ChildAdded:Connect(function(ball)
                     if ball:IsA("BasePart") then
                         task.wait(0.1)
                         
@@ -5020,7 +5105,7 @@ do
                     visualPart.Parent = workspace
                 end
     
-                Connections_Manager['Visualiser'] = game:GetService("RunService").RenderStepped:Connect(function()
+                getgenv().Connections_Manager['Visualiser'] = game:GetService("RunService").RenderStepped:Connect(function()
                     local character = Player.Character
                     local HumanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
                     if HumanoidRootPart and visualPart then
@@ -5053,9 +5138,9 @@ do
                     end
                 end)
             else
-                if Connections_Manager['Visualiser'] then
-                    Connections_Manager['Visualiser']:Disconnect()
-                    Connections_Manager['Visualiser'] = nil
+                if getgenv().Connections_Manager['Visualiser'] then
+                    getgenv().Connections_Manager['Visualiser']:Disconnect()
+                    getgenv().Connections_Manager['Visualiser'] = nil
                 end
     
                 if visualPart then
@@ -5153,13 +5238,13 @@ do
             Player.PlayerScripts.EffectScripts.ClientFX.Disabled = state
     
             if state then
-                Connections_Manager['No Render'] = workspace.Runtime.ChildAdded:Connect(function(Value)
+                getgenv().Connections_Manager['No Render'] = workspace.Runtime.ChildAdded:Connect(function(Value)
                     Debris:AddItem(Value, 0)
                 end)
             else
-                if Connections_Manager['No Render'] then
-                    Connections_Manager['No Render']:Disconnect()
-                    Connections_Manager['No Render'] = nil
+                if getgenv().Connections_Manager['No Render'] then
+                    getgenv().Connections_Manager['No Render']:Disconnect()
+                    getgenv().Connections_Manager['No Render'] = nil
                 end
             end
         end
@@ -5212,55 +5297,49 @@ do
 end
 
 connectRemote("ReplicatedStorage.Remotes.ParrySuccessAll", function(_, root)
-    if root.Parent and root.Parent ~= Player.Character then
-        if root.Parent.Parent ~= workspace.Alive then
+    if not root or not root.Parent then return end
+    if root.Parent ~= Player.Character then
+        if not root.Parent.Parent or root.Parent.Parent ~= workspace.Alive then
             return
         end
     end
 
-    Auto_Parry.Closest_Player()
+    getgenv().Auto_Parry.Closest_Player()
 
-    local Ball = Auto_Parry.Get_Ball()
-
-    if not Ball then
-        return
-    end
+    local Ball = getgenv().Auto_Parry.Get_Ball()
+    if not Ball then return end
 
     local char = Player.Character
-    if not char or not char.PrimaryPart or not Closest_Entity or not Closest_Entity.PrimaryPart then
+    if not char or not char.PrimaryPart or not getgenv().Closest_Entity or not getgenv().Closest_Entity.PrimaryPart then
         return
     end
 
-    local Target_Distance = (char.PrimaryPart.Position - Closest_Entity.PrimaryPart.Position).Magnitude
+    local Target_Distance = (char.PrimaryPart.Position - getgenv().Closest_Entity.PrimaryPart.Position).Magnitude
     local Distance = (char.PrimaryPart.Position - Ball.Position).Magnitude
     local Direction = (char.PrimaryPart.Position - Ball.Position).Unit
     local Dot = Direction:Dot(Ball.AssemblyLinearVelocity.Unit)
 
-    local Curve_Detected = Auto_Parry.Is_Curved()
+    local Curve_Detected = getgenv().Auto_Parry.Is_Curved()
 
     if Target_Distance < 15 and Distance < 15 and Dot > -0.25 then
         if Curve_Detected then
-            Auto_Parry.Parry(Selected_Parry_Type)
+            getgenv().Auto_Parry.Parry(getgenv().Selected_Parry_Type)
         end
     end
 
-    if not Grab_Parry then
-        return
+    if getgenv().Grab_Parry and getgenv().Grab_Parry.Stop then
+        getgenv().Grab_Parry:Stop()
     end
-
-    Grab_Parry:Stop()
 end)
 
 connectRemote("ReplicatedStorage.Remotes.ParrySuccess", function()
-    if Player.Character.Parent ~= workspace.Alive then
+    if not Player.Character or Player.Character.Parent ~= workspace.Alive then
         return
     end
 
-    if not Grab_Parry then
-        return
+    if getgenv().Grab_Parry and getgenv().Grab_Parry.Stop then
+        getgenv().Grab_Parry:Stop()
     end
-
-    Grab_Parry:Stop()
 end)
 
 local function connectBalls()
@@ -5268,16 +5347,16 @@ local function connectBalls()
     if not balls then return end
     
     balls.ChildAdded:Connect(function()
-        Parried = false
+        getgenv().Parried = false
     end)
 
     balls.ChildRemoved:Connect(function(Value)
-        Parries = 0
-        Parried = false
+        getgenv().Parries = 0
+        getgenv().Parried = false
 
-        if Connections_Manager['Target Change'] then
-            Connections_Manager['Target Change']:Disconnect()
-            Connections_Manager['Target Change'] = nil
+        if getgenv().Connections_Manager['Target Change'] then
+            getgenv().Connections_Manager['Target Change']:Disconnect()
+            getgenv().Connections_Manager['Target Change'] = nil
         end
     end)
 end
