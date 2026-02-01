@@ -202,7 +202,8 @@ function hookRemote(remote)
                         return oldIndex(self, key)(_, unpack(args))
                     end
                 end
-                return oldIndex(self, key)
+                local success, result = pcall(function() return oldIndex(self, key) end)
+                return success and result or nil
             end
             setreadonly(meta, true)
         end
@@ -1422,6 +1423,8 @@ function System.auto_spam.start()
         local target_position = Closest_Entity.PrimaryPart.Position
         local target_distance = LocalPlayer:DistanceFromCharacter(target_position)
         
+        if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("PrimaryPart") then return end
+        
         local direction = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Unit
         local ball_direction = zoomies.VectorVelocity.Unit
         
@@ -1678,8 +1681,8 @@ function System.autoparry.start()
                     local ping = Stats.Network.ServerStatsItem['Data Ping']:GetValue() / 10
                     local ping_threshold = math.clamp(ping / 10, 5, 17)
                     
-                    local capped_speed_diff = math.min(math.max(speed - 9.5, 0), 650)
-                    local speed_divisor = (2.4 + capped_speed_diff * 0.002) * System.__properties.__divisor_multiplier
+                    local capped_speed_diff = math.min(math.max(speed - 9.5, 0), 1000)
+                    local speed_divisor = (2.5 + capped_speed_diff * 0.0025) * System.__properties.__divisor_multiplier
                     local parry_accuracy = ping_threshold + math.max(speed / speed_divisor, 9.5)
                     
                     local abilities = System.detection.detect_abilities(training_ball)
@@ -2662,30 +2665,29 @@ PhantomSection:Toggle({
     end
 })
 
-local SpamConfigSection = SpamTab:Section({ Title = "Configuration", Side = "Left", Box = true, Opened = true })
+local SpamSection = SpamTab:Section({ Title = "Spam Service", Side = "Left", Box = true, Opened = true })
 
-SpamConfigSection:Slider({
-    Title = "Spam Distance",
-    Value = { Min = 10, Max = 500, Value = 150 },
-    LeftText = "Studs",
-    Callback = function(v)
-        System.__properties.__spam_distance = v
+SpamSection:Toggle({
+    Title = 'Auto Spam',
+    Description = 'Automatically spam parries ball',
+    Value = false,
+    Callback = function(value)
+        System.__properties.__auto_spam_enabled = value
+        if value then
+            System.auto_spam.start()
+            if getgenv().AutoSpamNotify then
+                WindUI:Notify({ Title = "Auto Spam", Content = "ON", Duration = 2 })
+            end
+        else
+            System.auto_spam.stop()
+            if getgenv().AutoSpamNotify then
+                WindUI:Notify({ Title = "Auto Spam", Content = "OFF", Duration = 2 })
+            end
+        end
     end
 })
 
-SpamConfigSection:Slider({
-    Title = "Spam Threshold",
-    Value = { Min = 0.1, Max = 10, Value = 1.5 },
-    LeftText = "Value",
-    CustomStep = 0.1,
-    Callback = function(v)
-        System.__properties.__spam_threshold = v
-    end
-})
-
-local ManualSection = SpamTab:Section({ Title = "Manual Spam", Side = "Left", Box = true, Opened = true })
-
-ManualSection:Toggle({
+SpamSection:Toggle({
     Title = "Manual Spam",
     Description = "High-frequency parry spam",
     Value = false,
@@ -2763,99 +2765,58 @@ ManualSection:Toggle({
     end
 })
 
-ManualSection:Toggle({ Type = "Checkbox",
-    Title = "Notify",
-    Value = false,
-    Callback = function(value)
-        getgenv().ManualSpamNotify = value
+SpamSection:Slider({
+    Title = "Spam Distance",
+    Value = { Min = 10, Max = 500, Value = 150 },
+    LeftText = "Studs",
+    Callback = function(v)
+        System.__properties.__spam_distance = v
     end
 })
 
-ManualSection:Dropdown({
-    Title = "Mode",
-    Values = {"Remote", "Keypress"},
-    Value = "Remote",
-    Callback = function(value)
-        getgenv().ManualSpamMode = value
+SpamSection:Slider({
+    Title = "Spam Threshold",
+    Value = { Min = 0.1, Max = 10, Value = 1.5 },
+    LeftText = "Value",
+    CustomStep = 0.1,
+    Callback = function(v)
+        System.__properties.__spam_threshold = v
     end
 })
 
-ManualSection:Toggle({ Type = "Checkbox",
-    Title = "Animation Fix",
-    Value = false,
-    Callback = function(value)
-        getgenv().ManualSpamAnimationFix = value
-    end
-})
-
-ManualSection:Slider({
-    Title = 'Spam Rate',
+SpamSection:Slider({
+    Title = 'Spam Rate (Manual)',
     Value = { Min = 60, Max = 5000, Value = 240 },
     Callback = function(value)
         System.__properties.__spam_rate = value
     end
 })
 
-local AutoSpamSection = SpamTab:Section({ Title = "Auto Spam", Side = "Right", Box = true, Opened = true })
-
-AutoSpamSection:Toggle({
-    Title = 'Auto Spam',
-    Description = 'Automatically spam parries ball',
-    Value = false,
-    Callback = function(value)
-        System.__properties.__auto_spam_enabled = value
-        if value then
-            System.auto_spam.start()
-            if getgenv().AutoSpamNotify then
-                WindUI:Notify({ Title = "Auto Spam", Content = "ON", Duration = 2 })
-            end
-        else
-            System.auto_spam.stop()
-            if getgenv().AutoSpamNotify then
-                WindUI:Notify({ Title = "Auto Spam", Content = "OFF", Duration = 2 })
-            end
-        end
-    end
-})
-
-AutoSpamSection:Toggle({ Type = "Checkbox",
-    Title = "Notify",
-    Value = false,
-    Callback = function(value)
-        getgenv().AutoSpamNotify = value
-    end
-})
-
-AutoSpamSection:Dropdown({
-    Title = "Mode",
+SpamSection:Dropdown({
+    Title = "Spam Mode",
     Values = {"Remote", "Keypress"},
     Value = "Remote",
     Callback = function(value)
         getgenv().AutoSpamMode = value
+        getgenv().ManualSpamMode = value
     end
 })
 
-AutoSpamSection:Toggle({ Type = "Checkbox",
+SpamSection:Toggle({
     Title = "Animation Fix",
     Value = false,
     Callback = function(value)
         getgenv().AutoSpamAnimationFix = value
+        getgenv().ManualSpamAnimationFix = value
     end
 })
 
-AutoSpamSection:Slider({
-    Title = "Parry Threshold",
-    Value = { Min = 1, Max = 5, Value = 2.5 },
+SpamSection:Toggle({
+    Title = "Notify",
+    Value = false,
     Callback = function(value)
-        System.__properties.__spam_threshold = value
-    end
-})
-
-AutoSpamSection:Slider({
-    Title = "Spam Distance",
-    Value = { Min = 20, Max = 300, Value = 95 },
-    Callback = function(value)
-        System.__properties.__spam_distance = value
+        getgenv().AutoSpamNotify = value
+        getgenv().ManualSpamNotify = value
     end
 })
 
@@ -2873,7 +2834,7 @@ local __persistent_tasks = {} -- index por Character para coroutines/threads de 
 local function __descriptions_match(a, b)
     if not a or not b then return false end
     -- Compara algumas propriedades comumente usadas
-    local keys = {"Shirt", "Pants", "ShirtGraphic", "Head", "Face", "BodyTypeScale", "HeightScale", "WidthScale", "DepthScale", "ProportionScale"}
+    local keys = {"Shirt", "Pants", "GraphicTShirt", "Head", "Face", "BodyTypeScale", "HeightScale", "WidthScale", "DepthScale", "ProportionScale"}
     for _,k in ipairs(keys) do
         local av = a[k]
         local bv = b[k]
@@ -5977,7 +5938,8 @@ end)
 
 hooks.oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
     if not shouldApplyDesync() or checkcaller() or key ~= "CFrame" or not cache.hrp or not isInAliveFolder() then
-        return hooks.oldIndex(self, key)
+        local success, result = pcall(function() return hooks.oldIndex(self, key) end)
+        return success and result or nil
     end
     
     if self == cache.hrp then
@@ -6275,8 +6237,9 @@ VisualiserSection:Toggle({
                 vis_part.CastShadow = false
             end
             
+            getgenv().vis_active = true
             task.spawn(function()
-                while v and vis_part do
+                while getgenv().vis_active and vis_part do
                     RunService.RenderStepped:Wait()
                     if LocalPlayer.Character and LocalPlayer.Character.PrimaryPart then
                         vis_part.CFrame = LocalPlayer.Character.PrimaryPart.CFrame
@@ -6292,9 +6255,9 @@ VisualiserSection:Toggle({
                 end
             end)
         elseif vis_part then
+            getgenv().vis_active = false
             vis_part:Destroy()
             vis_part = nil
-            v = false -- stop loop
         end
     end
 })
@@ -6351,25 +6314,59 @@ CosmeticsSection:Toggle({
     Value = false,
     Callback = function(v)
         local char = LocalPlayer.Character
-        if char then
-            local rll = char:FindFirstChild("RightLowerLeg")
-            if rll then
-                if v then
-                    local mesh = rll:FindFirstChild("KorbloxMesh") or Instance.new("SpecialMesh", rll)
-                    mesh.Name = "KorbloxMesh"
-                    mesh.MeshId = "http://www.roblox.com/asset/?id=902942093"
-                    mesh.TextureId = "http://www.roblox.com/asset/?id=902843398"
-                    mesh.Scale = Vector3.new(1, 1, 1)
-                    
-                    if char:FindFirstChild("RightFoot") then char.RightFoot.Transparency = 1 end
-                    if char:FindFirstChild("RightUpperLeg") then char.RightUpperLeg.Transparency = 1 end
-                else
-                    local mesh = rll:FindFirstChild("KorbloxMesh")
-                    if mesh then mesh:Destroy() end
-                    
-                    if char:FindFirstChild("RightFoot") then char.RightFoot.Transparency = 0 end
-                    if char:FindFirstChild("RightUpperLeg") then char.RightUpperLeg.Transparency = 0 end
+        if not char then return end
+        
+        local function apply()
+            local r_leg = char:FindFirstChild("RightLowerLeg") or char:FindFirstChild("Right Leg")
+            if not r_leg then return end
+            
+            if v then
+                -- Clear existing meshes
+                for _, child in pairs(char:GetChildren()) do
+                    if child:IsA("CharacterMesh") and child.BodyPart == Enum.BodyPart.RightLeg then
+                        child:Destroy()
+                    end
                 end
+                
+                -- Create CharacterMesh for Korblox Leg
+                local mesh = Instance.new("CharacterMesh")
+                mesh.MeshId = "902942093"
+                mesh.BodyPart = Enum.BodyPart.RightLeg
+                mesh.Name = "KorbloxLegMesh"
+                mesh.Parent = char
+                
+                -- Hide other parts if R15
+                if char:FindFirstChild("RightFoot") then char.RightFoot.Transparency = 1 end
+                if char:FindFirstChild("RightUpperLeg") then char.RightUpperLeg.Transparency = 1 end
+                if char:FindFirstChild("RightLowerLeg") then char.RightLowerLeg.Transparency = 1 end
+            else
+                -- Restore original
+                for _, child in pairs(char:GetChildren()) do
+                    if child.Name == "KorbloxLegMesh" then
+                        child:Destroy()
+                    end
+                end
+                
+                if char:FindFirstChild("RightFoot") then char.RightFoot.Transparency = 0 end
+                if char:FindFirstChild("RightUpperLeg") then char.RightUpperLeg.Transparency = 0 end
+                if char:FindFirstChild("RightLowerLeg") then char.RightLowerLeg.Transparency = 0 end
+            end
+        end
+        
+        apply()
+        
+        -- Support for respawning
+        if v then
+            if _G.KorbloxConn then _G.KorbloxConn:Disconnect() end
+            _G.KorbloxConn = LocalPlayer.CharacterAdded:Connect(function(new_char)
+                task.wait(1)
+                char = new_char
+                apply()
+            end)
+        else
+            if _G.KorbloxConn then 
+                _G.KorbloxConn:Disconnect()
+                _G.KorbloxConn = nil
             end
         end
     end
