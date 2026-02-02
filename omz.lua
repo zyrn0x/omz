@@ -3451,6 +3451,7 @@ function Auto_Parry.Spam_Service(self)
     local Velocity = Ball.AssemblyLinearVelocity
     local Speed = Velocity.Magnitude
 
+    if not Player.Character or not Player.Character.PrimaryPart then return 0 end
     local Direction = (Player.Character.PrimaryPart.Position - Ball.Position).Unit
     local Dot = Direction:Dot(Velocity.Unit)
 
@@ -4458,7 +4459,7 @@ do
                     end
                     
                     -- Execution Condition
-                    if (Distance <= valid_range or (is_target and Distance < 50)) and Parries > spam_threshold then
+                    if (Distance <= valid_range or (is_target and Distance < 50)) then
                          if getgenv().AutoSpamMode == "Keypress" then
                             performFirstPress(getgenv().AutoSpamType or 'F_Key')
                         else
