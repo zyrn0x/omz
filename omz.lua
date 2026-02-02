@@ -2377,7 +2377,7 @@ end)
                     end
                 end
 
-                if #settings.options > 0 then
+                if settings.options and #settings.options > 0 then
                     DropdownManager._size = 3
 
                     for index, value in settings.options do
