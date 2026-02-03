@@ -1,3 +1,4 @@
+--fixed
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -3795,6 +3796,10 @@ local parriedBalls = {}
                       end
                       ball:GetAttributeChangedSignal('target'):Once(function() Parried = false end)
                       if Parried then continue end
+                      
+                      -- CRITICAL FIX: Check if this ball was already parried
+                      if parriedBalls[ball] then continue end
+                      
                       local ballTarget = ball:GetAttribute('target')
                       local velocity = zoomies.VectorVelocity
                       local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
@@ -4068,6 +4073,9 @@ local parriedBalls = {}
                           Parried = true
                       end
                       if ballTarget == tostring(LocalPlayer) and distance <= parryAccuracy and not Phantom then
+                          -- CRITICAL FIX: Don't parry if Auto Spam is currently spamming
+                          if IsAutoSpamming then continue end
+                          
                           if Death_Slash_Detection and DeathSlashDetection then continue end
                           
                           local parryTime = os.clock()
@@ -4643,6 +4651,9 @@ local parriedBalls = {}
               end
               Connections["autoSpam"] = RunService.PreSimulation:Connect(function()
                   if not AutoSpamEnabled then return end
+                  
+                  -- CRITICAL FIX: Don't spam in lobby (let Lobby AP handle it)
+                  if Connections["lobbyAutoParry"] then return end
                   
                   -- === RATE LIMITING ===
                   local currentTime = tick()
