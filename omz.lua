@@ -1,4 +1,3 @@
---fixed
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -3382,116 +3381,52 @@ end
 AutoParry.SpamService = function()
     local ball = AutoParry.GetBall()
     if not ball then return 0 end
+    
     local closest = AutoParry.ClosestPlayer()
     if not closest or not closest.PrimaryPart then return 0 end
     if not LocalPlayer.Character or not LocalPlayer.Character.PrimaryPart then return 0 end
     
     local zoomies = ball:FindFirstChild('zoomies')
     if not zoomies then return 0 end
-    local vel = zoomies.VectorVelocity
-    local speed = vel.Magnitude
     
-    -- Safe access to ball properties
-    local ballProps = AutoParry.GetBallProps()
-    if not ballProps then return 0 end
+    local velocity = zoomies.VectorVelocity
+    local speed = velocity.Magnitude
     
-    local averagePing = GetAveragePing()
-    local pingSeconds = averagePing / 1000
+    -- Ignore idle/slow balls
+    if speed < 8 then return 0 end
     
-    -- === TIME-TO-IMPACT CALCULATIONS ===
-    local distToEnemy = (closest.PrimaryPart.Position - ball.Position).Magnitude
-    local distToPlayer = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
-    local enemyTTI = distToEnemy / math.max(speed, 1)
-    local playerTTI = distToPlayer / math.max(speed, 1)
+    -- Get distances
+    local ballDistance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
+    local targetDistance = LocalPlayer:DistanceFromCharacter(closest.PrimaryPart.Position)
     
-    -- === ACCELERATION DETECTION ===
-    local acceleration = 0
-    if AutoParry.Previous_Speeds[ball] and #AutoParry.Previous_Speeds[ball] >= 2 then
-        local prevSpeed = AutoParry.Previous_Speeds[ball][#AutoParry.Previous_Speeds[ball] - 1]
-        acceleration = speed - prevSpeed
-    end
+    -- Direction and dot product
+    local direction = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Unit
+    local dot = direction:Dot(velocity.Unit)
     
-    -- Track speed history
-    if not AutoParry.Previous_Speeds[ball] then
-        AutoParry.Previous_Speeds[ball] = {}
-    end
-    table.insert(AutoParry.Previous_Speeds[ball], speed)
-    if #AutoParry.Previous_Speeds[ball] > 5 then
-        table.remove(AutoParry.Previous_Speeds[ball], 1)
-    end
+    -- Ping compensation
+    local ping = game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue()
+    local pingSec = ping / 1000
     
-    -- === BASE SPAM DISTANCE CALCULATION ===
-    -- Dynamic reaction time based on ping
-    local reactionTime = 0.12
-    if averagePing > 150 then
-        reactionTime = 0.18 + (averagePing / 2500)
-    elseif averagePing > 100 then
-        reactionTime = 0.15 + (averagePing / 3000)
-    end
+    -- Time-to-impact calculation
+    local tti = (speed > 0 and dot < 0) and (ballDistance / speed) or 999
     
-    -- Base calculation: how far ball travels in our reaction window
-    local spamDistance = speed * (pingSeconds + reactionTime)
+    -- Base spam distance calculation
+    local baseDistance = 12 + math.min(speed / 5, 80)
+    local pingComp = math.min(pingSec * speed * 1.2, 25)
+    local maximum_spam_distance = baseDistance + pingComp
     
-    -- === SPEED-BASED SCALING ===
-    local speedScale = 1.0
-    if speed > 800 then
-        speedScale = 1.5 -- Ultra aggressive for high speeds
-    elseif speed > 600 then
-        speedScale = 1.35
-    elseif speed > 400 then
-        speedScale = 1.2
-    elseif speed > 200 then
-        speedScale = 1.1
-    end
-    spamDistance = spamDistance * speedScale
+    -- Early exit if distances are too far
+    if targetDistance > maximum_spam_distance then return 0 end
+    if ballDistance > maximum_spam_distance then return 0 end
     
-    -- === ACCELERATION COMPENSATION ===
-    if acceleration > 50 then
-        -- Ball is accelerating, spam earlier
-        spamDistance = spamDistance + (acceleration / 10)
-    elseif acceleration < -50 then
-        -- Ball is decelerating, can spam slightly later
-        spamDistance = spamDistance - (math.abs(acceleration) / 15)
-    end
+    -- Dot bonus: ball coming straight at us (Dot near -1) = parry earlier
+    local dotBonus = math.clamp(dot, -1, 0) * (4 + math.min(speed / 25, 8))
+    local spam_accuracy = maximum_spam_distance + dotBonus
     
-    -- === CLASH PROXIMITY BOOST (CRITICAL) ===
-    if distToEnemy < 35 then
-        local clashMultiplier = 2.8 -- Very aggressive
-        if speed > 600 then
-            clashMultiplier = 3.2 -- Even more aggressive for high speeds
-        end
-        local clashBoost = (35 - distToEnemy) * clashMultiplier
-        spamDistance = spamDistance + clashBoost
-    end
+    -- Cap the spam accuracy
+    spam_accuracy = math.clamp(spam_accuracy, 10, 120)
     
-    -- === PLAYER PROXIMITY CHECK ===
-    -- If we're also close to the ball, reduce spam distance slightly
-    if distToPlayer < 30 then
-        spamDistance = spamDistance - (30 - distToPlayer) * 0.5
-    end
-    
-    -- === PREDICTION MODE ===
-    if PredictionModeEnabled then
-        local lead = math.clamp(speed / 100, 3, 8)
-        spamDistance = spamDistance + lead
-    end
-    
-    -- === KEYPRESS COMPENSATION ===
-    if AutoParryType == "Keypress" and SpamParryKeypress then
-        spamDistance = spamDistance + 15 -- Keypress has delay
-    end
-    
-    -- === HIGH PING COMPENSATION ===
-    if SpamHighPingCompensation and averagePing > 150 then
-        spamDistance = spamDistance * 1.4
-    elseif SpamHighPingCompensation and averagePing > 100 then
-        spamDistance = spamDistance * 1.2
-    end
-    
-    -- === MINIMUM THRESHOLD ===
-    spamDistance = math.max(spamDistance, 15)
-    
-    return spamDistance
+    return spam_accuracy
 end
 AutoParry.IsCooldownActive = function(uigradient)
     return uigradient.Offset.Y <= 0.27
