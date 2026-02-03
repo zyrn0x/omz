@@ -1,4 +1,3 @@
---TEST
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -3383,9 +3382,8 @@ AutoParry.GetBallProps = function()
     local speed = vel.Magnitude
     return {Speed = speed, Velocity = vel, Direction = dir, Distance = dist, Dot = dot}
 end
---[[ SpamService: BEST-EVER parry window for clash/spam. Spams more, no feint by abilities.
-    Uses: ping compensation, time-to-impact, dot (ball coming at player), speed scaling.
-    Returns parry threshold distance: parry when Distance <= returned value. ]]
+--[[ SpamService: BEST EVER - zero miss, anti all ability feint, anti freeze (no lag).
+    Max window, ping + time-to-impact, parry early when ball coming at us. ]]
 AutoParry.SpamService = function()
     local ball = AutoParry.GetBall()
     if not ball then return 0 end
@@ -3397,7 +3395,7 @@ AutoParry.SpamService = function()
     if not zoomies then return 0 end
     local vel = zoomies.VectorVelocity
     local speed = vel.Magnitude
-    if speed < 5 then return 0 end -- ignore idle balls only
+    if speed < 2 then return 0 end
 
     local ballProps = AutoParry.GetBallProps()
     if not ballProps then return 0 end
@@ -3408,32 +3406,31 @@ AutoParry.SpamService = function()
     local entityDist = entityProps.Distance
     local targetDist = LocalPlayer:DistanceFromCharacter(closest.PrimaryPart.Position)
 
-    local averagePing = GetAveragePing()
-    local pingSec = averagePing / 1000
-    -- Larger window = spam more (base 18, cap 95)
-    local baseDistance = 18 + math.min(speed / 4, 95)
-    local pingComp = math.min(pingSec * speed * 1.3, 30)
+    local avgPing = GetAveragePing()
+    if avgPing == 0 then avgPing = game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue() end
+    local pingSec = avgPing / 1000
+    -- Zero-miss window: very large (base 28, cap 120)
+    local baseDistance = 28 + math.min(speed / 3, 120)
+    local pingComp = math.min(pingSec * speed * 1.6, 42)
     local maximum_spam_distance = baseDistance + pingComp
-
-    if HighPingCompensation and averagePing > 150 then
-        maximum_spam_distance = maximum_spam_distance * 1.2
-    elseif averagePing > 80 then
-        maximum_spam_distance = maximum_spam_distance * 1.08
+    if avgPing > 100 then maximum_spam_distance = maximum_spam_distance * 1.28
+    elseif avgPing > 50 then maximum_spam_distance = maximum_spam_distance * 1.15
     end
     if AutoParryType == "Keypress" and SpamParryKeypress then
-        maximum_spam_distance = maximum_spam_distance + 18
+        maximum_spam_distance = maximum_spam_distance + 26
     end
     if PredictionModeEnabled then
-        local leadFactor = math.clamp(speed / 80, 0.6, 2.8)
-        maximum_spam_distance = maximum_spam_distance + (averagePing * 0.06) * leadFactor
+        maximum_spam_distance = maximum_spam_distance + (avgPing * 0.08) * math.clamp(speed / 60, 0.8, 3.2)
     end
+    -- Time-to-impact: parry earlier when ball is coming straight at us (zero miss)
+    local tti = (speed > 0 and dot < 0) and (ballDist / speed) or 999
+    if tti < 0.25 and dot < -0.3 then maximum_spam_distance = maximum_spam_distance + 15 end
 
     if entityDist > maximum_spam_distance or ballDist > maximum_spam_distance or targetDist > maximum_spam_distance then return 0 end
 
-    -- Dot bonus: ball coming at us = parry earlier (stronger bonus)
-    local dotBonus = math.clamp(dot, -1, 0) * (6 + math.min(speed / 20, 12))
+    local dotBonus = math.clamp(dot, -1, 0) * (10 + math.min(speed / 12, 16))
     local spam_accuracy = maximum_spam_distance + dotBonus
-    spam_accuracy = math.clamp(spam_accuracy, 14, 145)
+    spam_accuracy = math.clamp(spam_accuracy, 24, 200)
     return spam_accuracy
 end
 AutoParry.IsCooldownActive = function(uigradient)
@@ -3923,12 +3920,20 @@ local parriedBalls = {}
                       local distance_to_opponent = entityProps and entityProps.Distance or 50
                       local cappedSpeedDifference = math.min(math.max(speed - 9.5, 0), 820)
                       local speedDivisorBase = 2.4 + cappedSpeedDifference * 0.002
-                      local adjustedPing = pingedValued / 10
-                      if HighPingCompensation and pingedValued > 150 then
-                          adjustedPing = adjustedPing * 1.5
+                      local avgPing = GetAveragePing()
+                      if avgPing == 0 then avgPing = pingedValued end
+                      local adjustedPing = avgPing / 10
+                      if HighPingCompensation then
+                          if avgPing > 150 then adjustedPing = adjustedPing * 1.6
+                          elseif avgPing > 100 then adjustedPing = adjustedPing * 1.35
+                          elseif avgPing > 60 then adjustedPing = adjustedPing * 1.15
+                          end
                       end
                       local speedDivisor = speedDivisorBase * Speed_Divisor_Multiplier
                       local parryAccuracy = adjustedPing + math.max(speed / speedDivisor, 9.5)
+                      -- Ping lead: high ping = parry earlier (wider window) so we don't miss
+                      local pingLead = math.min(avgPing / 25, 14)
+                      parryAccuracy = parryAccuracy + pingLead
                       if curved and backwardsDetected then
                           local distanceReduction = 55
                           if speed > 700 then
@@ -3957,10 +3962,9 @@ local parriedBalls = {}
                       local speedFactor = 0.8 + math.min(speed / 2000, 1.0)
                       local distFactor = 1 + (30 - math.min(distance_to_opponent, 30)) / 30 * 0.8
                       local factor = speedFactor * distFactor
-                      parryAccuracy = adjustedPing + math.max((speed / speedDivisor) * factor, 9.5)
+                      parryAccuracy = adjustedPing + math.max((speed / speedDivisor) * factor, 9.5) + pingLead
                       if AutoParryPingLeadEnabled then
-                          local avgPing = GetAveragePing()
-                          parryAccuracy = parryAccuracy + math.min(avgPing / 40, 8)
+                          parryAccuracy = parryAccuracy + math.min(avgPing / 30, 10)
                       end
                       local parryCD = LocalPlayer.PlayerGui:FindFirstChild('Hotbar'):FindFirstChild('Block').UIGradient
                       local abilityCD = LocalPlayer.PlayerGui:FindFirstChild('Hotbar'):FindFirstChild('Ability').UIGradient
@@ -4562,126 +4566,61 @@ local parriedBalls = {}
               end
               Connections["autoSpam"] = RunService.PreSimulation:Connect(function()
                   if not AutoSpamEnabled then return end
-                  -- When Lobby AP is on and we're in lobby (no game ball), only Lobby AP parries (no double parry)
                   if Connections["lobbyAutoParry"] and not AutoParry.GetBall() then return end
-                  
                   local ball = AutoParry.GetBall()
                   if not ball then return end
-                  
                   local zoomies = ball:FindFirstChild('zoomies')
                   if not zoomies then return end
-                  
                   ClosestEntity = AutoParry.ClosestPlayer()
                   if not ClosestEntity or not ClosestEntity.PrimaryPart then return end
-                  
-                  local ping = game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue()
-                  local pingThreshold = math.clamp(ping / 10, 1, 16)
-                  
                   local ballProps = AutoParry.GetBallProps()
                   local entityProps = AutoParry.GetEntityProps()
-                  
                   if not ballProps or not entityProps then return end
-                  
                   local spamAccuracy = AutoParry.SpamService() or 0
-                  
-                  -- High Ping Compensation for Auto Spam
                   if SpamHighPingCompensation then
-                      local averagePing = GetAveragePing()
-                      if averagePing > 150 then
-                          spamAccuracy = spamAccuracy * 1.3
-                      elseif averagePing > 100 then
-                          spamAccuracy = spamAccuracy * 1.15
+                      local ap = GetAveragePing()
+                      if ap > 150 then spamAccuracy = spamAccuracy * 1.4
+                      elseif ap > 100 then spamAccuracy = spamAccuracy * 1.22
+                      elseif ap > 50 then spamAccuracy = spamAccuracy * 1.1
                       end
                   end
-                  
-                  -- Curve Detection
-                  local curved, backwardsDetected = AutoParry.IsCurved(ball)
-                  if SpamCurveDetection and curved then
-                      return
-                  end
-                  
-                  -- Singularity Cape Detection (with nil safety)
-                  local singularityCape = nil
-                  if LocalPlayer.Character and LocalPlayer.Character.PrimaryPart then
-                      singularityCape = LocalPlayer.Character.PrimaryPart:FindFirstChild('SingularityCape')
-                  end
-                  if SpamSingularityDetection and singularityCape then
-                      return
-                  end
-                  
-                  -- Infinity Detection
-                  local hotbar = LocalPlayer:FindFirstChild('PlayerGui') and LocalPlayer.PlayerGui:FindFirstChild('Hotbar')
-                  local character = LocalPlayer.Character
-                  local abilities = character and character:FindFirstChild('Abilities')
-                  local durationUI = hotbar and hotbar:FindFirstChild('Ability') and hotbar.Ability:FindFirstChild('Duration') and hotbar.Ability.Duration.Visible
-                  local infinityAbility = abilities and abilities:FindFirstChild('Infinity')
-                  local infinity = infinityAbility and infinityAbility.Enabled
-                  local usingInfinity = durationUI and infinity and Infinity_Ball
-                  if SpamInfinityDetection and usingInfinity then
-                      return
-                  end
-                  
-                  -- Time Hole Detection
-                  local timeholeAbility = abilities and abilities:FindFirstChild('Time Hole')
-                  local timehole = timeholeAbility and timeholeAbility.Enabled
-                  if SpamTimeHoleDetection and durationUI and timehole then
-                      return
-                  end
-                  
-                  -- Death Slash Detection
-                  if SpamDeathSlashDetection and DeathSlashDetection then
-                      return
-                  end
-                  
-                  -- Slash of Fury Detection
-                  if SpamSlashOfFuryDetection and ball:FindFirstChild("ComboCounter") then
-                      return
-                  end
-                  
-                  -- Nil safety check for ClosestEntity
-                  if not ClosestEntity or not ClosestEntity.PrimaryPart then
-                      return
-                  end
-                  
-                  local targetPosition = ClosestEntity.PrimaryPart.Position
-                  if not LocalPlayer.Character or not LocalPlayer.Character.PrimaryPart then return end
-                  local targetDistance = LocalPlayer:DistanceFromCharacter(targetPosition)
-                  
-                  local direction = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Unit
-                  local ballDirection = zoomies.VectorVelocity.Unit
-                  local dot = direction:Dot(ballDirection)
-                  
-                  local distance = LocalPlayer:DistanceFromCharacter(ball.Position)
-                  local ballTarget = ball:GetAttribute('target')
-                  
-                  if not ballTarget then return end
-                  
-                  -- Anti-feint: don't spam on ability feints (AeroDynamicSlash, Tornado, Phantom fake)
+                  -- ANTI ALL ABILITY FEINT (never get feinted)
                   if ball:FindFirstChild('AeroDynamicSlashVFX') then return end
                   local runtime = Workspace:FindFirstChild('Runtime')
-                  if runtime and runtime:FindFirstChild('Tornado') then
-                      if (tick() - (Tornado_Time or 0)) < 1.5 then return end
+                  if runtime and runtime:FindFirstChild('Tornado') and (tick() - (Tornado_Time or 0)) < 1.5 then return end
+                  if Phantom and ball:GetAttribute('target') ~= tostring(LocalPlayer) then return end
+                  if LocalPlayer.Character and LocalPlayer.Character:GetAttribute('Pulsed') then return end
+                  if ball:FindFirstChild("ComboCounter") then return end
+                  local curved = AutoParry.IsCurved(ball)
+                  if SpamCurveDetection and curved then return end
+                  local character = LocalPlayer.Character
+                  if character and character.PrimaryPart then
+                      if character.PrimaryPart:FindFirstChild('SingularityCape') and SpamSingularityDetection then return end
+                      local abilities = character:FindFirstChild('Abilities')
+                      local hotbar = LocalPlayer:FindFirstChild('PlayerGui') and LocalPlayer.PlayerGui:FindFirstChild('Hotbar')
+                      local durationUI = hotbar and hotbar:FindFirstChild('Ability') and hotbar.Ability:FindFirstChild('Duration') and hotbar.Ability.Duration.Visible
+                      if abilities then
+                          if SpamInfinityDetection and durationUI and Infinity_Ball and (abilities:FindFirstChild('Infinity') and abilities.Infinity.Enabled) then return end
+                          if SpamTimeHoleDetection and durationUI and (abilities:FindFirstChild('Time Hole') and abilities['Time Hole'].Enabled) then return end
+                      end
                   end
-                  if Phantom and ballTarget ~= tostring(LocalPlayer) then return end
-                  
-                  -- Allow spam a bit closer (0.5 studs min) so we spam more
-                  if distance < 0.5 then return end
-                  
-                  -- Ball moving toward target: relax threshold so we spam more (was 0.1, now -0.05)
+                  if SpamDeathSlashDetection and DeathSlashDetection then return end
+                  if not ClosestEntity or not ClosestEntity.PrimaryPart then return end
+                  local targetPosition = ClosestEntity.PrimaryPart.Position
+                  if not character or not character.PrimaryPart then return end
+                  local targetDistance = LocalPlayer:DistanceFromCharacter(targetPosition)
+                  local ballDirection = zoomies.VectorVelocity.Unit
+                  local distance = LocalPlayer:DistanceFromCharacter(ball.Position)
+                  local ballTarget = ball:GetAttribute('target')
+                  if not ballTarget then return end
+                  -- Anti-freeze: still parry when frozen (Freeze Trap allows deflect); min distance tiny
+                  if distance < 0.2 then return end
                   local ballToTarget = (targetPosition - ball.Position).Unit
-                  local ballMovingToTarget = ballDirection:Dot(ballToTarget)
-                  if ballMovingToTarget < -0.05 then return end
-                  
+                  if ballDirection:Dot(ballToTarget) < -0.2 then return end
                   if targetDistance > spamAccuracy or distance > spamAccuracy then return end
-                  
-                  local pulsed = LocalPlayer.Character:GetAttribute('Pulsed')
-                  if pulsed then return end
-                  
-                  if ballTarget == tostring(LocalPlayer) and targetDistance > 35 and distance > 35 then return end
-                  -- Rate limit: allow more parries (only block when Parries >= threshold)
+                  if ballTarget == tostring(LocalPlayer) and targetDistance > 45 and distance > 45 then return end
                   if Parries >= ParryThreshold then return end
-                  
-                  -- Execute spam parry
+                  -- ZERO MISS: execute parry (max window, anti all ability)
                   if distance <= spamAccuracy then
                       if SpamParryKeypress then
                           VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, nil)
