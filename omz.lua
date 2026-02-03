@@ -1,3 +1,4 @@
+--HI SKID
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -19,6 +20,9 @@ getgenv().GG = {
 }
 
 local SelectedLanguage = GG.Language
+
+local cloneref = (cloneref or function(instance) return instance end)
+local unpack = (unpack or table.unpack)
 
 function convertStringToTable(inputString)
     local result = {}
@@ -2701,6 +2705,8 @@ local LobbyParried = false
 local lastSpamTick = 0
 local lastTarget = nil
 local lastTargetChange = 0
+local lastPlayerPos = Vector3.zero
+local MartyrdomActive = false
 
 
 local GuiService = game:GetService('GuiService')
@@ -3576,6 +3582,14 @@ ReplicatedStorage.Remotes.InfinityBall.OnClientEvent:Connect(function(a, b)
     end
 end)
 
+local Martyrdom = false
+local MartyrdomRemote = ReplicatedStorage:WaitForChild("Remotes"):FindFirstChild("MartyrdomBall")
+if MartyrdomRemote then
+    MartyrdomRemote.OnClientEvent:Connect(function(state)
+        Martyrdom = state
+    end)
+end
+
 
 local timehole = false
 
@@ -3783,7 +3797,9 @@ do
                             return
                         end
 
-                        Ball:GetAttributeChangedSignal('target'):Once(function()
+                        local connection
+                        connection = Ball:GetAttributeChangedSignal('target'):Connect(function()
+                            connection:Disconnect()
                             Parried = false
                         end)
 
@@ -4255,7 +4271,7 @@ do
                         return
                     end
 
-                    if Distance <= Clash_Threshold * 1.2 then
+                    if Distance <= Clash_Threshold * 1.5 then -- Extended clash window for "Best Ever"
                         local currentTick = tick()
                         local Interval = (Speed > 350) and 0.02 or 0.033
                         if (currentTick - lastSpamTick) >= Interval then
@@ -4696,7 +4712,9 @@ do
                         return
                     end
     
-                    Ball:GetAttributeChangedSignal('target'):Once(function()
+                    local connection
+                    connection = Ball:GetAttributeChangedSignal('target'):Connect(function()
+                        connection:Disconnect()
                         Training_Parried = false
                     end)
     
