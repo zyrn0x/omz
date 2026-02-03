@@ -1,4 +1,3 @@
---HI SKID
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -23,6 +22,21 @@ local SelectedLanguage = GG.Language
 
 local cloneref = (cloneref or function(instance) return instance end)
 local unpack = (unpack or table.unpack)
+local getgc = (getgc or function() return {} end)
+local getgenv = (getgenv or function() return _G end)
+local getconnections = (getconnections or function() return {} end)
+local isfolder = (isfolder or function() return false end)
+local makefolder = (makefolder or function() end)
+local writefile = (writefile or function() end)
+local readfile = (readfile or function() return "" end)
+local isfile = (isfile or function() return false end)
+local setthreadidentity = (setthreadidentity or function() end)
+local islclosure = (islclosure or function() return false end)
+local getinfo = (getinfo or function() return {} end)
+local getupvalues = (getupvalues or function() return {} end)
+local getconstants = (getconstants or function() return {} end)
+local hookmetamethod = (hookmetamethod or function() end)
+local newcclosure = (newcclosure or function(f) return f end)
 
 function convertStringToTable(inputString)
     local result = {}
@@ -3638,17 +3652,20 @@ Balls.ChildAdded:Connect(function(Value)
             local Sof_Label = Child:FindFirstChildOfClass('TextLabel')
 
             if Sof_Label then
-                repeat
+                local connection
+                connection = RunService.PreSimulation:Connect(function()
+                    if not Sof_Label or not Sof_Label.Parent then
+                        connection:Disconnect()
+                        return
+                    end
+                    
                     local Slashes_Counter = tonumber(Sof_Label.Text)
                     local Ball_Target = Value:GetAttribute('target')
 
                     if Slashes_Counter and Slashes_Counter < 32 and Ball_Target == tostring(Player) then
                         Auto_Parry.Parry(Selected_Parry_Type)
                     end
-
-                    task.wait()
-
-                until not Sof_Label.Parent or not Sof_Label
+                end)
             end
         end
     end)
@@ -3899,68 +3916,81 @@ do
                             return
                         end
 
-                        -- Advanced Ability Logic (Uncounterable)
+                        -- Advanced Ability Logic (THE BEST EVER)
                         local Zoomies_Vel = Zoomies.VectorVelocity
                         local Zoomies_Speed = Zoomies_Vel.Magnitude
                         
+                        -- Anti-Swap Detection
+                        if Player.Character and Player.Character.PrimaryPart then
+                            local currentPos = Player.Character.PrimaryPart.Position
+                            if (currentPos - lastPlayerPos).Magnitude > 50 then
+                                -- We were swapped!
+                                if Ball_Target == tostring(Player) and Distance < 60 then
+                                    Auto_Parry.Parry(Selected_Parry_Type)
+                                end
+                            end
+                            lastPlayerPos = currentPos
+                        end
+
+                        -- Anti-Martyrdom / Explosion Detection
+                        if Martyrdom and Distance < 25 then
+                             local Velocity_Delta = (Zoomies_Vel - (Auto_Parry.Previous_Velocities[Ball] or Zoomies_Vel)).Magnitude
+                             if Velocity_Delta > 100 then
+                                 Auto_Parry.Parry(Selected_Parry_Type)
+                             end
+                        end
+                        Auto_Parry.Previous_Velocities[Ball] = Zoomies_Vel
+
                         -- Pull / Telekinesis Detection (Sudden Accel)
                         if Ball_Target == tostring(Player) then
                             local Prev_Speed = (Auto_Parry.Previous_Speeds[Ball] or Zoomies_Speed)
                             local Acceleration = Zoomies_Speed - Prev_Speed
                             Auto_Parry.Previous_Speeds[Ball] = Zoomies_Speed
                             
-                            if Acceleration > 50 and Distance < 60 then
-                                -- Target is being pulled or telekinesis'd
+                            local Pull_Threshold = (Zoomies_Speed < 100) and 30 or 50
+                            if Acceleration > Pull_Threshold and Distance < 60 then
                                 Auto_Parry.Parry(Selected_Parry_Type)
                             end
                         end
                         
                         -- Freeze Detection
                         if Zoomies_Speed < 0.1 and Ball_Target == tostring(Player) then
-                            -- Ball is frozen but still targeting us
-                            task.wait(0.1) -- Wait for unfreeze
+                            task.wait(0.05) -- Faster response to unfreeze
                         end
 
-                        -- Dribble Detection
-                        local Dribble_Active = false
-                        for _, v in pairs(workspace.Alive:GetChildren()) do
-                            if v:GetAttribute("Dribbling") or v:FindFirstChild("DribbleTrace") then
-                                if v.Name == Ball_Target then
-                                    Dribble_Active = true
-                                    break
-                                end
-                            end
-                        end
+                        -- Anti-Rapture / High Speed Compensation
+                        local Rapture_Active = Ball:GetAttribute('Raptured') or Ball:FindFirstChild('AeroDynamicSlashVFX')
                         
-                        if Dribble_Active and Distance > 15 then
-                            return -- Ignore if player is dribbling from distance
-                        end
-
                         if Ball_Target == tostring(Player) and Distance <= Parry_Accuracy then
                             if getgenv().AutoAbility and AutoAbility() then
                                 return
                             end
                         end
 
-                        if Ball_Target == tostring(Player) and Distance <= Parry_Accuracy then
-                            if getgenv().CooldownProtection and cooldownProtection() then
-                                return
+                        if Ball_Target == tostring(Player) then
+                            local Final_Accuracy = Parry_Accuracy
+                            if Rapture_Active then
+                                Final_Accuracy = Final_Accuracy + 5 -- Parry slightly earlier for Rapture
                             end
+                            
+                            if Distance <= Final_Accuracy then
+                                if getgenv().CooldownProtection and cooldownProtection() then
+                                    return
+                                end
 
-                            local Parry_Time = os.clock()
-                            local Time_View = Parry_Time - (Last_Parry)
-                            if Time_View > 0.5 then
-                                Auto_Parry.Parry_Animation()
+                                local Parry_Time = os.clock()
+                                local Time_View = Parry_Time - (Last_Parry)
+                                if Time_View > 0.5 then
+                                    Auto_Parry.Parry_Animation()
+                                end
+
+                                if getgenv().AutoParryKeypress then
+                                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, nil)
+                                else
+                                    Auto_Parry.Parry(Selected_Parry_Type)
+                                end
+                                Parried = true -- Sync with Auto Spam
                             end
-
-                            if getgenv().AutoParryKeypress then
-                                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, nil)
-                            else
-                                Auto_Parry.Parry(Selected_Parry_Type)
-                            end
-
-                            Last_Parry = Parry_Time
-                            Parried = true
                         end
                         local Last_Parrys = tick()
                         repeat
