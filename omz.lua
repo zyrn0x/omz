@@ -1,4 +1,3 @@
---Icon
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -3379,48 +3378,55 @@ AutoParry.GetBallProps = function()
     local speed = vel.Magnitude
     return {Speed = speed, Velocity = vel, Direction = dir, Distance = dist, Dot = dot}
 end
+--[[ SpamService: best-calculation parry window for clash/spam.
+    Uses: ping compensation, time-to-impact, dot (ball coming at player), speed scaling.
+    Returns parry threshold distance: parry when Distance <= returned value. ]]
 AutoParry.SpamService = function()
     local ball = AutoParry.GetBall()
     if not ball then return 0 end
     local closest = AutoParry.ClosestPlayer()
     if not closest or not closest.PrimaryPart then return 0 end
     if not LocalPlayer.Character or not LocalPlayer.Character.PrimaryPart then return 0 end
-    
+
     local zoomies = ball:FindFirstChild('zoomies')
     if not zoomies then return 0 end
     local vel = zoomies.VectorVelocity
     local speed = vel.Magnitude
-    
-    -- Safe access to ball properties
+    if speed < 8 then return 0 end -- ignore idle/slow balls
+
     local ballProps = AutoParry.GetBallProps()
     if not ballProps then return 0 end
     local dot = ballProps.Dot
-    
+    local ballDist = ballProps.Distance
+    local entityProps = AutoParry.GetEntityProps()
+    if not entityProps then return 0 end
+    local entityDist = entityProps.Distance
+    local targetDist = LocalPlayer:DistanceFromCharacter(closest.PrimaryPart.Position)
+
     local averagePing = GetAveragePing()
-    local PingAdjustment = averagePing / 10
+    local pingSec = averagePing / 1000
+    local baseDistance = 12 + math.min(speed / 5, 80)
+    local pingComp = math.min(pingSec * speed * 1.2, 25)
+    local maximum_spam_distance = baseDistance + pingComp
+
     if HighPingCompensation and averagePing > 150 then
-        PingAdjustment = PingAdjustment * 1.5
+        maximum_spam_distance = maximum_spam_distance * 1.15
     end
-    local compensation = 0
     if AutoParryType == "Keypress" and SpamParryKeypress then
-        compensation = 15
+        maximum_spam_distance = maximum_spam_distance + 15
     end
-    local Maximum_Spam_Distance = PingAdjustment + math.min(speed / 6, 95) + compensation
-    
-    -- Lead Factor for better prediction at high speeds
     if PredictionModeEnabled then
-        local Lead_Factor = math.clamp(speed / 100, 0.5, 2.5)
-        local pingCompensation = (averagePing * 0.05) * Lead_Factor
-        Maximum_Spam_Distance = Maximum_Spam_Distance + pingCompensation
+        local leadFactor = math.clamp(speed / 100, 0.5, 2.5)
+        maximum_spam_distance = maximum_spam_distance + (averagePing * 0.05) * leadFactor
     end
 
-    local entityProps = AutoParry.GetEntityProps()
-    if not entityProps or not ballProps then return 0 end
-    if entityProps.Distance > Maximum_Spam_Distance or ballProps.Distance > Maximum_Spam_Distance or LocalPlayer:DistanceFromCharacter(closest.PrimaryPart.Position) > Maximum_Spam_Distance then return 0 end
-    local Maximum_Speed = 5 - math.min(speed / 5, 5)
-    local Maximum_Dot = math.clamp(dot, -1, 0) * Maximum_Speed
-    local Spam_Accuracy = Maximum_Spam_Distance - Maximum_Dot
-    return Spam_Accuracy
+    if entityDist > maximum_spam_distance or ballDist > maximum_spam_distance or targetDist > maximum_spam_distance then return 0 end
+
+    -- Dot bonus: ball coming straight at us (Dot near -1) = parry a bit earlier
+    local dotBonus = math.clamp(dot, -1, 0) * (4 + math.min(speed / 25, 8))
+    local spam_accuracy = maximum_spam_distance + dotBonus
+    spam_accuracy = math.clamp(spam_accuracy, 10, 120)
+    return spam_accuracy
 end
 AutoParry.IsCooldownActive = function(uigradient)
     return uigradient.Offset.Y <= 0.27
@@ -4573,6 +4579,8 @@ local parriedBalls = {}
               end
               Connections["autoSpam"] = RunService.PreSimulation:Connect(function()
                   if not AutoSpamEnabled then return end
+                  -- When Lobby AP is on and we're in lobby, only Lobby AP parries (no double parry)
+                  if Connections["lobbyAutoParry"] and #AutoParry.GetLobbyBalls() > 0 then return end
                   
                   local ball = AutoParry.GetBall()
                   if not ball then return end
@@ -4692,6 +4700,8 @@ local parriedBalls = {}
                   if ballTarget == tostring(LocalPlayer) and targetDistance > 30 and distance > 30 then
                       return
                   end
+                  -- Rate limit: only parry when Parries < threshold (avoid over-spam / wrong timing)
+                  if Parries >= ParryThreshold then return end
                   
                   -- Execute spam parry
                   if distance <= spamAccuracy then
@@ -4708,6 +4718,8 @@ local parriedBalls = {}
                               SimulateParry()
                           end
                       end
+                      Parries += 1
+                      task.delay(0.5, function() if Parries > 0 then Parries -= 1 end end)
                   end
               end)
           else
