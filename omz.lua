@@ -1,4 +1,3 @@
---salut
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -3627,8 +3626,9 @@ Balls.ChildAdded:Connect(function(Value)
             if Sof_Label then
                 repeat
                     local Slashes_Counter = tonumber(Sof_Label.Text)
+                    local Ball_Target = Value:GetAttribute('target')
 
-                    if Slashes_Counter and Slashes_Counter < 32 then
+                    if Slashes_Counter and Slashes_Counter < 32 and Ball_Target == tostring(Player) then
                         Auto_Parry.Parry(Selected_Parry_Type)
                     end
 
@@ -4191,9 +4191,11 @@ do
                 Connections_Manager['Auto Spam'] = RunService.PreSimulation:Connect(function()
                     local Ball = Auto_Parry.Get_Ball()
 
-                    if not Ball then
+                    if Parried then
                         return
                     end
+
+                    if not Ball then
 
                     local Zoomies = Ball:FindFirstChild('zoomies')
 
@@ -4245,7 +4247,8 @@ do
                     local Velocity_Delta = (Zoomies.VectorVelocity - lastVelocity).Magnitude
                     lastVelocity = Zoomies.VectorVelocity
 
-                    local Is_Clashing = (Velocity_Delta > Speed * 0.5) and (Distance < Clash_Threshold + 10)
+                    -- Only allow clash detection if WE are the target, to prevent "stealing" others' clashes
+                    local Is_Clashing = (Ball_Target == tostring(Player)) and (Velocity_Delta > Speed * 0.5) and (Distance < Clash_Threshold + 10)
                     local Is_Valid_Target = (Ball_Target == tostring(Player)) and (Dot > 0.1)
 
                     if not (Is_Clashing or (Is_Valid_Target and Distance < Clash_Threshold and Target_Distance < Clash_Threshold)) then
@@ -4262,6 +4265,7 @@ do
                             else
                                 Auto_Parry.Parry(Selected_Parry_Type)
                             end
+                            Parried = true
                         end
                     end
                 end)
