@@ -1,3 +1,4 @@
+--Good
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -635,7 +636,7 @@ end)
     Icon.ScaleType = Enum.ScaleType.Fit
     Icon.BorderColor3 = Color3.fromRGB(40, 40, 0)
     Icon.AnchorPoint = Vector2.new(0, 0.5)
-    Icon.Image = 'rbxassetid://107061707917267'
+    Icon.Image = 'rbxassetid://130506842058177'
     Icon.BackgroundTransparency = 1
     Icon.Position = UDim2.new(0.021, 0,0.053, 0)
     Icon.Name = 'Icon'
