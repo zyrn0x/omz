@@ -1,4 +1,3 @@
---fixed
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -2722,6 +2721,7 @@ local function GetAbilityCD()
     return ab and ab:FindFirstChild("UIGradient")
 end
 local AbilityCD = GetAbilityCD()
+local BallSenderTracking = {}
 local LobbyParryType = "Keypress"
 local AutoParryType = "Keypress"
 local TriggerbotType = "Keypress"
@@ -4665,7 +4665,7 @@ local parriedBalls = {}
                   if not ballTarget then return end
                   
                   -- Don't spam if ball is too close (let Auto Parry handle it)
-                  if distance < 15 then
+                  if distance < 1 then
                       return
                   end
                   
@@ -4674,12 +4674,12 @@ local parriedBalls = {}
                   local ballMovingToTarget = ballDirection:Dot(ballToTarget)
                   
                   -- Only spam if ball is moving toward target (dot > 0.3)
-                  if ballMovingToTarget < 0.3 then
+                  if ballMovingToTarget < 0.1 then
                       return
                   end
                   
                   -- Distance validation (more conservative: 85% of max)
-                  if targetDistance > spamAccuracy * 0.85 or distance > spamAccuracy * 0.85 then
+                  if targetDistance > spamAccuracy or distance > spamAccuracy then
                       return
                   end
                   
