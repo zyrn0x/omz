@@ -1,3 +1,4 @@
+--salut
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -3152,7 +3153,7 @@ end
 function Auto_Parry:Get_Entity_Properties()
     Auto_Parry.Closest_Player()
 
-    if not Closest_Entity or not Player.Character or not Player.Character.PrimaryPart then
+    if not Closest_Entity or not Closest_Entity.PrimaryPart or not Player.Character or not Player.Character.PrimaryPart then
         return false
     end
 
@@ -3218,7 +3219,7 @@ function Auto_Parry.Parry_Data(Parry_Type)
         local Mouse_Vector = Vector2.new(Vector2_Mouse_Location[1], Vector2_Mouse_Location[2])
         
         for _, v in pairs(workspace.Alive:GetChildren()) do
-            if v ~= Player.Character then
+            if v ~= Player.Character and v.PrimaryPart then
                 local worldPos = v.PrimaryPart.Position
                 local screenPos, isOnScreen = Camera:WorldToScreenPoint(worldPos)
                 
@@ -3790,6 +3791,10 @@ do
                             return
                         end
 
+                        if not Player.Character or not Player.Character.PrimaryPart then
+                            return
+                        end
+
                         local Distance = (Player.Character.PrimaryPart.Position - Ball.Position).Magnitude
                         local Velocity = Zoomies.VectorVelocity
                         local Speed = Velocity.Magnitude
@@ -4181,6 +4186,8 @@ do
             end
 
             if value then
+                local lastSpamTick = 0
+                local lastVelocity = Vector3.zero
                 Connections_Manager['Auto Spam'] = RunService.PreSimulation:Connect(function()
                     local Ball = Auto_Parry.Get_Ball()
 
@@ -4211,40 +4218,44 @@ do
                         Ping = Ping_Threshold
                     })
 
-                    local Target_Position = Closest_Entity.PrimaryPart.Position
+                    local Target_Position = (Closest_Entity and Closest_Entity.PrimaryPart) and Closest_Entity.PrimaryPart.Position or Vector3.zero
                     if not Player.Character or not Player.Character.PrimaryPart then return end
+                    local PrimaryPart = Player.Character.PrimaryPart
                     local Target_Distance = Player:DistanceFromCharacter(Target_Position)
 
-                    local Direction = (Player.Character.PrimaryPart.Position - Ball.Position).Unit
+                    local Direction = (PrimaryPart.Position - Ball.Position).Unit
+                    local Speed = Zoomies.VectorVelocity.Magnitude
                     local Ball_Direction = Zoomies.VectorVelocity.Unit
 
                     local Dot = Direction:Dot(Ball_Direction)
-
-                    local Distance = Player:DistanceFromCharacter(Ball.Position)
+                    local Distance = (PrimaryPart.Position - Ball.Position).Magnitude
 
                     if not Ball_Target then
                         return
                     end
 
-                    if Target_Distance > Spam_Accuracy or Distance > Spam_Accuracy then
-                        return
-                    end
-                    
                     local Pulsed = Player.Character:GetAttribute('Pulsed')
 
                     if Pulsed then
                         return
                     end
 
-                    if Ball_Target == tostring(Player) and Target_Distance > 30 and Distance > 30 then
+                    -- ULTIMATE CLASH & ANTI-FEINT DETECTION
+                    local Clash_Threshold = math.max(18, Speed / 10)
+                    local Velocity_Delta = (Zoomies.VectorVelocity - lastVelocity).Magnitude
+                    lastVelocity = Zoomies.VectorVelocity
+
+                    local Is_Clashing = (Velocity_Delta > Speed * 0.5) and (Distance < Clash_Threshold + 10)
+                    local Is_Valid_Target = (Ball_Target == tostring(Player)) and (Dot > 0.1)
+
+                    if not (Is_Clashing or (Is_Valid_Target and Distance < Clash_Threshold and Target_Distance < Clash_Threshold)) then
                         return
                     end
 
-                    local threshold = ParryThreshold
-
-                    if Distance <= Spam_Accuracy then
+                    if Distance <= Clash_Threshold * 1.2 then
                         local currentTick = tick()
-                        if (currentTick - lastSpamTick) >= 0.025 then -- Spam rate limit (40 clicks/sec max)
+                        local Interval = (Speed > 350) and 0.02 or 0.033
+                        if (currentTick - lastSpamTick) >= Interval then
                             lastSpamTick = currentTick
                             if getgenv().SpamParryKeypress then
                                 VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game) 
