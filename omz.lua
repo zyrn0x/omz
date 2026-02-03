@@ -1,3 +1,4 @@
+--TEST
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -2794,6 +2795,9 @@ local SpamParryType = "Camera"
 local ParryThreshold = 2.5
 local SpamParryKeypress = false
 local AutoSpamNotify = false
+local Lobby_Speed_Divisor_Multiplier = 1.05
+local LobbyAPRandomParryAccuracyEnabled = false
+local Training_Parried = false
 local PredictionModeEnabled = false
 local ClosestEntity = nil
 local SpamCurveDetection = false
@@ -2803,6 +2807,7 @@ local SpamTimeHoleDetection = false
 local SpamDeathSlashDetection = false
 local SpamSlashOfFuryDetection = false
 local SpamHighPingCompensation = false
+local AutoParryPingLeadEnabled = false
 local soundOptions = {
     ["EEYUH!"] = "rbxassetid://16190782181",
     ["Skibidi Toilet"] = "rbxassetid://122353792844213",
@@ -3378,7 +3383,7 @@ AutoParry.GetBallProps = function()
     local speed = vel.Magnitude
     return {Speed = speed, Velocity = vel, Direction = dir, Distance = dist, Dot = dot}
 end
---[[ SpamService: best-calculation parry window for clash/spam.
+--[[ SpamService: BEST-EVER parry window for clash/spam. Spams more, no feint by abilities.
     Uses: ping compensation, time-to-impact, dot (ball coming at player), speed scaling.
     Returns parry threshold distance: parry when Distance <= returned value. ]]
 AutoParry.SpamService = function()
@@ -3392,7 +3397,7 @@ AutoParry.SpamService = function()
     if not zoomies then return 0 end
     local vel = zoomies.VectorVelocity
     local speed = vel.Magnitude
-    if speed < 8 then return 0 end -- ignore idle/slow balls
+    if speed < 5 then return 0 end -- ignore idle balls only
 
     local ballProps = AutoParry.GetBallProps()
     if not ballProps then return 0 end
@@ -3405,27 +3410,30 @@ AutoParry.SpamService = function()
 
     local averagePing = GetAveragePing()
     local pingSec = averagePing / 1000
-    local baseDistance = 12 + math.min(speed / 5, 80)
-    local pingComp = math.min(pingSec * speed * 1.2, 25)
+    -- Larger window = spam more (base 18, cap 95)
+    local baseDistance = 18 + math.min(speed / 4, 95)
+    local pingComp = math.min(pingSec * speed * 1.3, 30)
     local maximum_spam_distance = baseDistance + pingComp
 
     if HighPingCompensation and averagePing > 150 then
-        maximum_spam_distance = maximum_spam_distance * 1.15
+        maximum_spam_distance = maximum_spam_distance * 1.2
+    elseif averagePing > 80 then
+        maximum_spam_distance = maximum_spam_distance * 1.08
     end
     if AutoParryType == "Keypress" and SpamParryKeypress then
-        maximum_spam_distance = maximum_spam_distance + 15
+        maximum_spam_distance = maximum_spam_distance + 18
     end
     if PredictionModeEnabled then
-        local leadFactor = math.clamp(speed / 100, 0.5, 2.5)
-        maximum_spam_distance = maximum_spam_distance + (averagePing * 0.05) * leadFactor
+        local leadFactor = math.clamp(speed / 80, 0.6, 2.8)
+        maximum_spam_distance = maximum_spam_distance + (averagePing * 0.06) * leadFactor
     end
 
     if entityDist > maximum_spam_distance or ballDist > maximum_spam_distance or targetDist > maximum_spam_distance then return 0 end
 
-    -- Dot bonus: ball coming straight at us (Dot near -1) = parry a bit earlier
-    local dotBonus = math.clamp(dot, -1, 0) * (4 + math.min(speed / 25, 8))
+    -- Dot bonus: ball coming at us = parry earlier (stronger bonus)
+    local dotBonus = math.clamp(dot, -1, 0) * (6 + math.min(speed / 20, 12))
     local spam_accuracy = maximum_spam_distance + dotBonus
-    spam_accuracy = math.clamp(spam_accuracy, 10, 120)
+    spam_accuracy = math.clamp(spam_accuracy, 14, 145)
     return spam_accuracy
 end
 AutoParry.IsCooldownActive = function(uigradient)
@@ -3688,110 +3696,51 @@ local parriedBalls = {}
   local MiscTab = main:create_tab("Misc ", "rbxassetid://6023565894")
   local AITab = main:create_tab("AI Play ", "rbxassetid://6023565894")
   local AutoFarmTab = main:create_tab("Auto Farm ", "rbxassetid://6023565894")
+  -- Lobby AP (omz.lua style: Heartbeat, Training_Parried, Lobby speed divisor, Random accuracy)
   local lobbyAutoParryModule = MainTab:create_module({
       title = "Lobby AP",
       flag = "lobbyAutoParryModule",
-      description = "Auto parry for the lobby game",
+      description = "Auto parry for lobby (omz-style, best timing)",
       section = "right",
       callback = function(v)
-          local LastLobbyParry = 0
           if v then
-              for _, ball in pairs(AutoParry.GetLobbyBalls()) do
-                  Connections["lobby_parried_" .. tostring(ball)] = ball:GetAttributeChangedSignal('target'):Connect(function()
-                      parriedBalls[ball] = false
-                  end)
-              end
-              Connections["lobby_ball_added"] = Workspace.TrainingBalls.ChildAdded:Connect(function(newBall)
-                  if newBall:IsA("BasePart") and newBall:GetAttribute("realBall") then
-                      Connections["lobby_parried_" .. tostring(newBall)] = newBall:GetAttributeChangedSignal('target'):Connect(function()
-                          parriedBalls[newBall] = false
-                      end)
-                  end
-              end)
-              Connections["lobby_ball_removed"] = Workspace.TrainingBalls.ChildRemoved:Connect(function(removedBall)
-                  local key = "lobby_parried_" .. tostring(removedBall)
-                  if Connections[key] then
-                      Connections[key]:Disconnect()
-                      Connections[key] = nil
-                  end
-                  parriedBalls[removedBall] = nil
-              end)
-              Connections["lobbyAutoParry"] = RunService.PreSimulation:Connect(function()
+              Connections["lobbyAutoParry"] = RunService.Heartbeat:Connect(function()
+                  if not LocalPlayer.Character or not LocalPlayer.Character.PrimaryPart then return end
                   local balls = AutoParry.GetLobbyBalls()
-                  for _, ball in pairs(balls) do
-                      if not ball then
-                          ContextActionService:UnbindAction('BlockPlayerMovement')
-                          repeat RunService.Heartbeat:Wait() balls = AutoParry.GetLobbyBalls() until balls
-                          return
+                  local ball = balls and balls[1]
+                  if not ball then return end
+                  local zoomies = ball:FindFirstChild("zoomies")
+                  if not zoomies then return end
+                  ball:GetAttributeChangedSignal('target'):Once(function() Training_Parried = false end)
+                  if Training_Parried then return end
+                  local ballTarget = ball:GetAttribute('target')
+                  local velocity = zoomies.VectorVelocity
+                  local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
+                  local speed = velocity.Magnitude
+                  local pingVal = game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue() / 10
+                  local LobbyAPcappedSpeedDiff = math.min(math.max(speed - 9.5, 0), 650)
+                  local LobbyAPspeed_divisor_base = 2.4 + LobbyAPcappedSpeedDiff * 0.002
+                  local LobbyAPeffectiveMultiplier = Lobby_Speed_Divisor_Multiplier
+                  if LobbyAPRandomParryAccuracyEnabled then
+                      LobbyAPeffectiveMultiplier = 0.7 + (math.random(1, 100) - 1) * (0.35 / 99)
+                  end
+                  local LobbyAPspeed_divisor = LobbyAPspeed_divisor_base * LobbyAPeffectiveMultiplier
+                  local LobbyAPParry_Accuracy = pingVal + math.max(speed / LobbyAPspeed_divisor, 9.5)
+                  if ballTarget == tostring(LocalPlayer) and distance <= LobbyAPParry_Accuracy then
+                      if LobbyParryType == "Keypress" then
+                          VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, nil)
+                      elseif LobbyParryType == "Remote" and Is_Supported_Test and next(ParryRemotes) then
+                          AutoParry.Parry(SelectedParryType)
+                      else
+                          SimulateParry()
                       end
-                      local zoomies = ball:FindFirstChild("zoomies")
-                      if not zoomies then
-                          ContextActionService:UnbindAction('BlockPlayerMovement')
-                          return
-                      end
-                      ball:GetAttributeChangedSignal('target'):Once(function() Parried = false end)
-                      if Parried then continue end
-                      local ballTarget = ball:GetAttribute('target')
-                      local velocity = zoomies.VectorVelocity
-                      local distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
-                      local speed = velocity.Magnitude
-                      local averagePing = GetAveragePing()
-                      local useAbility = false
-                      local cappedSpeedDifference = math.min(math.max(speed - 9.5, 0), 820)
-                      local speedDivisorBase = 2.4 + cappedSpeedDifference * 0.002
-                      local adjustedPing = averagePing / 10
-                      if HighPingCompensation and averagePing > 150 then
-                          adjustedPing = adjustedPing * 1.5
-                      end
-                      local speedDivisor = speedDivisorBase * Speed_Divisor_Multiplier
-                      local parryAccuracy = adjustedPing + math.max(speed / speedDivisor, 9.5)
-                      
-                      if PredictionModeEnabled then
-                          local leadFactor = math.clamp(speed / 100, 0.5, 2.5)
-                          parryAccuracy = parryAccuracy + (adjustedPing * 0.1) * leadFactor
-                      end
-                      if ballTarget == tostring(LocalPlayer) then
-                          local minParryDelay = 0.15 + (averagePing / 1000)
-                          local Elapsed_Parry_Time = os.clock()
-                          local timeView = (Elapsed_Parry_Time - LastLobbyParry)
-                          if timeView < minParryDelay then continue end
-                          
-                          if LobbyParryType == "Remote" and CooldownProtection then
-                              if AutoParry.TryParryOrCooldown() then
-                                  LastLobbyParry = Elapsed_Parry_Time
-                                  continue
-                              end
-                          end
-
-                          if distance <= parryAccuracy then
-                              if LobbyParryType == "Remote" then
-                                  if Is_Supported_Test and next(ParryRemotes) then
-                                      AutoParry.Parry(SelectedParryType)
-                                  else
-                                      SimulateParry()
-                                  end
-                              else
-                                  SimulateParry()
-                              end
-                              parriedBalls[ball] = true
-                              task.delay(1, function()
-                                  parriedBalls[ball] = false
-                              end)
-                              LastLobbyParry = Elapsed_Parry_Time
-                          end
-                      end
+                      Training_Parried = true
+                      task.delay(1, function() Training_Parried = false end)
                   end
               end)
           elseif Connections["lobbyAutoParry"] then
               Connections["lobbyAutoParry"]:Disconnect()
               Connections["lobbyAutoParry"] = nil
-              for key, conn in pairs(Connections) do
-                  if key:find("lobby_parried_") or key == "lobby_ball_added" or key == "lobby_ball_removed" then
-                      conn:Disconnect()
-                      Connections[key] = nil
-                  end
-              end
-              parriedBalls = {}
           end
       end
   })
@@ -3803,6 +3752,24 @@ local parriedBalls = {}
       maximum_options = 999,
       callback = function(v)
           LobbyParryType = v
+      end
+  })
+  lobbyAutoParryModule:create_slider({
+      title = "Parry Accuracy",
+      flag = "LobbyParryAccuracy",
+      minimum_value = 1,
+      maximum_value = 100,
+      value = 100,
+      round_number = false,
+      callback = function(v)
+          Lobby_Speed_Divisor_Multiplier = 0.7 + (v - 1) * (0.35 / 99)
+      end
+  })
+  lobbyAutoParryModule:create_checkbox({
+      title = "Random Parry Accuracy",
+      flag = "LobbyAPRandomAccuracy",
+      callback = function(v)
+          LobbyAPRandomParryAccuracyEnabled = v
       end
   })
   local autoParryModule = MainTab:create_module({
@@ -3991,6 +3958,10 @@ local parriedBalls = {}
                       local distFactor = 1 + (30 - math.min(distance_to_opponent, 30)) / 30 * 0.8
                       local factor = speedFactor * distFactor
                       parryAccuracy = adjustedPing + math.max((speed / speedDivisor) * factor, 9.5)
+                      if AutoParryPingLeadEnabled then
+                          local avgPing = GetAveragePing()
+                          parryAccuracy = parryAccuracy + math.min(avgPing / 40, 8)
+                      end
                       local parryCD = LocalPlayer.PlayerGui:FindFirstChild('Hotbar'):FindFirstChild('Block').UIGradient
                       local abilityCD = LocalPlayer.PlayerGui:FindFirstChild('Hotbar'):FindFirstChild('Ability').UIGradient
                       if ballTarget == tostring(LocalPlayer) and distance <= parryAccuracy and Phantom then
@@ -4115,6 +4086,13 @@ local parriedBalls = {}
       flag = "HighPingCompensation",
       callback = function(v)
           HighPingCompensation = v
+      end
+  })
+  autoParryModule:create_checkbox({
+      title = "Ping Lead (wider window)",
+      flag = "AutoParryPingLead",
+      callback = function(v)
+          AutoParryPingLeadEnabled = v
       end
   })
   autoParryModule:create_checkbox({
@@ -4286,6 +4264,10 @@ local parriedBalls = {}
                       return 
                   end
                   if triggerParriedBalls[ball] then return end
+                  -- Anti-feint: skip curved shots and Slash of Fury so we don't get feinted
+                  local curved, backwardsDetected = AutoParry.IsCurved(ball)
+                  if curved then return end
+                  if ball:FindFirstChild("ComboCounter") then return end
                   local hotbar = LocalPlayer:FindFirstChild('PlayerGui') and LocalPlayer.PlayerGui:FindFirstChild('Hotbar')
                   local character = LocalPlayer.Character
                   if not character or not character.PrimaryPart then return end
@@ -4315,7 +4297,8 @@ local parriedBalls = {}
                       adjustedPing = adjustedPing * 1.5
                   end
                   local speedDivisor = speedDivisorBase * Speed_Divisor_Multiplier
-                  local parryAccuracy = adjustedPing + math.max(speed / speedDivisor, 9.5)
+                  -- Slightly wider parry window (ping lead) for better trigger
+                  local parryAccuracy = adjustedPing + math.max(speed / speedDivisor, 9.5) + math.min(pingedValued / 50, 4)
                   if distance > parryAccuracy then return end
                   AutoParry.ParryAnim(false)
                   local averagePing = GetAveragePing()
@@ -4579,8 +4562,8 @@ local parriedBalls = {}
               end
               Connections["autoSpam"] = RunService.PreSimulation:Connect(function()
                   if not AutoSpamEnabled then return end
-                  -- When Lobby AP is on and we're in lobby, only Lobby AP parries (no double parry)
-                  if Connections["lobbyAutoParry"] and #AutoParry.GetLobbyBalls() > 0 then return end
+                  -- When Lobby AP is on and we're in lobby (no game ball), only Lobby AP parries (no double parry)
+                  if Connections["lobbyAutoParry"] and not AutoParry.GetBall() then return end
                   
                   local ball = AutoParry.GetBall()
                   if not ball then return end
@@ -4673,34 +4656,29 @@ local parriedBalls = {}
                   
                   if not ballTarget then return end
                   
-                  -- Don't spam if ball is too close (let Auto Parry handle it)
-                  if distance < 1 then
-                      return
+                  -- Anti-feint: don't spam on ability feints (AeroDynamicSlash, Tornado, Phantom fake)
+                  if ball:FindFirstChild('AeroDynamicSlashVFX') then return end
+                  local runtime = Workspace:FindFirstChild('Runtime')
+                  if runtime and runtime:FindFirstChild('Tornado') then
+                      if (tick() - (Tornado_Time or 0)) < 1.5 then return end
                   end
+                  if Phantom and ballTarget ~= tostring(LocalPlayer) then return end
                   
-                  -- Check if ball is actually moving toward target
+                  -- Allow spam a bit closer (0.5 studs min) so we spam more
+                  if distance < 0.5 then return end
+                  
+                  -- Ball moving toward target: relax threshold so we spam more (was 0.1, now -0.05)
                   local ballToTarget = (targetPosition - ball.Position).Unit
                   local ballMovingToTarget = ballDirection:Dot(ballToTarget)
+                  if ballMovingToTarget < -0.05 then return end
                   
-                  -- Only spam if ball is moving toward target (dot > 0.3)
-                  if ballMovingToTarget < 0.1 then
-                      return
-                  end
+                  if targetDistance > spamAccuracy or distance > spamAccuracy then return end
                   
-                  -- Distance validation (more conservative: 85% of max)
-                  if targetDistance > spamAccuracy or distance > spamAccuracy then
-                      return
-                  end
-                  
-                  -- Check for Pulsed attribute (prevents spam during pulse)
                   local pulsed = LocalPlayer.Character:GetAttribute('Pulsed')
                   if pulsed then return end
                   
-                  -- Don't spam if ball is targeting player and distances are too far
-                  if ballTarget == tostring(LocalPlayer) and targetDistance > 30 and distance > 30 then
-                      return
-                  end
-                  -- Rate limit: only parry when Parries < threshold (avoid over-spam / wrong timing)
+                  if ballTarget == tostring(LocalPlayer) and targetDistance > 35 and distance > 35 then return end
+                  -- Rate limit: allow more parries (only block when Parries >= threshold)
                   if Parries >= ParryThreshold then return end
                   
                   -- Execute spam parry
