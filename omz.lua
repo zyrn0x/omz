@@ -1,4 +1,3 @@
---SALUT
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -3796,7 +3795,7 @@ function System.autoparry.start()
                     local parry_cd = block and block:FindFirstChild("UIGradient")
                     
                     if parry_cd and parry_cd.Offset.Y < 0.4 then
-                        ReplicatedStorage.Remotes.AbilityButtonPress:FireServer()
+                        ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
                         continue
                     end
                 end
@@ -3825,7 +3824,7 @@ function System.autoparry.start()
                                (death and death.Enabled) then
                                 
                                 System.__properties.__parried = true
-                                ReplicatedStorage.Remotes.AbilityButtonPress:FireServer()
+                                ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
                                 
                                 task.spawn(function()
                                     task.wait(2.432)
@@ -3840,22 +3839,18 @@ function System.autoparry.start()
                         end
                     end
                 end
-            end
-            
-            if ball_target == LocalPlayer.Name and distance <= parry_accuracy then
+
                 if getgenv().AutoParryMode == "Keypress" then
                     System.parry.keypress()
                 else
                     System.parry.execute_action()
                 end
                 System.__properties.__parried = true
+                
+                task.delay(0.5, function()
+                    System.__properties.__parried = false
+                end)
             end
-            
-            local last_parrys = tick()
-            repeat
-                RunService.Stepped:Wait()
-            until (tick() - last_parrys) >= 1 or not System.__properties.__parried
-            System.__properties.__parried = false
         end
 
         if training_ball then
