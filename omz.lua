@@ -1,4 +1,4 @@
---SALUT
+--PREMIUM
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -2829,7 +2829,7 @@ if LocalPlayer.PlayerGui:FindFirstChild("Hotbar") and LocalPlayer.PlayerGui.Hotb
 end
 
 local function update_divisor()
-    System.__properties.__divisor_multiplier = 0.75 + (System.__properties.__accuracy - 1) * (3 / 99)
+    System.__properties.__divisor_multiplier = 0.4 + (System.__properties.__accuracy - 1) * (0.6 / 99)
 end
 
 function isValidRemoteArgs(args)
