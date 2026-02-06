@@ -1,4 +1,3 @@
---kids
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -3166,7 +3165,7 @@ function System.parry.keypress()
         return
     end
 
-    PF()
+    if PF then PF() end
 
     if System.__properties.__parries > 10000 then return end
     
@@ -3786,16 +3785,24 @@ function System.autoparry.start()
             
             if ball_target == LocalPlayer.Name and distance <= parry_accuracy then
                 if getgenv().CooldownProtection then
-                    local ParryCD = LocalPlayer.PlayerGui.Hotbar.Block.UIGradient
-                    if ParryCD.Offset.Y < 0.4 then
-                        ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
+                    local Hotbar = LocalPlayer.PlayerGui:FindFirstChild("Hotbar")
+                    local Block = Hotbar and Hotbar:FindFirstChild("Block")
+                    local ParryCD = Block and Block:FindFirstChild("UIGradient")
+                    
+                    if ParryCD and ParryCD.Offset.Y < 0.4 then
+                        pcall(function()
+                            ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
+                        end)
                         continue
                     end
                 end
                 
                 if getgenv().AutoAbility then
-                    local AbilityCD = LocalPlayer.PlayerGui.Hotbar.Ability.UIGradient
-                    if AbilityCD.Offset.Y == 0.5 then
+                    local Hotbar = LocalPlayer.PlayerGui:FindFirstChild("Hotbar")
+                    local Ability = Hotbar and Hotbar:FindFirstChild("Ability")
+                    local AbilityCD = Ability and Ability:FindFirstChild("UIGradient")
+                    
+                    if AbilityCD and AbilityCD.Offset.Y == 0.5 then
                         if LocalPlayer.Character.Abilities:FindFirstChild("Raging Deflection") and LocalPlayer.Character.Abilities["Raging Deflection"].Enabled or
                            LocalPlayer.Character.Abilities:FindFirstChild("Rapture") and LocalPlayer.Character.Abilities["Rapture"].Enabled or
                            LocalPlayer.Character.Abilities:FindFirstChild("Calming Deflection") and LocalPlayer.Character.Abilities["Calming Deflection"].Enabled or
@@ -3803,9 +3810,11 @@ function System.autoparry.start()
                            LocalPlayer.Character.Abilities:FindFirstChild("Fracture") and LocalPlayer.Character.Abilities["Fracture"].Enabled or
                            LocalPlayer.Character.Abilities:FindFirstChild("Death Slash") and LocalPlayer.Character.Abilities["Death Slash"].Enabled then
                             System.__properties.__parried = true
-                            ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
-                            task.wait(2.432)
-                            ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DeathSlashShootActivation"):FireServer(true)
+                            pcall(function()
+                                ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
+                                task.wait(2.432)
+                                ReplicatedStorage.Remotes.DeathSlashShootActivation:FireServer(true)
+                            end)
                             continue
                         end
                     end
