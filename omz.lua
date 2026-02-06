@@ -1,4 +1,4 @@
---SALUT
+--azy
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
