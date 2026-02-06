@@ -1,4 +1,3 @@
---SALUT
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -3790,54 +3789,14 @@ function System.autoparry.start()
             
             if ball_target == LocalPlayer.Name and distance <= parry_accuracy then
                 if getgenv().CooldownProtection then
-                    pcall(function()
-                        local ParryCD = LocalPlayer.PlayerGui.Hotbar.Block.UIGradient
-                        if ParryCD.Offset.Y < 0.4 then
-                            -- Use ability button directly when parry is on cooldown
-                            local ability_button = LocalPlayer.PlayerGui.Hotbar.Ability
-                            for _, connection in pairs(getconnections(ability_button.Activated)) do
-                                connection:Fire()
-                            end
-                        end
-                    end)
                     local ParryCD = LocalPlayer.PlayerGui.Hotbar.Block.UIGradient
                     if ParryCD.Offset.Y < 0.4 then
+                        ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
                         continue
                     end
                 end
                 
                 if getgenv().AutoAbility then
-                    pcall(function()
-                        local AbilityCD = LocalPlayer.PlayerGui.Hotbar.Ability.UIGradient
-                        if AbilityCD.Offset.Y == 0.5 then
-                            if LocalPlayer.Character.Abilities:FindFirstChild("Raging Deflection") and LocalPlayer.Character.Abilities["Raging Deflection"].Enabled or
-                               LocalPlayer.Character.Abilities:FindFirstChild("Rapture") and LocalPlayer.Character.Abilities["Rapture"].Enabled or
-                               LocalPlayer.Character.Abilities:FindFirstChild("Calming Deflection") and LocalPlayer.Character.Abilities["Calming Deflection"].Enabled or
-                               LocalPlayer.Character.Abilities:FindFirstChild("Aerodynamic Slash") and LocalPlayer.Character.Abilities["Aerodynamic Slash"].Enabled or
-                               LocalPlayer.Character.Abilities:FindFirstChild("Fracture") and LocalPlayer.Character.Abilities["Fracture"].Enabled or
-                               LocalPlayer.Character.Abilities:FindFirstChild("Death Slash") and LocalPlayer.Character.Abilities["Death Slash"].Enabled then
-                                System.__properties.__parried = true
-                                
-                                -- Use ability button directly
-                                local ability_button = LocalPlayer.PlayerGui.Hotbar.Ability
-                                for _, connection in pairs(getconnections(ability_button.Activated)) do
-                                    connection:Fire()
-                                end
-                                
-                                -- Handle Death Slash special activation
-                                task.spawn(function()
-                                    task.wait(2.432)
-                                    pcall(function()
-                                        local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-                                        local shoot = remotes and remotes:FindFirstChild("DeathSlashShootActivation")
-                                        if shoot then
-                                            shoot:FireServer(true)
-                                        end
-                                    end)
-                                end)
-                            end
-                        end
-                    end)
                     local AbilityCD = LocalPlayer.PlayerGui.Hotbar.Ability.UIGradient
                     if AbilityCD.Offset.Y == 0.5 then
                         if LocalPlayer.Character.Abilities:FindFirstChild("Raging Deflection") and LocalPlayer.Character.Abilities["Raging Deflection"].Enabled or
@@ -3846,6 +3805,10 @@ function System.autoparry.start()
                            LocalPlayer.Character.Abilities:FindFirstChild("Aerodynamic Slash") and LocalPlayer.Character.Abilities["Aerodynamic Slash"].Enabled or
                            LocalPlayer.Character.Abilities:FindFirstChild("Fracture") and LocalPlayer.Character.Abilities["Fracture"].Enabled or
                            LocalPlayer.Character.Abilities:FindFirstChild("Death Slash") and LocalPlayer.Character.Abilities["Death Slash"].Enabled then
+                            System.__properties.__parried = true
+                            ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
+                            task.wait(2.432)
+                            ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DeathSlashShootActivation"):FireServer(true)
                             continue
                         end
                     end
