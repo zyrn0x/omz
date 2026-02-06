@@ -1,4 +1,4 @@
---fix
+--SALUT
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -3125,28 +3125,22 @@ function System.parry.execute()
         final_aim_target = vec2_mouse
     end
     
-    local last_remote, last_args = nil, nil
     for remote, original_args in pairs(revertedRemotes) do
-        last_remote = remote
-        last_args = original_args
-    end
-
-    if last_remote and last_args then
         local modified_args = {
-            last_args[1],
-            last_args[2],
-            last_args[3],
+            original_args[1],
+            original_args[2],
+            original_args[3],
             curve_cframe,
             event_data,
             final_aim_target,
-            last_args[7]
+            original_args[7]
         }
         
         pcall(function()
-            if last_remote:IsA('RemoteEvent') then
-                last_remote:FireServer(unpack(modified_args))
-            elseif last_remote:IsA('RemoteFunction') then
-                last_remote:InvokeServer(unpack(modified_args))
+            if remote:IsA('RemoteEvent') then
+                remote:FireServer(unpack(modified_args))
+            elseif remote:IsA('RemoteFunction') then
+                remote:InvokeServer(unpack(modified_args))
             end
         end)
     end
@@ -3558,8 +3552,6 @@ function System.auto_spam:get_entity_properties()
     
     if not Closest_Entity then return false end
     
-    if not LocalPlayer.Character or not LocalPlayer.Character.PrimaryPart or not Closest_Entity.PrimaryPart then return false end
-    
     local entity_velocity = Closest_Entity.PrimaryPart.Velocity
     local entity_direction = (LocalPlayer.Character.PrimaryPart.Position - Closest_Entity.PrimaryPart.Position).Unit
     local entity_distance = (LocalPlayer.Character.PrimaryPart.Position - Closest_Entity.PrimaryPart.Position).Magnitude
@@ -3577,8 +3569,6 @@ function System.auto_spam:get_ball_properties()
     
     local ball_velocity = Vector3.zero
     local ball_origin = ball
-    
-    if not LocalPlayer.Character or not LocalPlayer.Character.PrimaryPart then return false end
     
     local ball_direction = (LocalPlayer.Character.PrimaryPart.Position - ball_origin.Position).Unit
     local ball_distance = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
@@ -8053,13 +8043,8 @@ local function performDesync()
     
     RunService.RenderStepped:Wait()
     
-    if desyncData.originalCFrame then
-        hrp.CFrame = desyncData.originalCFrame
-    end
-    
-    if desyncData.originalVelocity then
-        hrp.AssemblyLinearVelocity = desyncData.originalVelocity
-    end
+    hrp.CFrame = desyncData.originalCFrame
+    hrp.AssemblyLinearVelocity = desyncData.originalVelocity
 end
 
 local function sendNotification(text)
@@ -8115,8 +8100,7 @@ end)
 
 hooks.oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
     if not state.enabled or checkcaller() or key ~= "CFrame" or not cache.hrp or not isInAliveFolder() then
-        local success, result = pcall(function() return hooks.oldIndex(self, key) end)
-        return success and result or nil
+        return hooks.oldIndex(self, key)
     end
     
     if self == cache.hrp then
