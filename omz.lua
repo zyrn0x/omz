@@ -1,4 +1,3 @@
---SALUT
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -2820,12 +2819,10 @@ if ReplicatedStorage:FindFirstChild("Controllers") then
 end
 
 if LocalPlayer.PlayerGui:FindFirstChild("Hotbar") and LocalPlayer.PlayerGui.Hotbar:FindFirstChild("Block") then
-    if getconnections then
-        for _, v in next, getconnections(LocalPlayer.PlayerGui.Hotbar.Block.Activated) do
-            if SC and getfenv(v.Function).script == SC then
-                PF = v.Function
-                break
-            end
+    for _, v in next, getconnections(LocalPlayer.PlayerGui.Hotbar.Block.Activated) do
+        if SC and getfenv(v.Function).script == SC then
+            PF = v.Function
+            break
         end
     end
 end
@@ -2861,13 +2858,9 @@ function hookRemote(remote)
                             revertedRemotes[self] = args
                             Parry_Key = args[2]
                         end
-                        local func = oldIndex(self, key)
-                        if typeof(func) == "function" then
-                            return func(self, unpack(args))
-                        end
+                        return oldIndex(self, key)(_, unpack(args))
                     end
                 end
-                
                 return oldIndex(self, key)
             end
             setreadonly(meta, true)
@@ -3172,9 +3165,7 @@ function System.parry.keypress()
         return
     end
 
-    if PF then
-        PF()
-    end
+    PF()
 
     if System.__properties.__parries > 10000 then return end
     
@@ -3794,40 +3785,27 @@ function System.autoparry.start()
             
             if ball_target == LocalPlayer.Name and distance <= parry_accuracy then
                 if getgenv().CooldownProtection then
-                    local hotbar = LocalPlayer.PlayerGui:FindFirstChild("Hotbar")
-                    local block = hotbar and hotbar:FindFirstChild("Block")
-                    local gradient = block and block:FindFirstChild("UIGradient")
-                    if gradient and gradient.Offset.Y < 0.4 then
-                        local remote = ReplicatedStorage.Remotes:FindFirstChild("AbilityButtonPress")
-                        if remote then remote:Fire() end
+                    local ParryCD = LocalPlayer.PlayerGui.Hotbar.Block.UIGradient
+                    if ParryCD.Offset.Y < 0.4 then
+                        ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
                         continue
                     end
                 end
                 
                 if getgenv().AutoAbility then
-                    local hotbar = LocalPlayer.PlayerGui:FindFirstChild("Hotbar")
-                    local ability = hotbar and hotbar:FindFirstChild("Ability")
-                    local gradient = ability and ability:FindFirstChild("UIGradient")
-                    if gradient and gradient.Offset.Y == 0.5 then
-                        local abilities = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Abilities")
-                        if abilities then
-                            local abilityName = nil
-                            for _, ab in pairs(abilities:GetChildren()) do
-                                if ab.Enabled and (ab.Name == "Raging Deflection" or ab.Name == "Rapture" or ab.Name == "Calming Deflection" or ab.Name == "Aerodynamic Slash" or ab.Name == "Fracture" or ab.Name == "Death Slash") then
-                                    abilityName = ab.Name
-                                    break
-                                end
-                            end
-
-                            if abilityName then
-                                System.__properties.__parried = true
-                                local remote = ReplicatedStorage.Remotes:FindFirstChild("AbilityButtonPress")
-                                if remote then remote:Fire() end
-                                task.wait(2.432)
-                                local deathSlashRemote = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("DeathSlashShootActivation")
-                                if deathSlashRemote then deathSlashRemote:FireServer(true) end
-                                continue
-                            end
+                    local AbilityCD = LocalPlayer.PlayerGui.Hotbar.Ability.UIGradient
+                    if AbilityCD.Offset.Y == 0.5 then
+                        if LocalPlayer.Character.Abilities:FindFirstChild("Raging Deflection") and LocalPlayer.Character.Abilities["Raging Deflection"].Enabled or
+                           LocalPlayer.Character.Abilities:FindFirstChild("Rapture") and LocalPlayer.Character.Abilities["Rapture"].Enabled or
+                           LocalPlayer.Character.Abilities:FindFirstChild("Calming Deflection") and LocalPlayer.Character.Abilities["Calming Deflection"].Enabled or
+                           LocalPlayer.Character.Abilities:FindFirstChild("Aerodynamic Slash") and LocalPlayer.Character.Abilities["Aerodynamic Slash"].Enabled or
+                           LocalPlayer.Character.Abilities:FindFirstChild("Fracture") and LocalPlayer.Character.Abilities["Fracture"].Enabled or
+                           LocalPlayer.Character.Abilities:FindFirstChild("Death Slash") and LocalPlayer.Character.Abilities["Death Slash"].Enabled then
+                            System.__properties.__parried = true
+                            ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
+                            task.wait(2.432)
+                            ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DeathSlashShootActivation"):FireServer(true)
+                            continue
                         end
                     end
                 end
@@ -3847,7 +3825,6 @@ function System.autoparry.start()
                 RunService.Stepped:Wait()
             until (tick() - last_parrys) >= 1 or not System.__properties.__parried
             System.__properties.__parried = false
-            end
         end
 
         if training_ball then
