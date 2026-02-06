@@ -1,3 +1,4 @@
+--SALUT
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -3789,27 +3790,40 @@ function System.autoparry.start()
             
             if ball_target == LocalPlayer.Name and distance <= parry_accuracy then
                 if getgenv().CooldownProtection then
-                    local ParryCD = LocalPlayer.PlayerGui.Hotbar.Block.UIGradient
-                    if ParryCD.Offset.Y < 0.4 then
-                        ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
+                    local hotbar = LocalPlayer.PlayerGui:FindFirstChild("Hotbar")
+                    local block = hotbar and hotbar:FindFirstChild("Block")
+                    local gradient = block and block:FindFirstChild("UIGradient")
+                    if gradient and gradient.Offset.Y < 0.4 then
+                        local remote = ReplicatedStorage.Remotes:FindFirstChild("AbilityButtonPress")
+                        if remote then remote:Fire() end
                         continue
                     end
                 end
                 
                 if getgenv().AutoAbility then
-                    local AbilityCD = LocalPlayer.PlayerGui.Hotbar.Ability.UIGradient
-                    if AbilityCD.Offset.Y == 0.5 then
-                        if LocalPlayer.Character.Abilities:FindFirstChild("Raging Deflection") and LocalPlayer.Character.Abilities["Raging Deflection"].Enabled or
-                           LocalPlayer.Character.Abilities:FindFirstChild("Rapture") and LocalPlayer.Character.Abilities["Rapture"].Enabled or
-                           LocalPlayer.Character.Abilities:FindFirstChild("Calming Deflection") and LocalPlayer.Character.Abilities["Calming Deflection"].Enabled or
-                           LocalPlayer.Character.Abilities:FindFirstChild("Aerodynamic Slash") and LocalPlayer.Character.Abilities["Aerodynamic Slash"].Enabled or
-                           LocalPlayer.Character.Abilities:FindFirstChild("Fracture") and LocalPlayer.Character.Abilities["Fracture"].Enabled or
-                           LocalPlayer.Character.Abilities:FindFirstChild("Death Slash") and LocalPlayer.Character.Abilities["Death Slash"].Enabled then
-                            System.__properties.__parried = true
-                            ReplicatedStorage.Remotes.AbilityButtonPress:Fire()
-                            task.wait(2.432)
-                            ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DeathSlashShootActivation"):FireServer(true)
-                            continue
+                    local hotbar = LocalPlayer.PlayerGui:FindFirstChild("Hotbar")
+                    local ability = hotbar and hotbar:FindFirstChild("Ability")
+                    local gradient = ability and ability:FindFirstChild("UIGradient")
+                    if gradient and gradient.Offset.Y == 0.5 then
+                        local abilities = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Abilities")
+                        if abilities then
+                            local abilityName = nil
+                            for _, ab in pairs(abilities:GetChildren()) do
+                                if ab.Enabled and (ab.Name == "Raging Deflection" or ab.Name == "Rapture" or ab.Name == "Calming Deflection" or ab.Name == "Aerodynamic Slash" or ab.Name == "Fracture" or ab.Name == "Death Slash") then
+                                    abilityName = ab.Name
+                                    break
+                                end
+                            end
+
+                            if abilityName then
+                                System.__properties.__parried = true
+                                local remote = ReplicatedStorage.Remotes:FindFirstChild("AbilityButtonPress")
+                                if remote then remote:Fire() end
+                                task.wait(2.432)
+                                local deathSlashRemote = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("DeathSlashShootActivation")
+                                if deathSlashRemote then deathSlashRemote:FireServer(true) end
+                                continue
+                            end
                         end
                     end
                 end
