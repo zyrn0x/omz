@@ -1,4 +1,4 @@
---azy
+--SALUT
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -2820,10 +2820,12 @@ if ReplicatedStorage:FindFirstChild("Controllers") then
 end
 
 if LocalPlayer.PlayerGui:FindFirstChild("Hotbar") and LocalPlayer.PlayerGui.Hotbar:FindFirstChild("Block") then
-    for _, v in next, getconnections(LocalPlayer.PlayerGui.Hotbar.Block.Activated) do
-        if SC and getfenv(v.Function).script == SC then
-            PF = v.Function
-            break
+    if getconnections then
+        for _, v in next, getconnections(LocalPlayer.PlayerGui.Hotbar.Block.Activated) do
+            if SC and getfenv(v.Function).script == SC then
+                PF = v.Function
+                break
+            end
         end
     end
 end
@@ -3170,7 +3172,9 @@ function System.parry.keypress()
         return
     end
 
-    PF()
+    if PF then
+        PF()
+    end
 
     if System.__properties.__parries > 10000 then return end
     
