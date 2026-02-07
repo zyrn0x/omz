@@ -1,4 +1,4 @@
---SALUT
+--infinte
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -7984,10 +7984,10 @@ local hooks = {
 local constants = {
     emptyCFrame = CFrame.new(),
     radius = 25,
-    baseHeight = 500, -- Safe height to avoid TP limits
-    cycleSpeed = 15,
-    velocity = Vector3.new(0, 0, 0),
-    pulseDelay = 0.02 -- Faster pulse for 1M+ velocity
+    baseHeight = 5,
+    riseHeight = 30,
+    cycleSpeed = 11.9,
+    velocity = Vector3.new(1, 1, 1)
 }
 
 local function updateCache()
@@ -7995,9 +7995,9 @@ local function updateCache()
     if character ~= cache.character then
         cache.character = character
         if character then
-            cache.hrp = character:FindFirstChild("HumanoidRootPart")
-            cache.head = character:FindFirstChild("Head")
-            cache.aliveFolder = workspace:FindFirstChild("Alive")
+            cache.hrp = character.HumanoidRootPart
+            cache.head = character.Head
+            cache.aliveFolder = workspace.Alive
             if cache.hrp then
                 cache.headOffset = Vector3.new(0, cache.hrp.Size.Y * 0.5 + 0.5, 0)
             end
@@ -8012,6 +8012,21 @@ local function isInAliveFolder()
     return cache.aliveFolder and cache.character and cache.character.Parent == cache.aliveFolder
 end
 
+local function calculateOrbitPosition(hrp)
+    local angle = math.random(-2147483647, 2147483647) * 1000
+    local cycle = math.floor(tick() * constants.cycleSpeed) % 2
+    local yOffset = cycle == 0 and 0 or constants.riseHeight
+    
+    local pos = hrp.Position
+    local yBase = pos.Y - hrp.Size.Y * 0.5 + constants.baseHeight + yOffset
+    
+    return CFrame.new(
+        pos.X + math.cos(angle) * constants.radius,
+        yBase,
+        pos.Z + math.sin(angle) * constants.radius
+    )
+end
+
 local function performDesyncLoop()
     while state.enabled do
         updateCache()
@@ -8021,13 +8036,15 @@ local function performDesyncLoop()
             desyncData.originalCFrame = hrp.CFrame
             desyncData.originalVelocity = hrp.AssemblyLinearVelocity
             
-            -- Move to safe height desync
-            hrp.CFrame = CFrame.new(hrp.Position.X, constants.baseHeight, hrp.Position.Z)
+            hrp.CFrame = calculateOrbitPosition(hrp)
             hrp.AssemblyLinearVelocity = constants.velocity
             
-            task.wait(constants.pulseDelay)
+            -- Single-loop pulse for 15 frames
+            for i = 1, 15 do
+                if not state.enabled then break end
+                RunService.RenderStepped:Wait()
+            end
             
-            -- Pulse back
             if state.enabled and cache.hrp then
                 hrp.CFrame = desyncData.originalCFrame
                 hrp.AssemblyLinearVelocity = desyncData.originalVelocity
@@ -8059,7 +8076,7 @@ function WalkableSemiImmortal.toggle(enabled)
         desyncData.originalVelocity = nil
     end
     
-    sendNotification(enabled and "ON - Refined Protocol" or "OFF")
+    sendNotification(enabled and "ON - Stability Boost" or "OFF")
 end
 
 function WalkableSemiImmortal.setNotify(enabled)
@@ -8083,18 +8100,14 @@ LocalPlayer.CharacterRemoving:Connect(function()
 end)
 
 hooks.oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
-    if not state.enabled or checkcaller() or not (key == "CFrame" or key == "Position") or not cache.hrp or not isInAliveFolder() then
+    if not state.enabled or checkcaller() or key ~= "CFrame" or not cache.hrp or not isInAliveFolder() then
         return hooks.oldIndex(self, key)
     end
     
     if self == cache.hrp then
         return desyncData.originalCFrame or constants.emptyCFrame
     elseif self == cache.head and desyncData.originalCFrame then
-        if key == "CFrame" then
-            return desyncData.originalCFrame + cache.headOffset
-        else
-            return (desyncData.originalCFrame + cache.headOffset).Position
-        end
+        return desyncData.originalCFrame + cache.headOffset
     end
     
     return hooks.oldIndex(self, key)
