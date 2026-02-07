@@ -1,4 +1,4 @@
---SALUT
+--immmo
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -7956,176 +7956,195 @@ AutoPlay:create_slider({
     end
 })
 
-local WalkableSemiImmortal = {}
-
-local state = {
-    enabled = false,
-    notify = false,
-    heartbeatConnection = nil
+local DesyncSystem = {
+    modules = {
+        semiImmortal = { enabled = false, notify = false },
+        invisibilidade = { enabled = false, notify = false }
+    },
+    data = {
+        originalCFrame = nil,
+        originalVelocity = nil
+    },
+    cache = {
+        character = nil,
+        hrp = nil,
+        head = nil,
+        headOffset = Vector3.new(0,0,0),
+        aliveFolder = nil
+    },
+    constants = {
+        semiRadius = 25,
+        semiHeight = 30,
+        semiVelocity = Vector3.new(0, 1000000, 0),
+        invisY = -500000,
+        velocityThreshold = 800
+    },
+    ballData = {
+        peakVelocity = 0,
+        currentBall = nil
+    }
 }
 
-local desyncData = {
-    originalCFrame = nil,
-    originalVelocity = nil
-}
-
-local cache = {
-    character = nil,
-    hrp = nil,
-    head = nil,
-    headOffset = Vector3.new(0, 0, 0),
-    aliveFolder = nil
-}
-
-local hooks = {
-    oldIndex = nil
-}
-
-local constants = {
-    emptyCFrame = CFrame.new(),
-    radius = 25,
-    baseHeight = 5,
-    riseHeight = 30,
-    cycleSpeed = 11.9,
-    velocity = Vector3.new(1, 1, 1)
-}
-
-local function updateCache()
+local function updateDesyncCache()
     local character = LocalPlayer.Character
-    if character ~= cache.character then
-        cache.character = character
+    if character ~= DesyncSystem.cache.character then
+        DesyncSystem.cache.character = character
         if character then
-            cache.hrp = character.HumanoidRootPart
-            cache.head = character.Head
-            cache.aliveFolder = workspace.Alive
-            if cache.hrp then
-                cache.headOffset = Vector3.new(0, cache.hrp.Size.Y * 0.5 + 0.5, 0)
+             DesyncSystem.cache.hrp = character:FindFirstChild("HumanoidRootPart")
+             DesyncSystem.cache.head = character:FindFirstChild("Head")
+             DesyncSystem.cache.aliveFolder = workspace.Alive
+            if  DesyncSystem.cache.hrp then
+                 DesyncSystem.cache.headOffset = Vector3.new(0,  DesyncSystem.cache.hrp.Size.Y * 0.5 + 0.5, 0)
             end
         else
-            cache.hrp = nil
-            cache.head = nil
+             DesyncSystem.cache.hrp = nil
+             DesyncSystem.cache.head = nil
         end
     end
 end
 
-local function isInAliveFolder()
-    return cache.aliveFolder and cache.character and cache.character.Parent == cache.aliveFolder
+local function isPlayerAlive()
+    return DesyncSystem.cache.aliveFolder and DesyncSystem.cache.character and DesyncSystem.cache.character.Parent == DesyncSystem.cache.aliveFolder
 end
 
-local function calculateOrbitPosition(hrp)
+local function getOrbitPos(hrp)
     local angle = math.random(-2147483647, 2147483647) * 1000
-    local cycle = math.floor(tick() * constants.cycleSpeed) % 2
-    local yOffset = cycle == 0 and 0 or constants.riseHeight
-    
+    local cycle = math.floor(tick() * 11.9) % 2
+    local yOffset = cycle == 0 and 0 or DesyncSystem.constants.semiHeight
     local pos = hrp.Position
-    local yBase = pos.Y - hrp.Size.Y * 0.5 + constants.baseHeight + yOffset
-    
-    return CFrame.new(
-        pos.X + math.cos(angle) * constants.radius,
-        yBase,
-        pos.Z + math.sin(angle) * constants.radius
-    )
+    return CFrame.new(pos.X + math.cos(angle) * DesyncSystem.constants.semiRadius, pos.Y - hrp.Size.Y * 0.5 + 5 + yOffset, pos.Z + math.sin(angle) * DesyncSystem.constants.semiRadius)
 end
 
-local function iterateDesync()
-    while state.enabled do
-        updateCache()
-        
-        if cache.hrp and isInAliveFolder() then
-            local hrp = cache.hrp
-            desyncData.originalCFrame = hrp.CFrame
-            desyncData.originalVelocity = hrp.AssemblyLinearVelocity
+local function trackBall()
+    local ball = System.ball.get()
+    if not ball then
+        DesyncSystem.ballData.currentBall = nil
+        DesyncSystem.ballData.peakVelocity = 0
+        getgenv().BallVelocityAbove800 = false
+        return
+    end
+    if ball ~= DesyncSystem.ballData.currentBall then
+        DesyncSystem.ballData.currentBall = ball
+        DesyncSystem.ballData.peakVelocity = 0
+    end
+    local zoomies = ball:FindFirstChild("zoomies")
+    if not zoomies then
+        getgenv().BallVelocityAbove800 = false
+        return
+    end
+    local vel = zoomies.VectorVelocity.Magnitude
+    if vel > DesyncSystem.ballData.peakVelocity then DesyncSystem.ballData.peakVelocity = vel end
+    getgenv().BallVelocityAbove800 = DesyncSystem.ballData.peakVelocity >= DesyncSystem.constants.velocityThreshold
+end
+
+local function runDesyncLoop()
+    while DesyncSystem.modules.semiImmortal.enabled or DesyncSystem.modules.invisibilidade.enabled do
+        updateDesyncCache()
+        if DesyncSystem.cache.hrp and isPlayerAlive() then
+            local hrp = DesyncSystem.cache.hrp
+            local semi = DesyncSystem.modules.semiImmortal.enabled
+            local invis = DesyncSystem.modules.invisibilidade.enabled and getgenv().BallVelocityAbove800
             
-            hrp.CFrame = calculateOrbitPosition(hrp)
-            hrp.AssemblyLinearVelocity = constants.velocity
-            
-            RunService.RenderStepped:Wait()
-            
-            hrp.CFrame = desyncData.originalCFrame
-            hrp.AssemblyLinearVelocity = desyncData.originalVelocity
-            
-            desyncData.originalCFrame = nil
-            desyncData.originalVelocity = nil
+            if semi or invis then
+                DesyncSystem.data.originalCFrame = hrp.CFrame
+                DesyncSystem.data.originalVelocity = hrp.AssemblyLinearVelocity
+                
+                if invis then
+                    hrp.CFrame = CFrame.new(Vector3.new(hrp.Position.X, DesyncSystem.constants.invisY, hrp.Position.Z), hrp.CFrame.LookVector) + Vector3.new(0, 0, 0.1)
+                    hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                    for i = 1, 15 do
+                        if not DesyncSystem.modules.invisibilidade.enabled then break end
+                        RunService.RenderStepped:Wait()
+                    end
+                else
+                    hrp.CFrame = getOrbitPos(hrp)
+                    hrp.AssemblyLinearVelocity = DesyncSystem.constants.semiVelocity
+                    RunService.RenderStepped:Wait()
+                end
+                
+                if DesyncSystem.data.originalCFrame then
+                    hrp.CFrame = DesyncSystem.data.originalCFrame
+                    hrp.AssemblyLinearVelocity = DesyncSystem.data.originalVelocity
+                end
+                DesyncSystem.data.originalCFrame = nil
+                DesyncSystem.data.originalVelocity = nil
+            end
         end
-        
         RunService.Heartbeat:Wait()
     end
 end
 
-local function sendNotification(text)
-    if state.notify and Library then
-        Library.SendNotification({
-            title = "Walkable Semi-Immortal",
-            text = text
-        })
-    end
-end
-
-function WalkableSemiImmortal.toggle(enabled)
-    if state.enabled == enabled then return end
-    
-    state.enabled = enabled
-    getgenv().Walkablesemiimortal = enabled
-    
-    if enabled then
-        task.spawn(iterateDesync)
-    else
-        desyncData.originalCFrame = nil
-        desyncData.originalVelocity = nil
+-- Hook Master
+local oldIdx
+oldIdx = hookmetamethod(game, "__index", newcclosure(function(self, key)
+    if checkcaller() or not DesyncSystem.cache.hrp or not isPlayerAlive() then
+        return oldIdx(self, key)
     end
     
-    sendNotification(enabled and "ON" or "OFF")
-end
-
-function WalkableSemiImmortal.setNotify(enabled)
-    state.notify = enabled
-    getgenv().WalkablesemiimortalNotify = enabled
-end
-
-function WalkableSemiImmortal.setRadius(value)
-    constants.radius = value
-end
-
-function WalkableSemiImmortal.setHeight(value)
-    constants.riseHeight = value
-end
-
-LocalPlayer.CharacterRemoving:Connect(function()
-    cache.character = nil
-    cache.hrp = nil
-    cache.head = nil
-    cache.aliveFolder = nil
-end)
-
-hooks.oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
-    if not state.enabled or checkcaller() or key ~= "CFrame" or not cache.hrp or not isInAliveFolder() then
-        return hooks.oldIndex(self, key)
+    local active = (DesyncSystem.modules.semiImmortal.enabled or (DesyncSystem.modules.invisibilidade.enabled and getgenv().BallVelocityAbove800))
+    if not active or not DesyncSystem.data.originalCFrame then
+        return oldIdx(self, key)
     end
     
-    if self == cache.hrp then
-        return desyncData.originalCFrame or constants.emptyCFrame
-    elseif self == cache.head and desyncData.originalCFrame then
-        return desyncData.originalCFrame + cache.headOffset
+    if self == DesyncSystem.cache.hrp then
+        if key == "CFrame" then return DesyncSystem.data.originalCFrame
+        elseif key == "Position" then return DesyncSystem.data.originalCFrame.Position
+        elseif key == "AssemblyLinearVelocity" or key == "Velocity" then return DesyncSystem.data.originalVelocity or Vector3.new(0,0,0) end
+    elseif self == DesyncSystem.cache.head then
+        if key == "CFrame" then return DesyncSystem.data.originalCFrame + DesyncSystem.cache.headOffset
+        elseif key == "Position" then return (DesyncSystem.data.originalCFrame + DesyncSystem.cache.headOffset).Position end
     end
-    
-    return hooks.oldIndex(self, key)
+    return oldIdx(self, key)
 end))
 
-local module = devJV:create_module({
+local WalkableSemiImmortal = {}
+function WalkableSemiImmortal.toggle(enabled)
+    if DesyncSystem.modules.semiImmortal.enabled == enabled then return end
+    DesyncSystem.modules.semiImmortal.enabled = enabled
+    getgenv().Walkablesemiimortal = enabled
+    if enabled then task.spawn(runDesyncLoop) end
+    if DesyncSystem.modules.semiImmortal.notify and Library then
+        Library.SendNotification({title = "Walkable Semi-Immortal", text = enabled and "ON" or "OFF"})
+    end
+end
+
+local Invisibilidade = {}
+local ballTrackingConn = nil
+function Invisibilidade.toggle(enabled)
+    if DesyncSystem.modules.invisibilidade.enabled == enabled then return end
+    DesyncSystem.modules.invisibilidade.enabled = enabled
+    getgenv().IDKEnabled = enabled
+    if enabled then
+        if not ballTrackingConn then ballTrackingConn = RunService.Heartbeat:Connect(trackBall) end
+        task.spawn(runDesyncLoop)
+    else
+        if ballTrackingConn then ballTrackingConn:Disconnect(); ballTrackingConn = nil end
+        getgenv().BallVelocityAbove800 = false
+    end
+    if DesyncSystem.modules.invisibilidade.notify and Library then
+        Library.SendNotification({title = "Dupe Ball", text = enabled and "ON" or "OFF"})
+    end
+end
+function WalkableSemiImmortal.setNotify(enabled) DesyncSystem.modules.semiImmortal.notify = enabled end
+function WalkableSemiImmortal.setRadius(value) DesyncSystem.constants.semiRadius = value end
+function WalkableSemiImmortal.setHeight(value) DesyncSystem.constants.semiHeight = value end
+
+function Invisibilidade.setNotify(enabled) DesyncSystem.modules.invisibilidade.notify = enabled end
+
+local semiModule = devJV:create_module({
     title = "Walkable Semi-Immortal [BLATANT!]",
-    description = "",
     flag = "Walkable_Semi_Immortal",
     section = "left",
     callback = WalkableSemiImmortal.toggle
 })
 
-module:create_checkbox({
+semiModule:create_checkbox({
     title = "Notify",
     flag = "WalkableSemi_Imortal_Notify",
     callback = WalkableSemiImmortal.setNotify
 })
 
-module:create_slider({
+semiModule:create_slider({
     title = 'Immortal Radius',
     flag = 'Immortal_Radius',
     maximum_value = 100,
@@ -8135,7 +8154,7 @@ module:create_slider({
     callback = WalkableSemiImmortal.setRadius
 })
 
-module:create_slider({
+semiModule:create_slider({
     title = 'Immortal Height',
     flag = 'Walkable_Immortal_Radius',
     maximum_value = 60,
@@ -8145,230 +8164,20 @@ module:create_slider({
     callback = WalkableSemiImmortal.setHeight
 })
 
-local Invisibilidade = {}
-
-local Players = game:GetService('Players')
-local RunService = game:GetService('RunService')
-local Workspace = game:GetService('Workspace')
-local LocalPlayer = Players.LocalPlayer
-
-local state = {
-    enabled = false,
-    notify = false,
-    heartbeatConnection = nil,
-    ballTrackingConnection = nil
-}
-
-local desyncData = {
-    originalCFrame = nil,
-    originalVelocity = nil
-}
-
-local cache = {
-    character = nil,
-    hrp = nil,
-    head = nil,
-    headOffset = Vector3.new(0, 0, 0),
-    aliveFolder = nil
-}
-
-local hooks = {
-    oldIndex = nil
-}
-
-local constants = {
-    emptyCFrame = CFrame.new(),
-    invisibleY = -500000,
-    velocityThreshold = 800
-}
-
-local ballData = {
-    peakVelocity = 0,
-    currentBall = nil
-}
-
-local function updateCache()
-    local character = LocalPlayer.Character
-    if character ~= cache.character then
-        cache.character = character
-        if character then
-            cache.hrp = character:FindFirstChild("HumanoidRootPart")
-            cache.head = character:FindFirstChild("Head")
-            cache.aliveFolder = workspace.Alive
-            if cache.hrp then
-                cache.headOffset = Vector3.new(0, cache.hrp.Size.Y * 0.5 + 0.5, 0)
-            end
-        else
-            cache.hrp = nil
-            cache.head = nil
-        end
-    end
-end
-
-local function isInAliveFolder()
-    return cache.aliveFolder and cache.character and cache.character.Parent == cache.aliveFolder
-end
-
-local function trackBallVelocity()
-    local ball = System.ball.get()
-
-    if not ball then
-        ballData.currentBall = nil
-        ballData.peakVelocity = 0
-        getgenv().BallPeakVelocity = 0
-        getgenv().BallVelocityAbove800 = false
-        return
-    end
-
-    if ball ~= ballData.currentBall then
-        ballData.currentBall = ball
-        ballData.peakVelocity = 0
-    end
-
-    local zoomies = ball:FindFirstChild("zoomies")
-    if not zoomies then
-        getgenv().BallPeakVelocity = 0
-        getgenv().BallVelocityAbove800 = false
-        return
-    end
-
-    local velocity = zoomies.VectorVelocity.Magnitude
-
-    if velocity > ballData.peakVelocity then
-        ballData.peakVelocity = velocity
-    end
-
-    getgenv().BallPeakVelocity = ballData.peakVelocity
-    getgenv().BallVelocityAbove800 = ballData.peakVelocity >= constants.velocityThreshold
-end
-
-local function shouldApplyDesync()
-    return state.enabled and getgenv().BallVelocityAbove800 == true
-end
-
-local function iterateDesync()
-    while state.enabled do
-        updateCache()
-        
-        if shouldApplyDesync() and cache.hrp and isInAliveFolder() then
-            local hrp = cache.hrp
-            desyncData.originalCFrame = hrp.CFrame
-            desyncData.originalVelocity = hrp.AssemblyLinearVelocity
-            
-            hrp.CFrame = CFrame.new(
-                Vector3.new(hrp.Position.X, constants.invisibleY, hrp.Position.Z),
-                hrp.CFrame.LookVector
-            )
-            hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-            
-            hrp.CFrame = hrp.CFrame + Vector3.new(0, 0, 0.1)
-            
-            for i = 1, 15 do
-                if not state.enabled then break end
-                RunService.RenderStepped:Wait()
-            end
-            
-            if desyncData.originalCFrame then
-                hrp.CFrame = desyncData.originalCFrame
-                hrp.AssemblyLinearVelocity = desyncData.originalVelocity
-            end
-            
-            desyncData.originalCFrame = nil
-            desyncData.originalVelocity = nil
-        end
-        
-        RunService.Heartbeat:Wait()
-    end
-end
-
-local function sendNotification(text)
-    if state.notify and Library then
-        Library.SendNotification({
-            title = "IDK???",
-            text = text
-        })
-    end
-end
-
-function Invisibilidade.toggle(enabled)
-    if state.enabled == enabled then return end
-    
-    state.enabled = enabled
-    getgenv().IDKEnabled = enabled
-    
-    if enabled then
-        if not state.ballTrackingConnection then
-            state.ballTrackingConnection = RunService.Heartbeat:Connect(trackBallVelocity)
-        end
-
-        task.spawn(iterateDesync)
-    else
-        if state.ballTrackingConnection then
-            state.ballTrackingConnection:Disconnect()
-            state.ballTrackingConnection = nil
-        end
-
-        updateCache()
-        if cache.hrp and desyncData.originalCFrame then
-            cache.hrp.CFrame = desyncData.originalCFrame
-            if desyncData.originalVelocity then
-                cache.hrp.AssemblyLinearVelocity = desyncData.originalVelocity
-            end
-        end
-        
-        desyncData.originalCFrame = nil
-        desyncData.originalVelocity = nil
-
-        ballData.peakVelocity = 0
-        ballData.currentBall = nil
-        getgenv().BallPeakVelocity = 0
-        getgenv().BallVelocityAbove800 = false
-    end
-    
-    sendNotification(enabled and "ON" or "OFF")
-end
-
-function Invisibilidade.setNotify(enabled)
-    state.notify = enabled
-    getgenv().IDKNotify = enabled
-end
-
-LocalPlayer.CharacterRemoving:Connect(function()
-    cache.character = nil
-    cache.hrp = nil
-    cache.head = nil
-    cache.aliveFolder = nil
-end)
-
-hooks.oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
-    if not shouldApplyDesync() or checkcaller() or key ~= "CFrame" or not cache.hrp or not isInAliveFolder() then
-        return hooks.oldIndex(self, key)
-    end
-    
-    if self == cache.hrp then
-        return desyncData.originalCFrame or constants.emptyCFrame
-    elseif self == cache.head and desyncData.originalCFrame then
-        return desyncData.originalCFrame + cache.headOffset
-    end
-    
-    return hooks.oldIndex(self, key)
-end))
-
-local module = devJV:create_module({
+local dupeModule = devJV:create_module({
     title = "Dupe Ball[BLATANT!]",
-    description = "",
     flag = "IDK_Toggle",
     section = "right",
     callback = Invisibilidade.toggle
 })
 
-module:create_checkbox({
+dupeModule:create_checkbox({
     title = "Notify",
     flag = "IDK_Notify",
     callback = Invisibilidade.setNotify
 })
 
-module:create_slider({
+dupeModule:create_slider({
     title = 'Velocity Threshold',
     flag = 'dasdada',
     maximum_value = 1500,
@@ -8376,7 +8185,7 @@ module:create_slider({
     value = 800,
     round_number = true,
     callback = function(value)
-        constants.velocityThreshold = value
+        DesyncSystem.constants.velocityThreshold = value
     end
 })
 
