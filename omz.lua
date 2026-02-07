@@ -1,4 +1,4 @@
---DUPEFIX
+--SALUT
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -8040,9 +8040,9 @@ local function performDesync()
     
     hrp.CFrame = calculateOrbitPosition(hrp)
     hrp.AssemblyLinearVelocity = constants.velocity
-    
-    RunService.RenderStepped:Wait()
-    
+    for i = 1, 15 do
+        RunService.RenderStepped:Wait()
+    end
     hrp.CFrame = desyncData.originalCFrame
     hrp.AssemblyLinearVelocity = desyncData.originalVelocity
 end
@@ -8179,7 +8179,7 @@ local hooks = {
 
 local constants = {
     emptyCFrame = CFrame.new(),
-    invisibleY = -200000,
+    invisibleY = -500000,
     velocityThreshold = 800
 }
 
@@ -8266,7 +8266,9 @@ local function performDesync()
     
     hrp.CFrame = hrp.CFrame + Vector3.new(0, 0, 0.1)
     
-    RunService.RenderStepped:Wait()
+    for i = 1, 15 do
+        RunService.RenderStepped:Wait()
+    end
     
     hrp.CFrame = desyncData.originalCFrame
     hrp.AssemblyLinearVelocity = desyncData.originalVelocity
