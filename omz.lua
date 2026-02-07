@@ -1,4 +1,4 @@
---PREMIUM
+--dupeballtest
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -8146,7 +8146,7 @@ module:create_slider({
     callback = WalkableSemiImmortal.setHeight
 })
 
---[[local Invisibilidade = {}
+local Invisibilidade = {}
 
 local Players = game:GetService('Players')
 local RunService = game:GetService('RunService')
@@ -8376,7 +8376,7 @@ module:create_slider({
     callback = function(value)
         constants.velocityThreshold = value
     end
-})]]
+})
 
 if not mobile then
     local guiset = main:create_tab('Gui', 'rbxassetid://10734887784')
