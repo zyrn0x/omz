@@ -1,4 +1,4 @@
---infinte
+--SALUT
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -8027,37 +8027,46 @@ local function calculateOrbitPosition(hrp)
     )
 end
 
-local function performDesyncLoop()
-    while state.enabled do
-        updateCache()
-        
-        if cache.hrp and isInAliveFolder() then
-            local hrp = cache.hrp
-            desyncData.originalCFrame = hrp.CFrame
-            desyncData.originalVelocity = hrp.AssemblyLinearVelocity
-            
-            hrp.CFrame = calculateOrbitPosition(hrp)
-            hrp.AssemblyLinearVelocity = constants.velocity
-            
-            -- Single-loop pulse for 15 frames
-            for i = 1, 15 do
-                if not state.enabled then break end
-                RunService.RenderStepped:Wait()
-            end
-            
-            if state.enabled and cache.hrp then
-                hrp.CFrame = desyncData.originalCFrame
-                hrp.AssemblyLinearVelocity = desyncData.originalVelocity
-            end
-        end
-        task.wait()
+local function performDesync()
+    updateCache()
+    
+    if not state.enabled or not cache.hrp or not isInAliveFolder() then
+        return
+    end
+    
+    local hrp = cache.hrp
+    
+    -- Only update ground truth if we are reasonably close to the expected floor height
+    -- This prevents pulses from accidentally "saving" a void position as ground.
+    if math.abs(hrp.Position.Y - desyncData.lastGroundY or hrp.Position.Y) < 10 then
+        desyncData.originalCFrame = hrp.CFrame
+        desyncData.originalVelocity = hrp.AssemblyLinearVelocity
+        desyncData.lastGroundY = hrp.Position.Y
+    end
+    
+    local localOriginalCFrame = desyncData.originalCFrame or hrp.CFrame
+    local localOriginalVelocity = desyncData.originalVelocity or hrp.AssemblyLinearVelocity
+    
+    -- "Express" Chaotic Pulse
+    hrp.CFrame = calculateOrbitPosition(hrp)
+    hrp.AssemblyLinearVelocity = constants.velocity
+    
+    for i = 1, 15 do
+        if not state.enabled then break end
+        RunService.RenderStepped:Wait()
+    end
+    
+    -- Return to the specific ground position captured by THIS pulse
+    if state.enabled and cache.hrp then
+        hrp.CFrame = localOriginalCFrame
+        hrp.AssemblyLinearVelocity = localOriginalVelocity
     end
 end
 
 local function sendNotification(text)
     if state.notify and Library then
         Library.SendNotification({
-            title = "Silly Immortality",
+            title = "Walkable Semi-Immortal",
             text = text
         })
     end
@@ -8070,13 +8079,19 @@ function WalkableSemiImmortal.toggle(enabled)
     getgenv().Walkablesemiimortal = enabled
     
     if enabled then
-        task.spawn(performDesyncLoop)
+        if not state.heartbeatConnection then
+            state.heartbeatConnection = RunService.Heartbeat:Connect(performDesync)
+        end
     else
+        if state.heartbeatConnection then
+            state.heartbeatConnection:Disconnect()
+            state.heartbeatConnection = nil
+        end
         desyncData.originalCFrame = nil
         desyncData.originalVelocity = nil
     end
     
-    sendNotification(enabled and "ON - Stability Boost" or "OFF")
+    sendNotification(enabled and "ON" or "OFF")
 end
 
 function WalkableSemiImmortal.setNotify(enabled)
@@ -8100,14 +8115,17 @@ LocalPlayer.CharacterRemoving:Connect(function()
 end)
 
 hooks.oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
-    if not state.enabled or checkcaller() or key ~= "CFrame" or not cache.hrp or not isInAliveFolder() then
+    if not state.enabled or checkcaller() or not (key == "CFrame" or key == "Position") or not cache.hrp or not isInAliveFolder() then
         return hooks.oldIndex(self, key)
     end
     
+    local groundCFrame = desyncData.originalCFrame or constants.emptyCFrame
+    
     if self == cache.hrp then
-        return desyncData.originalCFrame or constants.emptyCFrame
-    elseif self == cache.head and desyncData.originalCFrame then
-        return desyncData.originalCFrame + cache.headOffset
+        return (key == "CFrame") and groundCFrame or groundCFrame.Position
+    elseif self == cache.head then
+        local headCFrame = groundCFrame + cache.headOffset
+        return (key == "CFrame") and headCFrame or headCFrame.Position
     end
     
     return hooks.oldIndex(self, key)
