@@ -1,4 +1,4 @@
---SALUT
+--immortal
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -7984,10 +7984,10 @@ local hooks = {
 local constants = {
     emptyCFrame = CFrame.new(),
     radius = 25,
-    baseHeight = 5,
-    riseHeight = 30,
-    cycleSpeed = 11.9,
-    velocity = Vector3.new(1, 1, 1)
+    baseHeight = 100000, -- High altitude void desync
+    cycleSpeed = 15,
+    velocity = Vector3.new(0, 0, 0),
+    pulseDelay = 0.03
 }
 
 local function updateCache()
@@ -7995,9 +7995,9 @@ local function updateCache()
     if character ~= cache.character then
         cache.character = character
         if character then
-            cache.hrp = character.HumanoidRootPart
-            cache.head = character.Head
-            cache.aliveFolder = workspace.Alive
+            cache.hrp = character:FindFirstChild("HumanoidRootPart")
+            cache.head = character:FindFirstChild("Head")
+            cache.aliveFolder = workspace:FindFirstChild("Alive")
             if cache.hrp then
                 cache.headOffset = Vector3.new(0, cache.hrp.Size.Y * 0.5 + 0.5, 0)
             end
@@ -8012,45 +8012,35 @@ local function isInAliveFolder()
     return cache.aliveFolder and cache.character and cache.character.Parent == cache.aliveFolder
 end
 
-local function calculateOrbitPosition(hrp)
-    local angle = math.random(-2147483647, 2147483647) * 1000
-    local cycle = math.floor(tick() * constants.cycleSpeed) % 2
-    local yOffset = cycle == 0 and 0 or constants.riseHeight
-    
-    local pos = hrp.Position
-    local yBase = pos.Y - hrp.Size.Y * 0.5 + constants.baseHeight + yOffset
-    
-    return CFrame.new(
-        pos.X + math.cos(angle) * constants.radius,
-        yBase,
-        pos.Z + math.sin(angle) * constants.radius
-    )
-end
-
-local function performDesync()
-    updateCache()
-    
-    if not state.enabled or not cache.hrp or not isInAliveFolder() then
-        return
+local function performDesyncLoop()
+    while state.enabled do
+        updateCache()
+        
+        if cache.hrp and isInAliveFolder() then
+            local hrp = cache.hrp
+            desyncData.originalCFrame = hrp.CFrame
+            desyncData.originalVelocity = hrp.AssemblyLinearVelocity
+            
+            -- Move to void
+            hrp.CFrame = CFrame.new(hrp.Position.X, constants.baseHeight, hrp.Position.Z)
+            hrp.AssemblyLinearVelocity = constants.velocity
+            
+            task.wait(constants.pulseDelay)
+            
+            -- Return to original position momentarily
+            if state.enabled and cache.hrp then
+                hrp.CFrame = desyncData.originalCFrame
+                hrp.AssemblyLinearVelocity = desyncData.originalVelocity
+            end
+        end
+        task.wait()
     end
-    
-    local hrp = cache.hrp
-    desyncData.originalCFrame = hrp.CFrame
-    desyncData.originalVelocity = hrp.AssemblyLinearVelocity
-    
-    hrp.CFrame = calculateOrbitPosition(hrp)
-    hrp.AssemblyLinearVelocity = constants.velocity
-    for i = 1, 15 do
-        RunService.RenderStepped:Wait()
-    end
-    hrp.CFrame = desyncData.originalCFrame
-    hrp.AssemblyLinearVelocity = desyncData.originalVelocity
 end
 
 local function sendNotification(text)
     if state.notify and Library then
         Library.SendNotification({
-            title = "Walkable Semi-Immortal",
+            title = "Silly Immortality",
             text = text
         })
     end
@@ -8063,19 +8053,13 @@ function WalkableSemiImmortal.toggle(enabled)
     getgenv().Walkablesemiimortal = enabled
     
     if enabled then
-        if not state.heartbeatConnection then
-            state.heartbeatConnection = RunService.Heartbeat:Connect(performDesync)
-        end
+        task.spawn(performDesyncLoop)
     else
-        if state.heartbeatConnection then
-            state.heartbeatConnection:Disconnect()
-            state.heartbeatConnection = nil
-        end
         desyncData.originalCFrame = nil
         desyncData.originalVelocity = nil
     end
     
-    sendNotification(enabled and "ON" or "OFF")
+    sendNotification(enabled and "ON - Void Protocol" or "OFF")
 end
 
 function WalkableSemiImmortal.setNotify(enabled)
@@ -8099,14 +8083,18 @@ LocalPlayer.CharacterRemoving:Connect(function()
 end)
 
 hooks.oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
-    if not state.enabled or checkcaller() or key ~= "CFrame" or not cache.hrp or not isInAliveFolder() then
+    if not state.enabled or checkcaller() or not (key == "CFrame" or key == "Position") or not cache.hrp or not isInAliveFolder() then
         return hooks.oldIndex(self, key)
     end
     
     if self == cache.hrp then
         return desyncData.originalCFrame or constants.emptyCFrame
     elseif self == cache.head and desyncData.originalCFrame then
-        return desyncData.originalCFrame + cache.headOffset
+        if key == "CFrame" then
+            return desyncData.originalCFrame + cache.headOffset
+        else
+            return (desyncData.originalCFrame + cache.headOffset).Position
+        end
     end
     
     return hooks.oldIndex(self, key)
