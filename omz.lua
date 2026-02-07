@@ -1,4 +1,4 @@
---SALUT
+--vy
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -8036,25 +8036,24 @@ local function performDesync()
     
     local hrp = cache.hrp
     
-    -- Only update ground truth if we are reasonably close to the expected floor height
-    -- This prevents pulses from accidentally "saving" a void position as ground.
-    if math.abs(hrp.Position.Y - desyncData.lastGroundY or hrp.Position.Y) < 10 then
-        desyncData.originalCFrame = hrp.CFrame
-        desyncData.originalVelocity = hrp.AssemblyLinearVelocity
+    -- Capture ground state LOCALLY for this specific pulse.
+    -- This prevents other overlapping pulses from "fighting" and corrupting the ground position.
+    local localOriginalCFrame = hrp.CFrame
+    local localOriginalVelocity = hrp.AssemblyLinearVelocity
+    
+    -- Update global ground truth for the camera/walking hook
+    -- We only update it if we are fairly sure we're on the ground.
+    if math.abs(hrp.Position.Y - (desyncData.lastGroundY or hrp.Position.Y)) < 10 then
+        desyncData.originalCFrame = localOriginalCFrame
         desyncData.lastGroundY = hrp.Position.Y
     end
     
-    local localOriginalCFrame = desyncData.originalCFrame or hrp.CFrame
-    local localOriginalVelocity = desyncData.originalVelocity or hrp.AssemblyLinearVelocity
-    
-    -- "Express" Chaotic Pulse
+    -- Move to Orbit (Express Mode)
     hrp.CFrame = calculateOrbitPosition(hrp)
     hrp.AssemblyLinearVelocity = constants.velocity
     
-    for i = 1, 15 do
-        if not state.enabled then break end
-        RunService.RenderStepped:Wait()
-    end
+    -- chaotic 1-frame pulse
+    RunService.RenderStepped:Wait()
     
     -- Return to the specific ground position captured by THIS pulse
     if state.enabled and cache.hrp then
@@ -8119,6 +8118,7 @@ hooks.oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
         return hooks.oldIndex(self, key)
     end
     
+    -- Use the most recent "Ground Truth" for smooth camera and movement
     local groundCFrame = desyncData.originalCFrame or constants.emptyCFrame
     
     if self == cache.hrp then
