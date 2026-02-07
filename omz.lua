@@ -1,4 +1,4 @@
---vy
+--SALUT
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -8027,38 +8027,28 @@ local function calculateOrbitPosition(hrp)
     )
 end
 
-local function performDesync()
-    updateCache()
-    
-    if not state.enabled or not cache.hrp or not isInAliveFolder() then
-        return
-    end
-    
-    local hrp = cache.hrp
-    
-    -- Capture ground state LOCALLY for this specific pulse.
-    -- This prevents other overlapping pulses from "fighting" and corrupting the ground position.
-    local localOriginalCFrame = hrp.CFrame
-    local localOriginalVelocity = hrp.AssemblyLinearVelocity
-    
-    -- Update global ground truth for the camera/walking hook
-    -- We only update it if we are fairly sure we're on the ground.
-    if math.abs(hrp.Position.Y - (desyncData.lastGroundY or hrp.Position.Y)) < 10 then
-        desyncData.originalCFrame = localOriginalCFrame
-        desyncData.lastGroundY = hrp.Position.Y
-    end
-    
-    -- Move to Orbit (Express Mode)
-    hrp.CFrame = calculateOrbitPosition(hrp)
-    hrp.AssemblyLinearVelocity = constants.velocity
-    
-    -- chaotic 1-frame pulse
-    RunService.RenderStepped:Wait()
-    
-    -- Return to the specific ground position captured by THIS pulse
-    if state.enabled and cache.hrp then
-        hrp.CFrame = localOriginalCFrame
-        hrp.AssemblyLinearVelocity = localOriginalVelocity
+local function iterateDesync()
+    while state.enabled do
+        updateCache()
+        
+        if cache.hrp and isInAliveFolder() then
+            local hrp = cache.hrp
+            desyncData.originalCFrame = hrp.CFrame
+            desyncData.originalVelocity = hrp.AssemblyLinearVelocity
+            
+            hrp.CFrame = calculateOrbitPosition(hrp)
+            hrp.AssemblyLinearVelocity = constants.velocity
+            
+            RunService.RenderStepped:Wait()
+            
+            hrp.CFrame = desyncData.originalCFrame
+            hrp.AssemblyLinearVelocity = desyncData.originalVelocity
+            
+            desyncData.originalCFrame = nil
+            desyncData.originalVelocity = nil
+        end
+        
+        RunService.Heartbeat:Wait()
     end
 end
 
@@ -8078,14 +8068,8 @@ function WalkableSemiImmortal.toggle(enabled)
     getgenv().Walkablesemiimortal = enabled
     
     if enabled then
-        if not state.heartbeatConnection then
-            state.heartbeatConnection = RunService.Heartbeat:Connect(performDesync)
-        end
+        task.spawn(iterateDesync)
     else
-        if state.heartbeatConnection then
-            state.heartbeatConnection:Disconnect()
-            state.heartbeatConnection = nil
-        end
         desyncData.originalCFrame = nil
         desyncData.originalVelocity = nil
     end
@@ -8114,18 +8098,14 @@ LocalPlayer.CharacterRemoving:Connect(function()
 end)
 
 hooks.oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
-    if not state.enabled or checkcaller() or not (key == "CFrame" or key == "Position") or not cache.hrp or not isInAliveFolder() then
+    if not state.enabled or checkcaller() or key ~= "CFrame" or not cache.hrp or not isInAliveFolder() then
         return hooks.oldIndex(self, key)
     end
     
-    -- Use the most recent "Ground Truth" for smooth camera and movement
-    local groundCFrame = desyncData.originalCFrame or constants.emptyCFrame
-    
     if self == cache.hrp then
-        return (key == "CFrame") and groundCFrame or groundCFrame.Position
-    elseif self == cache.head then
-        local headCFrame = groundCFrame + cache.headOffset
-        return (key == "CFrame") and headCFrame or headCFrame.Position
+        return desyncData.originalCFrame or constants.emptyCFrame
+    elseif self == cache.head and desyncData.originalCFrame then
+        return desyncData.originalCFrame + cache.headOffset
     end
     
     return hooks.oldIndex(self, key)
@@ -8266,31 +8246,39 @@ local function shouldApplyDesync()
     return state.enabled and getgenv().BallVelocityAbove800 == true
 end
 
-local function performDesync()
-    updateCache()
-    
-    if not shouldApplyDesync() or not cache.hrp or not isInAliveFolder() then
-        return
+local function iterateDesync()
+    while state.enabled do
+        updateCache()
+        
+        if shouldApplyDesync() and cache.hrp and isInAliveFolder() then
+            local hrp = cache.hrp
+            desyncData.originalCFrame = hrp.CFrame
+            desyncData.originalVelocity = hrp.AssemblyLinearVelocity
+            
+            hrp.CFrame = CFrame.new(
+                Vector3.new(hrp.Position.X, constants.invisibleY, hrp.Position.Z),
+                hrp.CFrame.LookVector
+            )
+            hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            
+            hrp.CFrame = hrp.CFrame + Vector3.new(0, 0, 0.1)
+            
+            for i = 1, 15 do
+                if not state.enabled then break end
+                RunService.RenderStepped:Wait()
+            end
+            
+            if desyncData.originalCFrame then
+                hrp.CFrame = desyncData.originalCFrame
+                hrp.AssemblyLinearVelocity = desyncData.originalVelocity
+            end
+            
+            desyncData.originalCFrame = nil
+            desyncData.originalVelocity = nil
+        end
+        
+        RunService.Heartbeat:Wait()
     end
-    
-    local hrp = cache.hrp
-    desyncData.originalCFrame = hrp.CFrame
-    desyncData.originalVelocity = hrp.AssemblyLinearVelocity
-    
-    hrp.CFrame = CFrame.new(
-        Vector3.new(hrp.Position.X, constants.invisibleY, hrp.Position.Z),
-        hrp.CFrame.LookVector
-    )
-    hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-    
-    hrp.CFrame = hrp.CFrame + Vector3.new(0, 0, 0.1)
-    
-    for i = 1, 15 do
-        RunService.RenderStepped:Wait()
-    end
-    
-    hrp.CFrame = desyncData.originalCFrame
-    hrp.AssemblyLinearVelocity = desyncData.originalVelocity
 end
 
 local function sendNotification(text)
@@ -8313,18 +8301,11 @@ function Invisibilidade.toggle(enabled)
             state.ballTrackingConnection = RunService.Heartbeat:Connect(trackBallVelocity)
         end
 
-        if not state.heartbeatConnection then
-            state.heartbeatConnection = RunService.Heartbeat:Connect(performDesync)
-        end
+        task.spawn(iterateDesync)
     else
         if state.ballTrackingConnection then
             state.ballTrackingConnection:Disconnect()
             state.ballTrackingConnection = nil
-        end
-
-        if state.heartbeatConnection then
-            state.heartbeatConnection:Disconnect()
-            state.heartbeatConnection = nil
         end
 
         updateCache()
