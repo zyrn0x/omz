@@ -1,4 +1,4 @@
---immortal
+--SALUT
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -7984,10 +7984,10 @@ local hooks = {
 local constants = {
     emptyCFrame = CFrame.new(),
     radius = 25,
-    baseHeight = 100000, -- High altitude void desync
+    baseHeight = 500, -- Safe height to avoid TP limits
     cycleSpeed = 15,
     velocity = Vector3.new(0, 0, 0),
-    pulseDelay = 0.03
+    pulseDelay = 0.02 -- Faster pulse for 1M+ velocity
 }
 
 local function updateCache()
@@ -8021,13 +8021,13 @@ local function performDesyncLoop()
             desyncData.originalCFrame = hrp.CFrame
             desyncData.originalVelocity = hrp.AssemblyLinearVelocity
             
-            -- Move to void
+            -- Move to safe height desync
             hrp.CFrame = CFrame.new(hrp.Position.X, constants.baseHeight, hrp.Position.Z)
             hrp.AssemblyLinearVelocity = constants.velocity
             
             task.wait(constants.pulseDelay)
             
-            -- Return to original position momentarily
+            -- Pulse back
             if state.enabled and cache.hrp then
                 hrp.CFrame = desyncData.originalCFrame
                 hrp.AssemblyLinearVelocity = desyncData.originalVelocity
@@ -8059,7 +8059,7 @@ function WalkableSemiImmortal.toggle(enabled)
         desyncData.originalVelocity = nil
     end
     
-    sendNotification(enabled and "ON - Void Protocol" or "OFF")
+    sendNotification(enabled and "ON - Refined Protocol" or "OFF")
 end
 
 function WalkableSemiImmortal.setNotify(enabled)
