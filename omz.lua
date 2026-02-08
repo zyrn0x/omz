@@ -1,4 +1,4 @@
---wow
+--official
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -31,6 +31,7 @@ getgenv().Theme = {
     Gradient1 = Color3.fromRGB(160, 30, 255),
     Gradient2 = Color3.fromRGB(25, 25, 112)       -- Midnight Blue
 }
+_G.Theme = getgenv().Theme
 
 local SelectedLanguage = GG.Language
 
