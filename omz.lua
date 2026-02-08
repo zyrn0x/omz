@@ -1,4 +1,4 @@
---UI
+--UI fix
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -464,7 +464,7 @@ function Library.SendNotification(settings)
     InnerFrame.Size = UDim2.new(1, 0, 0, 0) -- Automatic size will handle this
     InnerFrame.Position = UDim2.new(1, 0, 0, 0) -- Start off-screen (right)
     InnerFrame.BackgroundColor3 = _G.Theme.Container
-    InnerFrame.BackgroundTransparency = 0.1
+    InnerFrame.BackgroundTransparency = 1
     InnerFrame.BorderSizePixel = 0
     InnerFrame.Name = "InnerFrame"
     InnerFrame.AutomaticSize = Enum.AutomaticSize.Y
@@ -496,7 +496,7 @@ function Library.SendNotification(settings)
 
     local Body = Instance.new("TextLabel")
     Body.Text = settings.text or ""
-    Body.TextColor3 = Color3.new(1, 1, 1) -- Pure White
+    Body.TextColor3 = Color3.fromRGB(255, 255, 0) -- Bright Yellow for visibility
     Body.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.Bold, Enum.FontStyle.Normal)
     Body.TextSize = 12
     Body.Size = UDim2.new(1, -20, 0, 0)
