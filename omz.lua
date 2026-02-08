@@ -1,4 +1,4 @@
---official
+--UI
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -450,99 +450,113 @@ UIListLayout.Parent = NotificationContainer
 
 function Library.SendNotification(settings)
   
+    -- Create the main container for this specific notification
     local Notification = Instance.new("Frame")
-    Notification.Size = UDim2.new(1, 0, 0, 60)  
-    Notification.BackgroundTransparency = 1  
+    Notification.Size = UDim2.new(1, 0, 0, 0) -- Start with 0 height for expansion animation
+    Notification.BackgroundTransparency = 1
     Notification.BorderSizePixel = 0
     Notification.Name = "Notification"
-    Notification.Parent = NotificationContainer  
-    Notification.AutomaticSize = Enum.AutomaticSize.Y  
+    Notification.ClipsDescendants = false
+    Notification.Parent = NotificationContainer
 
-   
-    local UICorner = Instance.new("UICorner")
-    UICorner.CornerRadius = UDim.new(0, 4)
-    UICorner.Parent = Notification
-
-   
+    -- Inner content frame
     local InnerFrame = Instance.new("Frame")
-    InnerFrame.Size = UDim2.new(1, 0, 0, 60)  
-    InnerFrame.Position = UDim2.new(0, 0, 0, 0)  
+    InnerFrame.Size = UDim2.new(1, 0, 0, 0) -- Automatic size will handle this
+    InnerFrame.Position = UDim2.new(1, 0, 0, 0) -- Start off-screen (right)
     InnerFrame.BackgroundColor3 = _G.Theme.Container
     InnerFrame.BackgroundTransparency = 0.1
     InnerFrame.BorderSizePixel = 0
     InnerFrame.Name = "InnerFrame"
+    InnerFrame.AutomaticSize = Enum.AutomaticSize.Y
     InnerFrame.Parent = Notification
-    InnerFrame.AutomaticSize = Enum.AutomaticSize.Y  
 
     local InnerUIStroke = Instance.new("UIStroke")
     InnerUIStroke.Color = _G.Theme.Border
     InnerUIStroke.LinkToEnd = true
+    InnerUIStroke.Transparency = 0
     InnerUIStroke.Parent = InnerFrame
 
     local InnerUICorner = Instance.new("UICorner")
-    InnerUICorner.CornerRadius = UDim.new(0, 4)
+    InnerUICorner.CornerRadius = UDim.new(0, 6)
     InnerUICorner.Parent = InnerFrame
 
-   
     local Title = Instance.new("TextLabel")
-    Title.Text = settings.title or "Notification Title"
+    Title.Text = settings.title or "Notification"
     Title.TextColor3 = _G.Theme.Accent
     Title.FontFace = Font.new('rbxasset://fonts/families/Michroma.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
     Title.TextSize = 14
-    Title.Size = UDim2.new(1, -10, 0, 20)  
-    Title.Position = UDim2.new(0, 5, 0, 5)
+    Title.Size = UDim2.new(1, -20, 0, 20)
+    Title.Position = UDim2.new(0, 10, 0, 8)
     Title.BackgroundTransparency = 1
     Title.TextXAlignment = Enum.TextXAlignment.Left
     Title.TextYAlignment = Enum.TextYAlignment.Center
     Title.TextWrapped = true
-    Title.AutomaticSize = Enum.AutomaticSize.Y 
+    Title.AutomaticSize = Enum.AutomaticSize.Y
     Title.Parent = InnerFrame
 
-    
     local Body = Instance.new("TextLabel")
-    Body.Text = settings.text or "This is the body of the notification."
-    Body.TextColor3 = _G.Theme.Text
-    Body.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+    Body.Text = settings.text or ""
+    Body.TextColor3 = Color3.new(1, 1, 1) -- Pure White
+    Body.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.Bold, Enum.FontStyle.Normal)
     Body.TextSize = 12
-    Body.Size = UDim2.new(1, -10, 0, 30) 
-    Body.Position = UDim2.new(0, 5, 0, 25)
+    Body.Size = UDim2.new(1, -20, 0, 0)
+    Body.Position = UDim2.new(0, 10, 0, 30)
     Body.BackgroundTransparency = 1
     Body.TextXAlignment = Enum.TextXAlignment.Left
     Body.TextYAlignment = Enum.TextYAlignment.Top
-    Body.TextWrapped = true  
-    Body.AutomaticSize = Enum.AutomaticSize.Y  
+    Body.TextWrapped = true
+    Body.AutomaticSize = Enum.AutomaticSize.Y
     Body.Parent = InnerFrame
 
-   
+    -- Padding for bottom
+    local Padding = Instance.new("UIPadding")
+    Padding.PaddingTop = UDim.new(0, 8)
+    Padding.PaddingBottom = UDim.new(0, 8)
+    Padding.PaddingLeft = UDim.new(0, 10)
+    Padding.PaddingRight = UDim.new(0, 10)
+    Padding.Parent = InnerFrame
+
+    -- Animation Logic
     task.spawn(function()
-        wait(0.1) 
+        -- 1. Expand parent height
+        local contentHeight = 60 -- Default approx
+        game:GetService("TweenService"):Create(Notification, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+            Size = UDim2.new(1, 0, 0, contentHeight)
+        }):Play()
+
+        -- 2. Slide in InnerFrame
+        game:GetService("TweenService"):Create(InnerFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+            Position = UDim2.new(0, 0, 0, 0)
+        }):Play()
+
+        -- Wait for duration
+        local duration = settings.duration or 4
+        task.wait(duration)
+
+        -- 3. Fade out and Slide out
+        game:GetService("TweenService"):Create(InnerFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+            Position = UDim2.new(1.2, 0, 0, 0), -- Move further right
+            BackgroundTransparency = 1
+        }):Play()
         
-        local totalHeight = Title.TextBounds.Y + Body.TextBounds.Y + 10  
-        InnerFrame.Size = UDim2.new(1, 0, 0, totalHeight)  
-    end)
+        game:GetService("TweenService"):Create(InnerUIStroke, TweenInfo.new(0.4), { Transparency = 1 }):Play()
+        game:GetService("TweenService"):Create(Title, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+        game:GetService("TweenService"):Create(Body, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
 
-
-    task.spawn(function()
-       
-        local tweenIn = TweenService:Create(InnerFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-            Position = UDim2.new(0, 0, 0, 10 + NotificationContainer.Size.Y.Offset)
+        -- 4. Collapse parent height
+        task.wait(0.2)
+        local collapse = game:GetService("TweenService"):Create(Notification, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
+            Size = UDim2.new(1, 0, 0, 0)
         })
-        tweenIn:Play()
+        collapse:Play()
 
-        
-        local duration = settings.duration or 5  
-        wait(duration)
-
-        
-        local tweenOut = TweenService:Create(InnerFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
-            Position = UDim2.new(1, 310, 0, 10 + NotificationContainer.Size.Y.Offset) 
-        })
-        tweenOut:Play()
-
-        
-        tweenOut.Completed:Connect(function()
+        -- 5. Cleanup
+        collapse.Completed:Connect(function()
             Notification:Destroy()
         end)
+        
+        -- Backup cleanup
+        game:GetService("Debris"):AddItem(Notification, 1)
     end)
 end
 
@@ -3901,7 +3915,7 @@ local function create_mobile_button(name, position_y, color)
     
     local bg = Instance.new('Frame')
     bg.Size = UDim2.new(1, 0, 1, 0)
-    bg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    bg.BackgroundColor3 = Theme.Container
     bg.Parent = button
     
     local corner = Instance.new('UICorner')
@@ -3909,7 +3923,7 @@ local function create_mobile_button(name, position_y, color)
     corner.Parent = bg
     
     local stroke = Instance.new('UIStroke')
-    stroke.Color = color
+    stroke.Color = Theme.Accent
     stroke.Thickness = 1
     stroke.Transparency = 0.3
     stroke.Parent = bg
@@ -3918,9 +3932,9 @@ local function create_mobile_button(name, position_y, color)
     text.Size = UDim2.new(1, 0, 1, 0)
     text.BackgroundTransparency = 1
     text.Text = name
-    text.Font = Enum.Font.GothamBold
-    text.TextSize = 16
-    text.TextColor3 = Color3.fromRGB(255, 255, 255)
+    text.FontFace = Font.new('rbxasset://fonts/families/Michroma.json', Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    text.TextSize = 14
+    text.TextColor3 = Theme.Text
     text.ZIndex = 3
     text.Parent = button
     
@@ -3930,52 +3944,7 @@ local function create_mobile_button(name, position_y, color)
     return {gui = gui, button = button, text = text, bg = bg}
 end
 
-local function create_mobile_button(name, position_y, color)
-    local gui = Instance.new('ScreenGui')
-    gui.Name = 'Sigma' .. name .. 'Mobile'
-    gui.ResetOnSpawn = false
-    gui.IgnoreGuiInset = true
-    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    
-    local button = Instance.new('TextButton')
-    button.Size = UDim2.new(0, 140, 0, 50)
-    button.Position = UDim2.new(0.5, -70, position_y, 0)
-    button.BackgroundTransparency = 1
-    button.AnchorPoint = Vector2.new(0.5, 0)
-    button.Draggable = true
-    button.AutoButtonColor = false
-    button.ZIndex = 2
-    
-    local bg = Instance.new('Frame')
-    bg.Size = UDim2.new(1, 0, 1, 0)
-    bg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    bg.Parent = button
-    
-    local corner = Instance.new('UICorner')
-    corner.CornerRadius = UDim.new(0, 10)
-    corner.Parent = bg
-    
-    local stroke = Instance.new('UIStroke')
-    stroke.Color = color
-    stroke.Thickness = 1
-    stroke.Transparency = 0.3
-    stroke.Parent = bg
-    
-    local text = Instance.new('TextLabel')
-    text.Size = UDim2.new(1, 0, 1, 0)
-    text.BackgroundTransparency = 1
-    text.Text = name
-    text.Font = Enum.Font.GothamBold
-    text.TextSize = 16
-    text.TextColor3 = Color3.fromRGB(255, 255, 255)
-    text.ZIndex = 3
-    text.Parent = button
-    
-    button.Parent = gui
-    gui.Parent = CoreGui
-    
-    return {gui = gui, button = button, text = text, bg = bg}
-end
+
 
 local function destroy_mobile_gui(gui_data)
     if gui_data and gui_data.gui then
@@ -4124,10 +4093,10 @@ local triggerbot_module = rage:create_module({
                             
                             if System.__properties.__triggerbot_enabled then
                                 triggerbot_mobile.text.Text = "ON"
-                                triggerbot_mobile.text.TextColor3 = Color3.fromRGB(255, 100, 0)
+                                triggerbot_mobile.text.TextColor3 = Theme.Accent -- Cosmos Purple
                             else
                                 triggerbot_mobile.text.Text = "Trigger"
-                                triggerbot_mobile.text.TextColor3 = Color3.fromRGB(255, 255, 255)
+                                triggerbot_mobile.text.TextColor3 = Theme.Text -- Starlight
                             end
                             
                             if getgenv().TriggerbotNotify then
@@ -4179,18 +4148,18 @@ local function create_curve_selector_mobile()
     local main_frame = Instance.new('Frame')
     main_frame.Size = UDim2.new(0, 140, 0, 40)
     main_frame.Position = UDim2.new(0.5, -70, 0.12, 0)
-    main_frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    main_frame.BackgroundColor3 = Theme.Background
     main_frame.BorderSizePixel = 0
     main_frame.AnchorPoint = Vector2.new(0.5, 0)
     main_frame.ZIndex = 5
     main_frame.Parent = gui
     
     local main_corner = Instance.new('UICorner')
-    main_corner.CornerRadius = UDim.new(0, 8)
+    main_corner.CornerRadius = UDim.new(0, 10)
     main_corner.Parent = main_frame
     
     local main_stroke = Instance.new('UIStroke')
-    main_stroke.Color = Color3.fromRGB(60, 60, 60)
+    main_stroke.Color = Theme.Border
     main_stroke.Thickness = 1
     main_stroke.Parent = main_frame
 
@@ -4205,9 +4174,9 @@ local function create_curve_selector_mobile()
     header_text.Position = UDim2.new(0, 12, 0, 0)
     header_text.BackgroundTransparency = 1
     header_text.Text = "CURVE"
-    header_text.Font = Enum.Font.Gotham
-    header_text.TextSize = 11
-    header_text.TextColor3 = Color3.fromRGB(180, 180, 180)
+    header_text.FontFace = Font.new('rbxasset://fonts/families/Michroma.json', Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    header_text.TextSize = 12
+    header_text.TextColor3 = Theme.TextDim
     header_text.TextXAlignment = Enum.TextXAlignment.Left
     header_text.ZIndex = 7
     header_text.Parent = header
@@ -6113,14 +6082,14 @@ local ball_velocity = {
     __config = {
         gui_name = "BallStatsGui",
         colors = {
-            background = Color3.fromRGB(18, 18, 18),
-            container = Color3.fromRGB(28, 28, 28),
-            header = Color3.fromRGB(12, 12, 12),
-            text_primary = Color3.fromRGB(255, 255, 255),
-            text_secondary = Color3.fromRGB(170, 170, 170),
+            background = Theme.Background,
+            container = Theme.Container,
+            header = Theme.Container,
+            text_primary = Theme.Text,
+            text_secondary = Theme.TextDim,
             accent_green = Color3.fromRGB(34, 197, 94),
             accent_orange = Color3.fromRGB(249, 115, 22),
-            border = Color3.fromRGB(40, 40, 40)
+            border = Theme.Border
         }
     },
 
@@ -6154,99 +6123,104 @@ function ball_velocity.create_gui()
 
     local main_frame = Instance.new("Frame")
     main_frame.Name = "MainFrame"
-    main_frame.Size = UDim2.new(0, 180, 0, 95)
-    main_frame.Position = load_pos() or UDim2.new(0, 20, 0, 150)
-    main_frame.BackgroundColor3 = ball_velocity.__config.colors.background
+    main_frame.Size = UDim2.new(0, 0, 0, 44) -- Automatic Size
+    main_frame.AutomaticSize = Enum.AutomaticSize.X
+    main_frame.Position = load_pos() or UDim2.new(0.5, -100, 0.85, 0)
+    main_frame.BackgroundColor3 = Theme.Container
+    main_frame.BackgroundTransparency = 0.2 -- Glass effect
     main_frame.BorderSizePixel = 0
+    main_frame.Active = true -- For dragging
     main_frame.Parent = gui
 
-    ball_velocity.create_corner(10).Parent = main_frame
-    ball_velocity.create_stroke(1, ball_velocity.__config.colors.border).Parent = main_frame
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(1, 0) -- Pill shape
+    corner.Parent = main_frame
 
-    local header = Instance.new("Frame")
-    header.Name = "Header"
-    header.Size = UDim2.new(1, 0, 0, 26)
-    header.Position = UDim2.new(0, 0, 0, 0)
-    header.BackgroundColor3 = ball_velocity.__config.colors.header
-    header.BorderSizePixel = 0
-    header.Parent = main_frame
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 1.5
+    stroke.Color = Color3.new(1, 1, 1)
+    stroke.Parent = main_frame
 
-    ball_velocity.create_corner(10).Parent = header
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Theme.Accent),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 100)) -- Midnight Blue
+    }
+    gradient.Rotation = 45
+    gradient.Parent = stroke
 
-    local title = Instance.new("TextLabel")
-    title.Name = "Title"
-    title.Size = UDim2.new(1, -12, 1, 0)
-    title.Position = UDim2.new(0, 12, 0, 0)
-    title.BackgroundTransparency = 1
-    title.Text = "Ball Stats"
-    title.TextColor3 = ball_velocity.__config.colors.text_primary
-    title.TextSize = 13
-    title.Font = Enum.Font.GothamBold
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Parent = header
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Horizontal
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.VerticalAlignment = Enum.VerticalAlignment.Center
+    layout.Padding = UDim.new(0, 15)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Parent = main_frame
 
-    local content = Instance.new("Frame")
-    content.Name = "Content"
-    content.Size = UDim2.new(1, -18, 1, -34)
-    content.Position = UDim2.new(0, 9, 0, 30)
-    content.BackgroundTransparency = 1
-    content.Parent = main_frame
+    local padding = Instance.new("UIPadding")
+    padding.PaddingLeft = UDim.new(0, 20)
+    padding.PaddingRight = UDim.new(0, 20)
+    padding.Parent = main_frame
 
-    local current_label = Instance.new("TextLabel")
-    current_label.Name = "CurrentLabel"
-    current_label.Size = UDim2.new(1, 0, 0, 14)
-    current_label.Position = UDim2.new(0, 0, 0, 2)
-    current_label.BackgroundTransparency = 1
-    current_label.Text = "Current"
-    current_label.TextColor3 = ball_velocity.__config.colors.text_secondary
-    current_label.TextSize = 10
-    current_label.Font = Enum.Font.Gotham
-    current_label.TextXAlignment = Enum.TextXAlignment.Left
-    current_label.Parent = content
+    -- Helper to create stats group
+    local function create_stat_group(label_text, value_color, order)
+        local group = Instance.new("Frame")
+        group.BackgroundTransparency = 1
+        group.AutomaticSize = Enum.AutomaticSize.XY
+        group.LayoutOrder = order
+        group.Parent = main_frame
 
-    local current_value = Instance.new("TextLabel")
-    current_value.Name = "CurrentValue"
-    current_value.Size = UDim2.new(1, 0, 0, 20)
-    current_value.Position = UDim2.new(0, 0, 0, 14)
-    current_value.BackgroundTransparency = 1
-    current_value.Text = "0.0"
-    current_value.TextColor3 = ball_velocity.__config.colors.accent_green
-    current_value.TextSize = 16
-    current_value.Font = Enum.Font.GothamBold
-    current_value.TextXAlignment = Enum.TextXAlignment.Left
-    current_value.Parent = content
+        local g_layout = Instance.new("UIListLayout")
+        g_layout.FillDirection = Enum.FillDirection.Vertical
+        g_layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        g_layout.Padding = UDim.new(0, 2)
+        g_layout.Parent = group
 
-    local peak_label = Instance.new("TextLabel")
-    peak_label.Name = "PeakLabel"
-    peak_label.Size = UDim2.new(1, 0, 0, 14)
-    peak_label.Position = UDim2.new(0, 0, 0, 36)
-    peak_label.BackgroundTransparency = 1
-    peak_label.Text = "Peak"
-    peak_label.TextColor3 = ball_velocity.__config.colors.text_secondary
-    peak_label.TextSize = 10
-    peak_label.Font = Enum.Font.Gotham
-    peak_label.TextXAlignment = Enum.TextXAlignment.Left
-    peak_label.Parent = content
+        local label = Instance.new("TextLabel")
+        label.Text = label_text
+        label.TextColor3 = Theme.TextDim
+        label.FontFace = Font.new('rbxasset://fonts/families/Michroma.json', Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+        label.TextSize = 10
+        label.BackgroundTransparency = 1
+        label.AutomaticSize = Enum.AutomaticSize.XY
+        label.Parent = group
 
-    local peak_value = Instance.new("TextLabel")
-    peak_value.Name = "PeakValue"
-    peak_value.Size = UDim2.new(1, 0, 0, 20)
-    peak_value.Position = UDim2.new(0, 0, 0, 50)
-    peak_value.BackgroundTransparency = 1
-    peak_value.Text = "0.0"
-    peak_value.TextColor3 = ball_velocity.__config.colors.accent_orange
-    peak_value.TextSize = 16
-    peak_value.Font = Enum.Font.GothamBold
-    peak_value.TextXAlignment = Enum.TextXAlignment.Left
-    peak_value.Parent = content
+        local value = Instance.new("TextLabel")
+        value.Text = "0.0"
+        value.TextColor3 = value_color
+        value.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+        value.TextSize = 16
+        value.BackgroundTransparency = 1
+        value.AutomaticSize = Enum.AutomaticSize.XY
+        value.Parent = group
+        
+        -- Glow effect
+        local glow = Instance.new("UIStroke")
+        glow.Thickness = 2
+        glow.Transparency = 0.8
+        glow.Color = value_color
+        glow.Parent = value
 
+        return value
+    end
 
+    local current_value = create_stat_group("SPEED", ball_velocity.__config.colors.accent_green, 1)
+
+    -- Separator
+    local sep = Instance.new("Frame")
+    sep.Size = UDim2.new(0, 1, 0, 24)
+    sep.BackgroundColor3 = Theme.Border
+    sep.BackgroundTransparency = 0.5
+    sep.LayoutOrder = 2
+    sep.Parent = main_frame
+
+    local peak_value = create_stat_group("PEAK", ball_velocity.__config.colors.accent_orange, 3)
+
+    -- Dragging Logic
     local drag_start, start_pos
-
-    header.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-            or input.UserInputType == Enum.UserInputType.Touch then
-
+    
+    main_frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             ball_velocity.__state.is_dragging = true
             drag_start = input.Position
             start_pos = main_frame.Position
@@ -6254,24 +6228,17 @@ function ball_velocity.create_gui()
     end)
 
     UserInputService.InputChanged:Connect(function(input)
-        if ball_velocity.__state.is_dragging and
-            (input.UserInputType == Enum.UserInputType.MouseMovement
-            or input.UserInputType == Enum.UserInputType.Touch) then
-
+        if ball_velocity.__state.is_dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - drag_start
-            local newpos = UDim2.new(
+            main_frame.Position = UDim2.new(
                 start_pos.X.Scale, start_pos.X.Offset + delta.X,
                 start_pos.Y.Scale, start_pos.Y.Offset + delta.Y
             )
-
-            main_frame.Position = newpos
         end
     end)
 
     UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-            or input.UserInputType == Enum.UserInputType.Touch then
-
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             ball_velocity.__state.is_dragging = false
             save_pos(main_frame.Position)
         end
