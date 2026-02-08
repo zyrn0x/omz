@@ -1,4 +1,4 @@
---UI fix
+--UI fix 2
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -431,13 +431,23 @@ function Library.new()
 end
 
 
+-- Create ScreenGui for notifications if it doesn't exist
+local NotificationScreenGui = CoreGui:FindFirstChild("SillyNotifications")
+if not NotificationScreenGui then
+    NotificationScreenGui = Instance.new("ScreenGui")
+    NotificationScreenGui.Name = "SillyNotifications"
+    NotificationScreenGui.ResetOnSpawn = false
+    NotificationScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    NotificationScreenGui.Parent = CoreGui
+end
+
 local NotificationContainer = Instance.new("Frame")
-NotificationContainer.Name = "RobloxCoreGuis"
+NotificationContainer.Name = "NotificationContainer"
 NotificationContainer.Size = UDim2.new(0, 300, 0, 0)  
-NotificationContainer.Position = UDim2.new(0.8, 0, 0, 10)  
+NotificationContainer.Position = UDim2.new(1, -310, 0, 10)  -- Right side of screen
 NotificationContainer.BackgroundTransparency = 1
-NotificationContainer.ClipsDescendants = false;
-NotificationContainer.Parent = game:GetService("CoreGui").RobloxGui:FindFirstChild("RobloxCoreGuis") or Instance.new("ScreenGui", game:GetService("CoreGui").RobloxGui)
+NotificationContainer.ClipsDescendants = false
+NotificationContainer.Parent = NotificationScreenGui
 NotificationContainer.AutomaticSize = Enum.AutomaticSize.Y
 
 
@@ -464,7 +474,7 @@ function Library.SendNotification(settings)
     InnerFrame.Size = UDim2.new(1, 0, 0, 0) -- Automatic size will handle this
     InnerFrame.Position = UDim2.new(1, 0, 0, 0) -- Start off-screen (right)
     InnerFrame.BackgroundColor3 = _G.Theme.Container
-    InnerFrame.BackgroundTransparency = 1
+    InnerFrame.BackgroundTransparency = 0.2  -- Semi-transparent so box is visible
     InnerFrame.BorderSizePixel = 0
     InnerFrame.Name = "InnerFrame"
     InnerFrame.AutomaticSize = Enum.AutomaticSize.Y
@@ -472,12 +482,12 @@ function Library.SendNotification(settings)
 
     local InnerUIStroke = Instance.new("UIStroke")
     InnerUIStroke.Color = _G.Theme.Border
-    InnerUIStroke.LinkToEnd = true
+    InnerUIStroke.Thickness = 2
     InnerUIStroke.Transparency = 0
     InnerUIStroke.Parent = InnerFrame
 
     local InnerUICorner = Instance.new("UICorner")
-    InnerUICorner.CornerRadius = UDim.new(0, 6)
+    InnerUICorner.CornerRadius = UDim.new(0, 8)
     InnerUICorner.Parent = InnerFrame
 
     local Title = Instance.new("TextLabel")
@@ -8397,11 +8407,9 @@ end
 
 main:load()
 
-local StarterGui = game:GetService('StarterGui')
-
-StarterGui:SetCore('SendNotification', {
-    Title = 'BETA',
-    Text = 'This Version is on BETA',
-    Icon = 'rbxassetid://123456789',
-    Duration = 10,
+-- Test notification to verify the system works
+Library.SendNotification({
+    title = "Silly Loaded ✓",
+    text = "Script loaded successfully!",
+    duration = 5
 })
