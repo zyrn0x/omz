@@ -1,4 +1,4 @@
---immmo
+--wow
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -17,6 +17,19 @@ getgenv().GG = {
         Error = "Error",
         Success = "Success"
     }
+}
+
+-- === COSMOS VIOLET THEME ===
+getgenv().Theme = {
+    Background = Color3.fromRGB(15, 10, 25),      -- Deep Void
+    Container = Color3.fromRGB(20, 15, 30),       -- Slightly lighter void
+    Accent = Color3.fromRGB(160, 30, 255),        -- Cosmos Purple
+    AccentDim = Color3.fromRGB(90, 20, 140),      -- Dim Purple
+    Text = Color3.fromRGB(245, 240, 255),         -- Starlight
+    TextDim = Color3.fromRGB(180, 170, 200),      -- Faded Starlight
+    Border = Color3.fromRGB(138, 43, 226),        -- Blue Violet
+    Gradient1 = Color3.fromRGB(160, 30, 255),
+    Gradient2 = Color3.fromRGB(25, 25, 112)       -- Midnight Blue
 }
 
 local SelectedLanguage = GG.Language
@@ -453,14 +466,18 @@ function Library.SendNotification(settings)
     local InnerFrame = Instance.new("Frame")
     InnerFrame.Size = UDim2.new(1, 0, 0, 60)  
     InnerFrame.Position = UDim2.new(0, 0, 0, 0)  
-    InnerFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    InnerFrame.BackgroundTransparency = 1
+    InnerFrame.BackgroundColor3 = _G.Theme.Container
+    InnerFrame.BackgroundTransparency = 0.1
     InnerFrame.BorderSizePixel = 0
     InnerFrame.Name = "InnerFrame"
     InnerFrame.Parent = Notification
     InnerFrame.AutomaticSize = Enum.AutomaticSize.Y  
 
-    
+    local InnerUIStroke = Instance.new("UIStroke")
+    InnerUIStroke.Color = _G.Theme.Border
+    InnerUIStroke.LinkToEnd = true
+    InnerUIStroke.Parent = InnerFrame
+
     local InnerUICorner = Instance.new("UICorner")
     InnerUICorner.CornerRadius = UDim.new(0, 4)
     InnerUICorner.Parent = InnerFrame
@@ -468,8 +485,8 @@ function Library.SendNotification(settings)
    
     local Title = Instance.new("TextLabel")
     Title.Text = settings.title or "Notification Title"
-    Title.TextColor3 = Color3.fromRGB(255, 215, 0)
-    Title.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
+    Title.TextColor3 = _G.Theme.Accent
+    Title.FontFace = Font.new('rbxasset://fonts/families/Michroma.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
     Title.TextSize = 14
     Title.Size = UDim2.new(1, -10, 0, 20)  
     Title.Position = UDim2.new(0, 5, 0, 5)
@@ -483,7 +500,7 @@ function Library.SendNotification(settings)
     
     local Body = Instance.new("TextLabel")
     Body.Text = settings.text or "This is the body of the notification."
-    Body.TextColor3 = Color3.fromRGB(255, 215, 0)
+    Body.TextColor3 = _G.Theme.Text
     Body.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
     Body.TextSize = 12
     Body.Size = UDim2.new(1, -10, 0, 30) 
@@ -590,11 +607,11 @@ function Library:create_ui()
     
     local Container = Instance.new('Frame')
     Container.ClipsDescendants = true
-    Container.BorderColor3 = Color3.fromRGB(255, 215, 0)
+    Container.BorderColor3 = _G.Theme.Accent
     Container.AnchorPoint = Vector2.new(0.5, 0.5)
     Container.Name = 'Container'
     Container.BackgroundTransparency = 0.05
-    Container.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    Container.BackgroundColor3 = _G.Theme.Container
     Container.Position = UDim2.new(0.5, 0, 0.5, 0)
     Container.Size = UDim2.new(0, 0, 0, 0)
     Container.Active = true
@@ -606,7 +623,7 @@ function Library:create_ui()
     UICorner.Parent = Container
     
     local UIStroke = Instance.new('UIStroke')
-    UIStroke.Color = Color3.fromRGB(255, 215, 0)
+    UIStroke.Color = _G.Theme.Border
     UIStroke.Transparency = 0.5
     UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     UIStroke.Parent = Container
@@ -614,7 +631,7 @@ function Library:create_ui()
     local Handler = Instance.new('Frame')
     Handler.BackgroundTransparency = 1
     Handler.Name = 'Handler'
-    Handler.BorderColor3 = Color3.fromRGB(255, 215, 0)
+    Handler.BorderColor3 = _G.Theme.Accent
     Handler.Size = UDim2.new(0, 698, 0, 479)
     Handler.BorderSizePixel = 0
     Handler.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -629,7 +646,7 @@ function Library:create_ui()
     Tabs.AutomaticCanvasSize = Enum.AutomaticSize.XY
     Tabs.BackgroundTransparency = 1
     Tabs.Position = UDim2.new(0.026097271591424942, 0, 0.1111111119389534, 0)
-    Tabs.BorderColor3 = Color3.fromRGB(255, 215, 0)
+    Tabs.BorderColor3 = _G.Theme.Accent
     Tabs.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     Tabs.BorderSizePixel = 0
     Tabs.CanvasSize = UDim2.new(0, 0, 0.5, 0)
@@ -641,27 +658,23 @@ function Library:create_ui()
     UIListLayout.Parent = Tabs
     
     local ClientName = Instance.new('TextLabel')
-    ClientName.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-    ClientName.TextColor3 = Color3.fromRGB(255, 215, 0)
-    ClientName.TextTransparency = 0.20000000298023224
-	local ClientName = Instance.new('TextLabel')
-	ClientName.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-	ClientName.TextColor3 = Color3.fromRGB(255, 255, 0)
-	ClientName.TextTransparency = 0.2
-	ClientName.Name = 'ClientName'
-	ClientName.Size = UDim2.new(0, 150, 0, 20)
-	ClientName.AnchorPoint = Vector2.new(0, 0.5)
+    ClientName.FontFace = Font.new('rbxasset://fonts/families/Michroma.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
+    ClientName.TextColor3 = _G.Theme.Accent
+    ClientName.TextTransparency = 0
+    ClientName.Name = 'ClientName'
+    ClientName.Size = UDim2.new(0, 150, 0, 20)
+    ClientName.AnchorPoint = Vector2.new(0, 0.5)
 
-	local spinChars = {"/", "-", "\\", "|"}
-	local i = 1
+    local spinChars = {"/", "-", "\\", "|"}
+    local i = 1
 
-task.spawn(function()
-    while true do
-        ClientName.Text = " Silly " .. spinChars[i] .. " " .. os.date("%I:%M:%S %p")
-        i = i % #spinChars + 1
-        task.wait(0.2)
-    end
-end)
+    task.spawn(function()
+        while true do
+            ClientName.Text = " Silly " .. spinChars[i] .. " " .. os.date("%I:%M:%S %p")
+            i = i % #spinChars + 1
+            task.wait(0.2)
+        end
+    end)
 
     ClientName.Position = UDim2.new(0.0560000017285347, 0, 0.054999999701976776, 0)
     ClientName.BackgroundTransparency = 1
@@ -674,8 +687,8 @@ end)
     
     local UIGradient = Instance.new('UIGradient')
     UIGradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 215, 0)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(218, 165, 32))
+        ColorSequenceKeypoint.new(0, _G.Theme.Gradient1),
+        ColorSequenceKeypoint.new(1, _G.Theme.Gradient2)
     }
     UIGradient.Parent = ClientName
     
@@ -685,7 +698,7 @@ end)
     Pin.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Pin.Size = UDim2.new(0, 2, 0, 16)
     Pin.BorderSizePixel = 0
-    Pin.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+    Pin.BackgroundColor3 = _G.Theme.Accent
     Pin.Parent = Handler
     
     local UICorner = Instance.new('UICorner')
@@ -693,7 +706,7 @@ end)
     UICorner.Parent = Pin
     
     local Icon = Instance.new('ImageLabel')
-    Icon.ImageColor3 = Color3.fromRGB(255, 215, 0)
+    Icon.ImageColor3 = _G.Theme.Accent
     Icon.ScaleType = Enum.ScaleType.Fit
     Icon.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Icon.AnchorPoint = Vector2.new(0, 0.5)
@@ -710,10 +723,10 @@ end)
     Divider.Name = 'Divider'
     Divider.BackgroundTransparency = 0.4
     Divider.Position = UDim2.new(0.23499999940395355, 0, 0, 0)
-    Divider.BorderColor3 = Color3.fromRGB(255, 215, 0)
+    Divider.BorderColor3 = _G.Theme.Accent
     Divider.Size = UDim2.new(0, 1, 0, 479)
     Divider.BorderSizePixel = 0
-    Divider.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+    Divider.BackgroundColor3 = _G.Theme.Accent
     Divider.Parent = Handler
     
     local Sections = Instance.new('Folder')
@@ -723,7 +736,7 @@ end)
     local Minimize = Instance.new('TextButton')
     Minimize.FontFace = Font.new('rbxasset://fonts/families/SourceSansPro.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
     Minimize.TextColor3 = Color3.fromRGB(0, 0, 0)
-    Minimize.BorderColor3 = Color3.fromRGB(255, 215, 0)
+    Minimize.BorderColor3 = _G.Theme.Accent
     Minimize.Text = ''
     Minimize.AutoButtonColor = false
     Minimize.Name = 'Minimize'
@@ -862,8 +875,8 @@ end)
                     }):Play()
 
                     TweenService:Create(object.TextLabel, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                        TextTransparency = 0.2,
-                        TextColor3 = Color3.fromRGB(255, 215, 0)
+                        TextTransparency = 0,
+                        TextColor3 = _G.Theme.Accent
                     }):Play()
 
                     TweenService:Create(object.TextLabel.UIGradient, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
@@ -871,8 +884,8 @@ end)
                     }):Play()
 
                     TweenService:Create(object.Icon, TweenInfo.new(3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                        ImageTransparency = 0.2,
-                        ImageColor3 = Color3.fromRGB(255, 215, 0)
+                        ImageTransparency = 0,
+                        ImageColor3 = _G.Theme.Accent
                     }):Play()
                 end
 
@@ -886,7 +899,7 @@ end)
                 
                 TweenService:Create(object.TextLabel, TweenInfo.new(2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
                     TextTransparency = 0.7,
-                    TextColor3 = Color3.fromRGB(255, 255, 255)
+                    TextColor3 = _G.Theme.TextDim
                 }):Play()
 
                 TweenService:Create(object.TextLabel.UIGradient, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
@@ -894,8 +907,8 @@ end)
                 }):Play()
 
                 TweenService:Create(object.Icon, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                    ImageTransparency = 0.8,
-                    ImageColor3 = Color3.fromRGB(255, 255, 255)
+                    ImageTransparency = 0.5,
+                    ImageColor3 = _G.Theme.TextDim
                 }):Play()
             end
         end
@@ -920,7 +933,7 @@ end)
 
         local font_params = Instance.new('GetTextBoundsParams')
         font_params.Text = title
-        font_params.Font = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
+        font_params.Font = Font.new('rbxasset://fonts/families/Michroma.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
         font_params.Size = 13
         font_params.Width = 10000
 
@@ -929,8 +942,8 @@ end)
 
         local Tab = Instance.new('TextButton')
         Tab.FontFace = Font.new('rbxasset://fonts/families/SourceSansPro.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-        Tab.TextColor3 = Color3.fromRGB(0, 0, 0)
-        Tab.BorderColor3 = Color3.fromRGB(255, 215, 0)
+        Tab.TextColor3 = _G.Theme.Text
+        Tab.BorderColor3 = _G.Theme.Accent
         Tab.Text = ''
         Tab.AutoButtonColor = false
         Tab.BackgroundTransparency = 1
@@ -938,7 +951,7 @@ end)
         Tab.Size = UDim2.new(0, 129, 0, 38)
         Tab.BorderSizePixel = 0
         Tab.TextSize = 14
-        Tab.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Pure black background for tabs
+        Tab.BackgroundColor3 = _G.Theme.Background 
         Tab.Parent = Tabs
         Tab.LayoutOrder = self._tab
         
@@ -947,9 +960,9 @@ end)
         UICorner.Parent = Tab
         
         local TextLabel = Instance.new('TextLabel')
-        TextLabel.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-        TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        TextLabel.TextTransparency = 0.7 
+        TextLabel.FontFace = Font.new('rbxasset://fonts/families/Michroma.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
+        TextLabel.TextColor3 = _G.Theme.Text
+        TextLabel.TextTransparency = 0.5 
         TextLabel.Text = title
         TextLabel.Size = UDim2.new(0, font_size.X, 0, 16)
         TextLabel.AnchorPoint = Vector2.new(0, 0.5)
@@ -964,15 +977,14 @@ end)
         
         local UIGradient = Instance.new('UIGradient')
         UIGradient.Color = ColorSequence.new{
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-            ColorSequenceKeypoint.new(0.7, Color3.fromRGB(255, 215, 0)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0))
+            ColorSequenceKeypoint.new(0, _G.Theme.Gradient1),
+            ColorSequenceKeypoint.new(1, _G.Theme.Gradient2)
         }
         UIGradient.Parent = TextLabel
         
         local Icon = Instance.new('ImageLabel')
         Icon.ScaleType = Enum.ScaleType.Fit
-        Icon.ImageTransparency = 0.800000011920929
+        Icon.ImageTransparency = 0.5
         Icon.BorderColor3 = Color3.fromRGB(0, 0, 0)
         Icon.AnchorPoint = Vector2.new(0, 0.5)
         Icon.BackgroundTransparency = 1
@@ -1068,13 +1080,13 @@ end)
 
             local Module = Instance.new('Frame')
             Module.ClipsDescendants = true
-            Module.BorderColor3 = Color3.fromRGB(255, 215, 0)
+            Module.BorderColor3 = _G.Theme.Border -- Theme Border
             Module.BackgroundTransparency = 0.2
             Module.Position = UDim2.new(0.004115226212888956, 0, 0, 0)
             Module.Name = 'Module'
             Module.Size = UDim2.new(0, 241, 0, 93)
             Module.BorderSizePixel = 0
-            Module.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+            Module.BackgroundColor3 = _G.Theme.Container -- Theme Container
             Module.Parent = settings.section
 
             local UIListLayout = Instance.new('UIListLayout')
@@ -1086,7 +1098,7 @@ end)
             UICorner.Parent = Module
             
             local UIStroke = Instance.new('UIStroke')
-            UIStroke.Color = Color3.fromRGB(255, 215, 0) -- Gold border for modules
+            UIStroke.Color = _G.Theme.Border -- Theme Border
             UIStroke.Transparency = 0.5
             UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
             UIStroke.Parent = Module
@@ -1106,9 +1118,9 @@ end)
             Header.Parent = Module
             
             local Icon = Instance.new('ImageLabel')
-            Icon.ImageColor3 = Color3.fromRGB(255, 215, 0)
+            Icon.ImageColor3 = _G.Theme.Accent -- Theme Accent
             Icon.ScaleType = Enum.ScaleType.Fit
-            Icon.ImageTransparency = 0.699999988079071
+            Icon.ImageTransparency = 0.5
             Icon.BorderColor3 = Color3.fromRGB(0, 0, 0)
             Icon.AnchorPoint = Vector2.new(0, 0.5)
             Icon.Image = 'rbxassetid://79095934438045'
@@ -1121,9 +1133,9 @@ end)
             Icon.Parent = Header
             
             local ModuleName = Instance.new('TextLabel')
-            ModuleName.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-            ModuleName.TextColor3 = Color3.fromRGB(255, 215, 0)
-            ModuleName.TextTransparency = 0.20000000298023224
+            ModuleName.FontFace = Font.new('rbxasset://fonts/families/Michroma.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal) -- Michroma
+            ModuleName.TextColor3 = _G.Theme.Accent -- Theme Accent
+            ModuleName.TextTransparency = 0
             if not settings.rich then
                 ModuleName.Text = settings.title or "Skibidi"
             else
@@ -1144,8 +1156,8 @@ end)
             
             local Description = Instance.new('TextLabel')
             Description.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-            Description.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold description
-            Description.TextTransparency = 0.699999988079071
+            Description.TextColor3 = _G.Theme.TextDim -- Theme TextDim
+            Description.TextTransparency = 0.2
             Description.Text = settings.description
             Description.Name = 'Description'
             Description.Size = UDim2.new(0, 205, 0, 13)
@@ -1166,7 +1178,7 @@ end)
             Toggle.BorderColor3 = Color3.fromRGB(0, 0, 0)
             Toggle.Size = UDim2.new(0, 25, 0, 12)
             Toggle.BorderSizePixel = 0
-            Toggle.BackgroundColor3 = Color3.fromRGB(128, 51, 0)
+            Toggle.BackgroundColor3 = _G.Theme.AccentDim -- Theme AccentDim
             Toggle.Parent = Header
             
             local UICorner = Instance.new('UICorner')
@@ -1181,7 +1193,7 @@ end)
             Circle.Name = 'Circle'
             Circle.Size = UDim2.new(0, 12, 0, 12)
             Circle.BorderSizePixel = 0
-            Circle.BackgroundColor3 = Color3.fromRGB(128, 51, 0)
+            Circle.BackgroundColor3 = _G.Theme.AccentDim -- Theme AccentDim
             Circle.Parent = Toggle
             
             local UICorner = Instance.new('UICorner')
@@ -1195,7 +1207,7 @@ end)
             Keybind.BorderColor3 = Color3.fromRGB(0, 0, 0)
             Keybind.Size = UDim2.new(0, 33, 0, 15)
             Keybind.BorderSizePixel = 0
-            Keybind.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+            Keybind.BackgroundColor3 = _G.Theme.Accent -- Theme Accent
             Keybind.Parent = Header
             
             local UICorner = Instance.new('UICorner')
@@ -1225,7 +1237,7 @@ end)
             Divider.Name = 'Divider'
             Divider.Size = UDim2.new(0, 241, 0, 1)
             Divider.BorderSizePixel = 0
-            Divider.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+            Divider.BackgroundColor3 = _G.Theme.Accent -- Theme Accent
             Divider.Parent = Header
             
             local Divider = Instance.new('Frame')
@@ -1236,14 +1248,14 @@ end)
             Divider.Name = 'Divider'
             Divider.Size = UDim2.new(0, 241, 0, 1)
             Divider.BorderSizePixel = 0
-            Divider.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+            Divider.BackgroundColor3 = _G.Theme.Accent
             Divider.Parent = Header
             
             local Options = Instance.new('Frame')
             Options.Name = 'Options'
             Options.BackgroundTransparency = 1
             Options.Position = UDim2.new(0, 0, 1, 0)
-            Options.BorderColor3 = Color3.fromRGB(255, 215, 0)
+            Options.BorderColor3 = _G.Theme.Accent
             Options.Size = UDim2.new(0, 241, 0, 8)
             Options.BorderSizePixel = 0
             Options.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -1268,7 +1280,7 @@ end)
                     }):Play()
 
                     TweenService:Create(Toggle, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                        BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+                        BackgroundColor3 = _G.Theme.Accent -- Theme Accent
                     }):Play()
 
                     TweenService:Create(Circle, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
@@ -1285,7 +1297,7 @@ end)
                     }):Play()
 
                     TweenService:Create(Circle, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                        BackgroundColor3 = Color3.fromRGB(255, 215, 0),
+                        BackgroundColor3 = _G.Theme.Accent,
                         Position = UDim2.fromScale(0, 0.5)
                     }):Play()
                 end
@@ -1338,7 +1350,7 @@ end)
                 ModuleManager._state = true
                 settings.callback(ModuleManager._state)
 
-                Toggle.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+                Toggle.BackgroundColor3 = _G.Theme.Accent -- Theme Accent
                 Circle.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
                 Circle.Position = UDim2.fromScale(0.53, 0.5)
             end
@@ -1440,8 +1452,8 @@ end)
             
                 
                 local Paragraph = Instance.new('Frame')
-                Paragraph.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-                Paragraph.BackgroundTransparency = 0.3
+                Paragraph.BackgroundColor3 = _G.Theme.Container
+                Paragraph.BackgroundTransparency = 0.2
                 Paragraph.Size = UDim2.new(0, 207, 0, 30) 
                 Paragraph.BorderSizePixel = 0
                 Paragraph.Name = "Paragraph"
@@ -1452,11 +1464,15 @@ end)
                 local UICorner = Instance.new('UICorner')
                 UICorner.CornerRadius = UDim.new(0, 4)
                 UICorner.Parent = Paragraph
-            
+                
+                local UIStroke = Instance.new('UIStroke')
+                UIStroke.Color = _G.Theme.Border
+                UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+                UIStroke.Parent = Paragraph
                 
                 local Title = Instance.new('TextLabel')
-                Title.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-                Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+                Title.FontFace = Font.new('rbxasset://fonts/families/Michroma.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
+                Title.TextColor3 = _G.Theme.Accent
                 Title.Text = settings.title or "Title"
                 Title.Size = UDim2.new(1, -10, 0, 20)
                 Title.Position = UDim2.new(0, 5, 0, 5)
@@ -1470,7 +1486,7 @@ end)
                
                 local Body = Instance.new('TextLabel')
                 Body.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-                Body.TextColor3 = Color3.fromRGB(255, 215, 0)
+                Body.TextColor3 = _G.Theme.TextDim
                 
                 if not settings.rich then
                     Body.Text = settings.text or "Skibidi"
@@ -1491,14 +1507,14 @@ end)
             
                 
                 Paragraph.MouseEnter:Connect(function()
-                    TweenService:Create(Paragraph, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                        BackgroundColor3 = Color3.fromRGB(40, 40, 0)
+                    TweenService:Create(UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                        Color = _G.Theme.Accent
                     }):Play()
                 end)
             
                 Paragraph.MouseLeave:Connect(function()
-                    TweenService:Create(Paragraph, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                        BackgroundColor3 = Color3.fromRGB(40, 40, 0)
+                    TweenService:Create(UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+                        Color = _G.Theme.Border
                     }):Play()
                 end)
 
@@ -1524,7 +1540,7 @@ end)
             
               
                 local TextFrame = Instance.new('Frame')
-                TextFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+                TextFrame.BackgroundColor3 = _G.Theme.Container
                 TextFrame.BackgroundTransparency = 0.3
                 TextFrame.Size = UDim2.new(0, 207, 0, settings.CustomYSize)
                 TextFrame.BorderSizePixel = 0
@@ -1540,7 +1556,7 @@ end)
                 
                 local Body = Instance.new('TextLabel')
                 Body.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-                Body.TextColor3 = Color3.fromRGB(255, 215, 0)
+                Body.TextColor3 = _G.Theme.Text
             
                 if not settings.rich then
                     Body.Text = settings.text or "Skibidi" 
@@ -1562,13 +1578,13 @@ end)
                
                 TextFrame.MouseEnter:Connect(function()
                     TweenService:Create(TextFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                        BackgroundColor3 = Color3.fromRGB(40, 40, 0)
+                        BackgroundColor3 = _G.Theme.AccentDim
                     }):Play()
                 end)
             
                 TextFrame.MouseLeave:Connect(function()
                     TweenService:Create(TextFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                        BackgroundColor3 = Color3.fromRGB(40, 40, 0)
+                        BackgroundColor3 = _G.Theme.Container
                     }):Play()
                 end)
 
@@ -1604,7 +1620,7 @@ end)
             
                 local Label = Instance.new('TextLabel')
                 Label.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-                Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+                Label.TextColor3 = _G.Theme.Text
                 Label.TextTransparency = 0.2
                 Label.Text = settings.title or "Enter text"
                 Label.Size = UDim2.new(0, 207, 0, 13)
@@ -1618,17 +1634,18 @@ end)
                 Label.LayoutOrder = LayoutOrderModule
             
                 local Textbox = Instance.new('TextBox')
-                Textbox.FontFace = Font.new('rbxasset://fonts/families/SourceSansPro.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-                Textbox.TextColor3 = Color3.fromRGB(255, 215, 0)
-                Textbox.BorderColor3 = Color3.fromRGB(255, 215, 0)
+                Textbox.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+                Textbox.TextColor3 = _G.Theme.Text
+                Textbox.BorderColor3 = _G.Theme.Accent
                 Textbox.PlaceholderText = settings.placeholder or "Enter text..."
+                Textbox.PlaceholderColor3 = _G.Theme.TextDim
                 Textbox.Text = Library._config._flags[settings.flag] or ""
                 Textbox.Name = 'Textbox'
                 Textbox.Size = UDim2.new(0, 207, 0, 15)
                 Textbox.BorderSizePixel = 0
                 Textbox.TextSize = 10
-                Textbox.BackgroundColor3 = Color3.fromRGB(255, 215, 0) -- Gold background for textbox
-                Textbox.BackgroundTransparency = 0.9
+                Textbox.BackgroundColor3 = _G.Theme.Container
+                Textbox.BackgroundTransparency = 0.2
                 Textbox.ClearTextOnFocus = false
                 Textbox.Parent = Options
                 Textbox.LayoutOrder = LayoutOrderModule
@@ -1671,8 +1688,8 @@ end)
             
                 local Checkbox = Instance.new("TextButton")
                 Checkbox.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-                Checkbox.TextColor3 = Color3.fromRGB(0, 0, 0)
-                Checkbox.BorderColor3 = Color3.fromRGB(255, 215, 0)
+                Checkbox.TextColor3 = _G.Theme.Text
+                Checkbox.BorderColor3 = _G.Theme.Accent
                 Checkbox.Text = ""
                 Checkbox.AutoButtonColor = false
                 Checkbox.BackgroundTransparency = 1
@@ -1680,7 +1697,7 @@ end)
                 Checkbox.Size = UDim2.new(0, 207, 0, 15)
                 Checkbox.BorderSizePixel = 0
                 Checkbox.TextSize = 14
-                Checkbox.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Black background for checkbox row
+                Checkbox.BackgroundColor3 = _G.Theme.Container
                 Checkbox.Parent = Options
                 Checkbox.LayoutOrder = LayoutOrderModule
             
@@ -1693,7 +1710,7 @@ end)
                     TitleLabel.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
                     TitleLabel.TextSize = 11
                 end
-                TitleLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold title for checkbox
+                TitleLabel.TextColor3 = _G.Theme.TextDim
                 TitleLabel.TextTransparency = 0.2
                 TitleLabel.Text = settings.title or "Skibidi"
                 TitleLabel.Size = UDim2.new(0, 142, 0, 13)
@@ -1708,7 +1725,7 @@ end)
                 KeybindBox.Size = UDim2.fromOffset(14, 14)
                 KeybindBox.Position = UDim2.new(1, -35, 0.5, 0)
                 KeybindBox.AnchorPoint = Vector2.new(0, 0.5)
-                KeybindBox.BackgroundColor3 = Color3.fromRGB(255, 215, 0) -- Gold keybind box
+                KeybindBox.BackgroundColor3 = _G.Theme.Accent
                 KeybindBox.BorderSizePixel = 0
                 KeybindBox.Parent = Checkbox
             
@@ -1720,7 +1737,7 @@ end)
                 KeybindLabel.Name = "KeybindLabel"
                 KeybindLabel.Size = UDim2.new(1, 0, 1, 0)
                 KeybindLabel.BackgroundTransparency = 1
-                KeybindLabel.TextColor3 = Color3.fromRGB(0, 0, 0) -- Black text on gold box
+                KeybindLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
                 KeybindLabel.TextScaled = false
                 KeybindLabel.TextSize = 10
                 KeybindLabel.Font = Enum.Font.SourceSans
@@ -1730,14 +1747,14 @@ end)
                 KeybindLabel.Parent = KeybindBox
             
                 local Box = Instance.new("Frame")
-                Box.BorderColor3 = Color3.fromRGB(255, 215, 0)
+                Box.BorderColor3 = _G.Theme.Accent
                 Box.AnchorPoint = Vector2.new(1, 0.5)
                 Box.BackgroundTransparency = 0.9
                 Box.Position = UDim2.new(1, 0, 0.5, 0)
                 Box.Name = "Box"
                 Box.Size = UDim2.new(0, 15, 0, 15)
                 Box.BorderSizePixel = 0
-                Box.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+                Box.BackgroundColor3 = _G.Theme.Accent
                 Box.Parent = Checkbox
             
                 local BoxCorner = Instance.new("UICorner")
@@ -1751,7 +1768,7 @@ end)
                 Fill.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 Fill.Name = "Fill"
                 Fill.BorderSizePixel = 0
-                Fill.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Black fill for active checkbox (on gold box)
+                Fill.BackgroundColor3 = _G.Theme.Text
                 Fill.Parent = Box
             
                 local FillCorner = Instance.new("UICorner")
@@ -1872,7 +1889,7 @@ end)
                 if settings and settings.showtopic then
                     local TextLabel = Instance.new('TextLabel')
                     TextLabel.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-                    TextLabel.TextColor3 = Color3.fromRGB(255, 215, 0) 
+                    TextLabel.TextColor3 = _G.Theme.Accent 
                     TextLabel.TextTransparency = 0
                     TextLabel.Text = settings.title
                     TextLabel.Size = UDim2.new(0, 153, 0, 13)
@@ -1893,7 +1910,7 @@ end)
                    
                     local Divider = Instance.new('Frame')
                     Divider.Size = UDim2.new(1, 0, 0, dividerHeight)
-                    Divider.BackgroundColor3 = Color3.fromRGB(255, 215, 0) 
+                    Divider.BackgroundColor3 = _G.Theme.Accent 
                     Divider.BorderSizePixel = 0
                     Divider.Name = 'Divider'
                     Divider.Parent = OuterFrame
@@ -1946,15 +1963,15 @@ end)
                 local Slider = Instance.new('TextButton')
                 Slider.FontFace = Font.new('rbxasset://fonts/families/SourceSansPro.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal);
                 Slider.TextSize = 14;
-                Slider.TextColor3 = Color3.fromRGB(0, 0, 0)
-                Slider.BorderColor3 = Color3.fromRGB(255, 215, 0)
+                Slider.TextColor3 = _G.Theme.Accent
+                Slider.BorderColor3 = _G.Theme.Accent
                 Slider.Text = ''
                 Slider.AutoButtonColor = false
                 Slider.BackgroundTransparency = 1
                 Slider.Name = 'Slider'
                 Slider.Size = UDim2.new(0, 207, 0, 22)
                 Slider.BorderSizePixel = 0
-                Slider.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Black background for slider row
+                Slider.BackgroundColor3 = _G.Theme.Container
                 Slider.Parent = Options
                 Slider.LayoutOrder = LayoutOrderModule
                 
@@ -1966,7 +1983,7 @@ end)
                     TextLabel.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
                     TextLabel.TextSize = 11;
                 end;
-                TextLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+                TextLabel.TextColor3 = _G.Theme.Accent
                 TextLabel.TextTransparency = 0.20000000298023224
                 TextLabel.Text = settings.title
                 TextLabel.Size = UDim2.new(0, 153, 0, 13)
@@ -1986,7 +2003,7 @@ end)
                 Drag.Name = 'Drag'
                 Drag.Size = UDim2.new(0, 207, 0, 4)
                 Drag.BorderSizePixel = 0
-                Drag.BackgroundColor3 = Color3.fromRGB(255, 215, 0) -- Gold drag track
+                Drag.BackgroundColor3 = _G.Theme.AccentDim
                 Drag.Parent = Slider
                 
                 local UICorner = Instance.new('UICorner')
@@ -2001,7 +2018,7 @@ end)
                 Fill.Name = 'Fill'
                 Fill.Size = UDim2.new(0, 103, 0, 4)
                 Fill.BorderSizePixel = 0
-                Fill.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Black fill on gold track
+                Fill.BackgroundColor3 = _G.Theme.Accent
                 Fill.Parent = Drag
                 
                 local UICorner = Instance.new('UICorner')
@@ -2022,7 +2039,7 @@ end)
                 Circle.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 Circle.Size = UDim2.new(0, 6, 0, 6)
                 Circle.BorderSizePixel = 0
-                Circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                Circle.BackgroundColor3 = _G.Theme.Text
                 Circle.Parent = Fill
                 
                 local UICorner = Instance.new('UICorner')
@@ -2031,7 +2048,7 @@ end)
                 
                 local Value = Instance.new('TextLabel')
                 Value.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-                Value.TextColor3 = Color3.fromRGB(255, 215, 0)
+                Value.TextColor3 = _G.Theme.Text
                 Value.TextTransparency = 0.20000000298023224
                 Value.Text = '50'
                 Value.Name = 'Value'
@@ -2144,8 +2161,8 @@ end)
 
                 local Dropdown = Instance.new('TextButton')
                 Dropdown.FontFace = Font.new('rbxasset://fonts/families/SourceSansPro.json', Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-                Dropdown.TextColor3 = Color3.fromRGB(0, 0, 0)
-                Dropdown.BorderColor3 = Color3.fromRGB(255, 215, 0)
+                Dropdown.TextColor3 = _G.Theme.Text
+                Dropdown.BorderColor3 = _G.Theme.Accent
                 Dropdown.Text = ''
                 Dropdown.AutoButtonColor = false
                 Dropdown.BackgroundTransparency = 1
@@ -2153,7 +2170,7 @@ end)
                 Dropdown.Size = UDim2.new(0, 207, 0, 39)
                 Dropdown.BorderSizePixel = 0
                 Dropdown.TextSize = 14
-                Dropdown.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Black background for dropdown row
+                Dropdown.BackgroundColor3 = _G.Theme.Container
                 Dropdown.Parent = Options
 
                 if not settings.Order then
@@ -2174,7 +2191,7 @@ end)
                     TextLabel.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal);
                     TextLabel.TextSize = 11;
                 end;
-                TextLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+                TextLabel.TextColor3 = _G.Theme.TextDim
                 TextLabel.TextTransparency = 0.20000000298023224
                 TextLabel.Text = settings.title
                 TextLabel.Size = UDim2.new(0, 207, 0, 13)
@@ -2187,14 +2204,14 @@ end)
                 
                 local Box = Instance.new('Frame')
                 Box.ClipsDescendants = true
-                Box.BorderColor3 = Color3.fromRGB(255, 215, 0)
+                Box.BorderColor3 = _G.Theme.Accent
                 Box.AnchorPoint = Vector2.new(0.5, 0)
                 Box.BackgroundTransparency = 0.8999999761581421
                 Box.Position = UDim2.new(0.5, 0, 1.2000000476837158, 0)
                 Box.Name = 'Box'
                 Box.Size = UDim2.new(0, 207, 0, 22)
                 Box.BorderSizePixel = 0
-                Box.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+                Box.BackgroundColor3 = _G.Theme.Accent
                 Box.Parent = TextLabel
                 
                 local UICorner = Instance.new('UICorner')
@@ -2202,19 +2219,19 @@ end)
                 UICorner.Parent = Box
                 
                 local Header = Instance.new('Frame')
-                Header.BorderColor3 = Color3.fromRGB(40, 40, 0)
+                Header.BorderColor3 = _G.Theme.Border
                 Header.AnchorPoint = Vector2.new(0.5, 0)
                 Header.BackgroundTransparency = 1
                 Header.Position = UDim2.new(0.5, 0, 0, 0)
                 Header.Name = 'Header'
                 Header.Size = UDim2.new(0, 207, 0, 22)
                 Header.BorderSizePixel = 0
-                Header.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                Header.BackgroundColor3 = _G.Theme.Container
                 Header.Parent = Box
                 
                 local CurrentOption = Instance.new('TextLabel')
                 CurrentOption.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-                CurrentOption.TextColor3 = Color3.fromRGB(255, 255, 255)
+                CurrentOption.TextColor3 = _G.Theme.Text
                 CurrentOption.TextTransparency = 0.20000000298023224
                 CurrentOption.Name = 'CurrentOption'
                 CurrentOption.Size = UDim2.new(0, 161, 0, 13)
@@ -2225,7 +2242,7 @@ end)
                 CurrentOption.BorderSizePixel = 0
                 CurrentOption.BorderColor3 = Color3.fromRGB(40, 40, 0)
                 CurrentOption.TextSize = 10
-                CurrentOption.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                CurrentOption.BackgroundColor3 = _G.Theme.Container
                 CurrentOption.Parent = Header
                 local UIGradient = Instance.new('UIGradient')
                 UIGradient.Transparency = NumberSequence.new{
@@ -2237,7 +2254,7 @@ end)
                 UIGradient.Parent = CurrentOption
                 
                 local Arrow = Instance.new('ImageLabel')
-                Arrow.BorderColor3 = Color3.fromRGB(40, 40, 0)
+                Arrow.BorderColor3 = _G.Theme.Border
                 Arrow.AnchorPoint = Vector2.new(0, 0.5)
                 Arrow.Image = 'rbxassetid://84232453189324'
                 Arrow.BackgroundTransparency = 1
@@ -2249,7 +2266,7 @@ end)
                 Arrow.Parent = Header
                 
                 local Options = Instance.new('ScrollingFrame')
-                Options.ScrollBarImageColor3 = Color3.fromRGB(40, 40, 0)
+                Options.ScrollBarImageColor3 = _G.Theme.Accent
                 Options.Active = true
                 Options.ScrollBarImageTransparency = 1
                 Options.AutomaticCanvasSize = Enum.AutomaticSize.XY
@@ -2258,8 +2275,8 @@ end)
                 Options.Size = UDim2.new(0, 207, 0, 0)
                 Options.BackgroundTransparency = 1
                 Options.Position = UDim2.new(0, 0, 1, 0)
-                Options.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-                Options.BorderColor3 = Color3.fromRGB(40, 40, 0)
+                Options.BackgroundColor3 = _G.Theme.Container
+                Options.BorderColor3 = _G.Theme.Accent
                 Options.BorderSizePixel = 0
                 Options.CanvasSize = UDim2.new(0, 0, 0.5, 0)
                 Options.Parent = Box
@@ -2450,8 +2467,8 @@ end)
                         Option.AnchorPoint = Vector2.new(0, 0.5)
                         Option.TextSize = 10
                         Option.Size = UDim2.new(0, 186, 0, 16)
-                        Option.TextColor3 = Color3.fromRGB(255, 255, 255)
-                        Option.BorderColor3 = Color3.fromRGB(40, 40, 0)
+                        Option.TextColor3 = _G.Theme.Text
+                        Option.BorderColor3 = _G.Theme.Border
                         Option.Text = (typeof(value) == "string" and value) or value.Name;
                         Option.AutoButtonColor = false
                         Option.Name = 'Option'
@@ -2460,7 +2477,7 @@ end)
                         Option.Selectable = false
                         Option.Position = UDim2.new(0.04999988153576851, 0, 0.34210526943206787, 0)
                         Option.BorderSizePixel = 0
-                        Option.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                        Option.BackgroundColor3 = _G.Theme.Container
                         Option.Parent = Options
                         
                         local UIGradient = Instance.new('UIGradient')
@@ -2550,8 +2567,8 @@ end)
                 FeatureButton.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal);
                 FeatureButton.TextSize = 11;
                 FeatureButton.Size = UDim2.new(1, -35, 0, 16)
-                FeatureButton.BackgroundColor3 = Color3.fromRGB(40, 40, 0)
-                FeatureButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+                FeatureButton.BackgroundColor3 = _G.Theme.Container
+                FeatureButton.TextColor3 = _G.Theme.Text
                 FeatureButton.Text = "    " .. settings.title or "    " .. "Feature"
                 FeatureButton.AutoButtonColor = false
                 FeatureButton.TextXAlignment = Enum.TextXAlignment.Left
@@ -2573,8 +2590,8 @@ end)
                 local KeybindBox = Instance.new("TextLabel")
                 KeybindBox.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal);
                 KeybindBox.Size = UDim2.new(0, 15, 0, 15)
-                KeybindBox.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
-                KeybindBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+                KeybindBox.BackgroundColor3 = _G.Theme.Accent
+                KeybindBox.TextColor3 = _G.Theme.Text
                 KeybindBox.TextSize = 11
                 KeybindBox.BackgroundTransparency = 1
                 KeybindBox.LayoutOrder = 2;
@@ -2590,7 +2607,7 @@ end)
                 CheckboxCorner.CornerRadius = UDim.new(0, 3)
 
                 local UIStroke = Instance.new("UIStroke", KeybindBox)
-                UIStroke.Color = Color3.fromRGB(255, 255, 0)
+                UIStroke.Color = _G.Theme.Accent
                 UIStroke.Thickness = 1
                 UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
             
@@ -2617,13 +2634,13 @@ end)
                 if not settings.disablecheck then
                     local Checkbox = Instance.new("TextButton")
                     Checkbox.Size = UDim2.new(0, 15, 0, 15)
-                    Checkbox.BackgroundColor3 = checked and Color3.fromRGB(255, 255, 0) or Color3.fromRGB(40, 40, 0)
+                    Checkbox.BackgroundColor3 = checked and _G.Theme.Accent or _G.Theme.Container
                     Checkbox.Text = ""
                     Checkbox.Parent = RightContainer
                     Checkbox.LayoutOrder = 1;
 
                     local UIStroke = Instance.new("UIStroke", Checkbox)
-                    UIStroke.Color = Color3.fromRGB(255, 255, 0)
+                    UIStroke.Color = _G.Theme.Accent
                     UIStroke.Thickness = 1
                     UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 
@@ -2633,7 +2650,7 @@ end)
             
                     local function toggleState()
                         checked = not checked
-                        Checkbox.BackgroundColor3 = checked and Color3.fromRGB(255, 255, 0) or Color3.fromRGB(40, 40, 0)
+                        Checkbox.BackgroundColor3 = checked and _G.Theme.Accent or _G.Theme.Container
                         Library._config._flags[settings.flag].checked = checked
                         Config:save(game.GameId, Library._config)
                         if settings.callback then
@@ -7956,195 +7973,177 @@ AutoPlay:create_slider({
     end
 })
 
-local DesyncSystem = {
-    modules = {
-        semiImmortal = { enabled = false, notify = false },
-        invisibilidade = { enabled = false, notify = false }
-    },
-    data = {
-        originalCFrame = nil,
-        originalVelocity = nil
-    },
-    cache = {
-        character = nil,
-        hrp = nil,
-        head = nil,
-        headOffset = Vector3.new(0,0,0),
-        aliveFolder = nil
-    },
-    constants = {
-        semiRadius = 25,
-        semiHeight = 30,
-        semiVelocity = Vector3.new(0, 1000000, 0),
-        invisY = -500000,
-        velocityThreshold = 800
-    },
-    ballData = {
-        peakVelocity = 0,
-        currentBall = nil
-    }
+local WalkableSemiImmortal = {}
+
+local state = {
+    enabled = false,
+    notify = false,
+    heartbeatConnection = nil
 }
 
-local function updateDesyncCache()
+local desyncData = {
+    originalCFrame = nil,
+    originalVelocity = nil
+}
+
+local cache = {
+    character = nil,
+    hrp = nil,
+    head = nil,
+    headOffset = Vector3.new(0, 0, 0),
+    aliveFolder = nil
+}
+
+local hooks = {
+    oldIndex = nil
+}
+
+local constants = {
+    emptyCFrame = CFrame.new(),
+    radius = 25,
+    baseHeight = 5,
+    riseHeight = 30,
+    cycleSpeed = 11.9,
+    velocity = Vector3.new(1, 1, 1)
+}
+
+local function updateCache()
     local character = LocalPlayer.Character
-    if character ~= DesyncSystem.cache.character then
-        DesyncSystem.cache.character = character
+    if character ~= cache.character then
+        cache.character = character
         if character then
-             DesyncSystem.cache.hrp = character:FindFirstChild("HumanoidRootPart")
-             DesyncSystem.cache.head = character:FindFirstChild("Head")
-             DesyncSystem.cache.aliveFolder = workspace.Alive
-            if  DesyncSystem.cache.hrp then
-                 DesyncSystem.cache.headOffset = Vector3.new(0,  DesyncSystem.cache.hrp.Size.Y * 0.5 + 0.5, 0)
+            cache.hrp = character.HumanoidRootPart
+            cache.head = character.Head
+            cache.aliveFolder = workspace.Alive
+            if cache.hrp then
+                cache.headOffset = Vector3.new(0, cache.hrp.Size.Y * 0.5 + 0.5, 0)
             end
         else
-             DesyncSystem.cache.hrp = nil
-             DesyncSystem.cache.head = nil
+            cache.hrp = nil
+            cache.head = nil
         end
     end
 end
 
-local function isPlayerAlive()
-    return DesyncSystem.cache.aliveFolder and DesyncSystem.cache.character and DesyncSystem.cache.character.Parent == DesyncSystem.cache.aliveFolder
+local function isInAliveFolder()
+    return cache.aliveFolder and cache.character and cache.character.Parent == cache.aliveFolder
 end
 
-local function getOrbitPos(hrp)
+local function calculateOrbitPosition(hrp)
     local angle = math.random(-2147483647, 2147483647) * 1000
-    local cycle = math.floor(tick() * 11.9) % 2
-    local yOffset = cycle == 0 and 0 or DesyncSystem.constants.semiHeight
+    local cycle = math.floor(tick() * constants.cycleSpeed) % 2
+    local yOffset = cycle == 0 and 0 or constants.riseHeight
+    
     local pos = hrp.Position
-    return CFrame.new(pos.X + math.cos(angle) * DesyncSystem.constants.semiRadius, pos.Y - hrp.Size.Y * 0.5 + 5 + yOffset, pos.Z + math.sin(angle) * DesyncSystem.constants.semiRadius)
+    local yBase = pos.Y - hrp.Size.Y * 0.5 + constants.baseHeight + yOffset
+    
+    return CFrame.new(
+        pos.X + math.cos(angle) * constants.radius,
+        yBase,
+        pos.Z + math.sin(angle) * constants.radius
+    )
 end
 
-local function trackBall()
-    local ball = System.ball.get()
-    if not ball then
-        DesyncSystem.ballData.currentBall = nil
-        DesyncSystem.ballData.peakVelocity = 0
-        getgenv().BallVelocityAbove800 = false
+local function performDesync()
+    updateCache()
+    
+    if not state.enabled or not cache.hrp or not isInAliveFolder() then
         return
     end
-    if ball ~= DesyncSystem.ballData.currentBall then
-        DesyncSystem.ballData.currentBall = ball
-        DesyncSystem.ballData.peakVelocity = 0
-    end
-    local zoomies = ball:FindFirstChild("zoomies")
-    if not zoomies then
-        getgenv().BallVelocityAbove800 = false
-        return
-    end
-    local vel = zoomies.VectorVelocity.Magnitude
-    if vel > DesyncSystem.ballData.peakVelocity then DesyncSystem.ballData.peakVelocity = vel end
-    getgenv().BallVelocityAbove800 = DesyncSystem.ballData.peakVelocity >= DesyncSystem.constants.velocityThreshold
+    
+    local hrp = cache.hrp
+    desyncData.originalCFrame = hrp.CFrame
+    desyncData.originalVelocity = hrp.AssemblyLinearVelocity
+    
+    hrp.CFrame = calculateOrbitPosition(hrp)
+    hrp.AssemblyLinearVelocity = constants.velocity
+    
+    RunService.RenderStepped:Wait()
+    
+    hrp.CFrame = desyncData.originalCFrame
+    hrp.AssemblyLinearVelocity = desyncData.originalVelocity
 end
 
-local function runDesyncLoop()
-    while DesyncSystem.modules.semiImmortal.enabled or DesyncSystem.modules.invisibilidade.enabled do
-        updateDesyncCache()
-        if DesyncSystem.cache.hrp and isPlayerAlive() then
-            local hrp = DesyncSystem.cache.hrp
-            local semi = DesyncSystem.modules.semiImmortal.enabled
-            local invis = DesyncSystem.modules.invisibilidade.enabled and getgenv().BallVelocityAbove800
-            
-            if semi or invis then
-                DesyncSystem.data.originalCFrame = hrp.CFrame
-                DesyncSystem.data.originalVelocity = hrp.AssemblyLinearVelocity
-                
-                if invis then
-                    hrp.CFrame = CFrame.new(Vector3.new(hrp.Position.X, DesyncSystem.constants.invisY, hrp.Position.Z), hrp.CFrame.LookVector) + Vector3.new(0, 0, 0.1)
-                    hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                    for i = 1, 15 do
-                        if not DesyncSystem.modules.invisibilidade.enabled then break end
-                        RunService.RenderStepped:Wait()
-                    end
-                else
-                    hrp.CFrame = getOrbitPos(hrp)
-                    hrp.AssemblyLinearVelocity = DesyncSystem.constants.semiVelocity
-                    RunService.RenderStepped:Wait()
-                end
-                
-                if DesyncSystem.data.originalCFrame then
-                    hrp.CFrame = DesyncSystem.data.originalCFrame
-                    hrp.AssemblyLinearVelocity = DesyncSystem.data.originalVelocity
-                end
-                DesyncSystem.data.originalCFrame = nil
-                DesyncSystem.data.originalVelocity = nil
-            end
+local function sendNotification(text)
+    if state.notify and Library then
+        Library.SendNotification({
+            title = "Walkable Semi-Immortal",
+            text = text
+        })
+    end
+end
+
+function WalkableSemiImmortal.toggle(enabled)
+    if state.enabled == enabled then return end
+    
+    state.enabled = enabled
+    getgenv().Walkablesemiimortal = enabled
+    
+    if enabled then
+        if not state.heartbeatConnection then
+            state.heartbeatConnection = RunService.Heartbeat:Connect(performDesync)
         end
-        RunService.Heartbeat:Wait()
+    else
+        if state.heartbeatConnection then
+            state.heartbeatConnection:Disconnect()
+            state.heartbeatConnection = nil
+        end
+        desyncData.originalCFrame = nil
+        desyncData.originalVelocity = nil
     end
+    
+    sendNotification(enabled and "ON" or "OFF")
 end
 
--- Hook Master
-local oldIdx
-oldIdx = hookmetamethod(game, "__index", newcclosure(function(self, key)
-    if checkcaller() or not DesyncSystem.cache.hrp or not isPlayerAlive() then
-        return oldIdx(self, key)
+function WalkableSemiImmortal.setNotify(enabled)
+    state.notify = enabled
+    getgenv().WalkablesemiimortalNotify = enabled
+end
+
+function WalkableSemiImmortal.setRadius(value)
+    constants.radius = value
+end
+
+function WalkableSemiImmortal.setHeight(value)
+    constants.riseHeight = value
+end
+
+LocalPlayer.CharacterRemoving:Connect(function()
+    cache.character = nil
+    cache.hrp = nil
+    cache.head = nil
+    cache.aliveFolder = nil
+end)
+
+hooks.oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
+    if not state.enabled or checkcaller() or key ~= "CFrame" or not cache.hrp or not isInAliveFolder() then
+        return hooks.oldIndex(self, key)
     end
     
-    local active = (DesyncSystem.modules.semiImmortal.enabled or (DesyncSystem.modules.invisibilidade.enabled and getgenv().BallVelocityAbove800))
-    if not active or not DesyncSystem.data.originalCFrame then
-        return oldIdx(self, key)
+    if self == cache.hrp then
+        return desyncData.originalCFrame or constants.emptyCFrame
+    elseif self == cache.head and desyncData.originalCFrame then
+        return desyncData.originalCFrame + cache.headOffset
     end
     
-    if self == DesyncSystem.cache.hrp then
-        if key == "CFrame" then return DesyncSystem.data.originalCFrame
-        elseif key == "Position" then return DesyncSystem.data.originalCFrame.Position
-        elseif key == "AssemblyLinearVelocity" or key == "Velocity" then return DesyncSystem.data.originalVelocity or Vector3.new(0,0,0) end
-    elseif self == DesyncSystem.cache.head then
-        if key == "CFrame" then return DesyncSystem.data.originalCFrame + DesyncSystem.cache.headOffset
-        elseif key == "Position" then return (DesyncSystem.data.originalCFrame + DesyncSystem.cache.headOffset).Position end
-    end
-    return oldIdx(self, key)
+    return hooks.oldIndex(self, key)
 end))
 
-local WalkableSemiImmortal = {}
-function WalkableSemiImmortal.toggle(enabled)
-    if DesyncSystem.modules.semiImmortal.enabled == enabled then return end
-    DesyncSystem.modules.semiImmortal.enabled = enabled
-    getgenv().Walkablesemiimortal = enabled
-    if enabled then task.spawn(runDesyncLoop) end
-    if DesyncSystem.modules.semiImmortal.notify and Library then
-        Library.SendNotification({title = "Walkable Semi-Immortal", text = enabled and "ON" or "OFF"})
-    end
-end
-
-local Invisibilidade = {}
-local ballTrackingConn = nil
-function Invisibilidade.toggle(enabled)
-    if DesyncSystem.modules.invisibilidade.enabled == enabled then return end
-    DesyncSystem.modules.invisibilidade.enabled = enabled
-    getgenv().IDKEnabled = enabled
-    if enabled then
-        if not ballTrackingConn then ballTrackingConn = RunService.Heartbeat:Connect(trackBall) end
-        task.spawn(runDesyncLoop)
-    else
-        if ballTrackingConn then ballTrackingConn:Disconnect(); ballTrackingConn = nil end
-        getgenv().BallVelocityAbove800 = false
-    end
-    if DesyncSystem.modules.invisibilidade.notify and Library then
-        Library.SendNotification({title = "Dupe Ball", text = enabled and "ON" or "OFF"})
-    end
-end
-function WalkableSemiImmortal.setNotify(enabled) DesyncSystem.modules.semiImmortal.notify = enabled end
-function WalkableSemiImmortal.setRadius(value) DesyncSystem.constants.semiRadius = value end
-function WalkableSemiImmortal.setHeight(value) DesyncSystem.constants.semiHeight = value end
-
-function Invisibilidade.setNotify(enabled) DesyncSystem.modules.invisibilidade.notify = enabled end
-
-local semiModule = devJV:create_module({
+local module = devJV:create_module({
     title = "Walkable Semi-Immortal [BLATANT!]",
+    description = "",
     flag = "Walkable_Semi_Immortal",
     section = "left",
     callback = WalkableSemiImmortal.toggle
 })
 
-semiModule:create_checkbox({
+module:create_checkbox({
     title = "Notify",
     flag = "WalkableSemi_Imortal_Notify",
     callback = WalkableSemiImmortal.setNotify
 })
 
-semiModule:create_slider({
+module:create_slider({
     title = 'Immortal Radius',
     flag = 'Immortal_Radius',
     maximum_value = 100,
@@ -8154,7 +8153,7 @@ semiModule:create_slider({
     callback = WalkableSemiImmortal.setRadius
 })
 
-semiModule:create_slider({
+module:create_slider({
     title = 'Immortal Height',
     flag = 'Walkable_Immortal_Radius',
     maximum_value = 60,
@@ -8164,20 +8163,227 @@ semiModule:create_slider({
     callback = WalkableSemiImmortal.setHeight
 })
 
-local dupeModule = devJV:create_module({
+local Invisibilidade = {}
+
+local Players = game:GetService('Players')
+local RunService = game:GetService('RunService')
+local Workspace = game:GetService('Workspace')
+local LocalPlayer = Players.LocalPlayer
+
+local state = {
+    enabled = false,
+    notify = false,
+    heartbeatConnection = nil,
+    ballTrackingConnection = nil
+}
+
+local desyncData = {
+    originalCFrame = nil,
+    originalVelocity = nil
+}
+
+local cache = {
+    character = nil,
+    hrp = nil,
+    head = nil,
+    headOffset = Vector3.new(0, 0, 0),
+    aliveFolder = nil
+}
+
+local hooks = {
+    oldIndex = nil
+}
+
+local constants = {
+    emptyCFrame = CFrame.new(),
+    invisibleY = -200000,
+    velocityThreshold = 800
+}
+
+local ballData = {
+    peakVelocity = 0,
+    currentBall = nil
+}
+
+local function updateCache()
+    local character = LocalPlayer.Character
+    if character ~= cache.character then
+        cache.character = character
+        if character then
+            cache.hrp = character:FindFirstChild("HumanoidRootPart")
+            cache.head = character:FindFirstChild("Head")
+            cache.aliveFolder = workspace.Alive
+            if cache.hrp then
+                cache.headOffset = Vector3.new(0, cache.hrp.Size.Y * 0.5 + 0.5, 0)
+            end
+        else
+            cache.hrp = nil
+            cache.head = nil
+        end
+    end
+end
+
+local function isInAliveFolder()
+    return cache.aliveFolder and cache.character and cache.character.Parent == cache.aliveFolder
+end
+
+local function trackBallVelocity()
+    local ball = System.ball.get()
+
+    if not ball then
+        ballData.currentBall = nil
+        ballData.peakVelocity = 0
+        getgenv().BallPeakVelocity = 0
+        getgenv().BallVelocityAbove800 = false
+        return
+    end
+
+    if ball ~= ballData.currentBall then
+        ballData.currentBall = ball
+        ballData.peakVelocity = 0
+    end
+
+    local zoomies = ball:FindFirstChild("zoomies")
+    if not zoomies then
+        getgenv().BallPeakVelocity = 0
+        getgenv().BallVelocityAbove800 = false
+        return
+    end
+
+    local velocity = zoomies.VectorVelocity.Magnitude
+
+    if velocity > ballData.peakVelocity then
+        ballData.peakVelocity = velocity
+    end
+
+    getgenv().BallPeakVelocity = ballData.peakVelocity
+    getgenv().BallVelocityAbove800 = ballData.peakVelocity >= constants.velocityThreshold
+end
+
+local function shouldApplyDesync()
+    return state.enabled and getgenv().BallVelocityAbove800 == true
+end
+
+local function performDesync()
+    updateCache()
+    
+    if not shouldApplyDesync() or not cache.hrp or not isInAliveFolder() then
+        return
+    end
+    
+    local hrp = cache.hrp
+    desyncData.originalCFrame = hrp.CFrame
+    desyncData.originalVelocity = hrp.AssemblyLinearVelocity
+    
+    hrp.CFrame = CFrame.new(
+        Vector3.new(hrp.Position.X, constants.invisibleY, hrp.Position.Z),
+        hrp.CFrame.LookVector
+    )
+    hrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+    
+    hrp.CFrame = hrp.CFrame + Vector3.new(0, 0, 0.1)
+    
+    RunService.RenderStepped:Wait()
+    
+    hrp.CFrame = desyncData.originalCFrame
+    hrp.AssemblyLinearVelocity = desyncData.originalVelocity
+end
+
+local function sendNotification(text)
+    if state.notify and Library then
+        Library.SendNotification({
+            title = "IDK???",
+            text = text
+        })
+    end
+end
+
+function Invisibilidade.toggle(enabled)
+    if state.enabled == enabled then return end
+    
+    state.enabled = enabled
+    getgenv().IDKEnabled = enabled
+    
+    if enabled then
+        if not state.ballTrackingConnection then
+            state.ballTrackingConnection = RunService.Heartbeat:Connect(trackBallVelocity)
+        end
+
+        if not state.heartbeatConnection then
+            state.heartbeatConnection = RunService.Heartbeat:Connect(performDesync)
+        end
+    else
+        if state.ballTrackingConnection then
+            state.ballTrackingConnection:Disconnect()
+            state.ballTrackingConnection = nil
+        end
+
+        if state.heartbeatConnection then
+            state.heartbeatConnection:Disconnect()
+            state.heartbeatConnection = nil
+        end
+
+        updateCache()
+        if cache.hrp and desyncData.originalCFrame then
+            cache.hrp.CFrame = desyncData.originalCFrame
+            if desyncData.originalVelocity then
+                cache.hrp.AssemblyLinearVelocity = desyncData.originalVelocity
+            end
+        end
+        
+        desyncData.originalCFrame = nil
+        desyncData.originalVelocity = nil
+
+        ballData.peakVelocity = 0
+        ballData.currentBall = nil
+        getgenv().BallPeakVelocity = 0
+        getgenv().BallVelocityAbove800 = false
+    end
+    
+    sendNotification(enabled and "ON" or "OFF")
+end
+
+function Invisibilidade.setNotify(enabled)
+    state.notify = enabled
+    getgenv().IDKNotify = enabled
+end
+
+LocalPlayer.CharacterRemoving:Connect(function()
+    cache.character = nil
+    cache.hrp = nil
+    cache.head = nil
+    cache.aliveFolder = nil
+end)
+
+hooks.oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, key)
+    if not shouldApplyDesync() or checkcaller() or key ~= "CFrame" or not cache.hrp or not isInAliveFolder() then
+        return hooks.oldIndex(self, key)
+    end
+    
+    if self == cache.hrp then
+        return desyncData.originalCFrame or constants.emptyCFrame
+    elseif self == cache.head and desyncData.originalCFrame then
+        return desyncData.originalCFrame + cache.headOffset
+    end
+    
+    return hooks.oldIndex(self, key)
+end))
+
+local module = devJV:create_module({
     title = "Dupe Ball[BLATANT!]",
+    description = "",
     flag = "IDK_Toggle",
     section = "right",
     callback = Invisibilidade.toggle
 })
 
-dupeModule:create_checkbox({
+module:create_checkbox({
     title = "Notify",
     flag = "IDK_Notify",
     callback = Invisibilidade.setNotify
 })
 
-dupeModule:create_slider({
+module:create_slider({
     title = 'Velocity Threshold',
     flag = 'dasdada',
     maximum_value = 1500,
@@ -8185,7 +8391,7 @@ dupeModule:create_slider({
     value = 800,
     round_number = true,
     callback = function(value)
-        DesyncSystem.constants.velocityThreshold = value
+        constants.velocityThreshold = value
     end
 })
 
