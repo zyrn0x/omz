@@ -1,4 +1,4 @@
---UI fix 2
+--seliware
 getgenv().GG = {
     Language = {
         CheckboxEnabled = "Enabled",
@@ -49,20 +49,72 @@ function convertTableToString(inputTable)
     return table.concat(inputTable, ", ")
 end
 
--- === EXECUTOR COMPATIBILITY LAYER ===
-local cloneref = (typeof(cloneref) == "function") and cloneref or function(obj) return obj end
+-- === ENHANCED EXECUTOR COMPATIBILITY LAYER ===
+-- Detect executor
+local executorName = (identifyexecutor and identifyexecutor()) or "Unknown"
+local isSeliware = executorName:lower():find("seliware") or executorName:lower():find("seli")
 
-local UserInputService = cloneref(game:GetService('UserInputService'))
-local ContentProvider = cloneref(game:GetService('ContentProvider'))
-local TweenService = cloneref(game:GetService('TweenService'))
-local HttpService = cloneref(game:GetService('HttpService'))
-local TextService = cloneref(game:GetService('TextService'))
-local RunService = cloneref(game:GetService('RunService'))
-local Lighting = cloneref(game:GetService('Lighting'))
-local Players = cloneref(game:GetService('Players'))
-local CoreGui = cloneref(game:GetService('CoreGui'))
-local Debris = cloneref(game:GetService('Debris'))
-local ReplicatedStorage = cloneref(game:GetService('ReplicatedStorage'))
+-- Safe cloneref with multiple fallbacks
+local cloneref = cloneref or function(obj) return obj end
+if not pcall(function() return cloneref(game) end) then
+    cloneref = function(obj) return obj end
+end
+
+-- Filesystem function wrappers with error handling
+local function safe_makefolder(path)
+    if not makefolder then return false end
+    local success = pcall(makefolder, path)
+    return success
+end
+
+local function safe_writefile(path, content)
+    if not writefile then return false end
+    local success = pcall(writefile, path, content)
+    return success
+end
+
+local function safe_readfile(path)
+    if not readfile then return nil end
+    local success, result = pcall(readfile, path)
+    return success and result or nil
+end
+
+local function safe_isfile(path)
+    if not isfile then return false end
+    local success, result = pcall(isfile, path)
+    return success and result or false
+end
+
+local function safe_isfolder(path)
+    if not isfolder then return false end
+    local success, result = pcall(isfolder, path)
+    return success and result or false
+end
+
+-- Protected service access
+local function getService(serviceName)
+    local success, service = pcall(function()
+        return cloneref(game:GetService(serviceName))
+    end)
+    if not success then
+        success, service = pcall(function()
+            return game:GetService(serviceName)
+        end)
+    end
+    return success and service or game:GetService(serviceName)
+end
+
+local UserInputService = getService('UserInputService')
+local ContentProvider = getService('ContentProvider')
+local TweenService = getService('TweenService')
+local HttpService = getService('HttpService')
+local TextService = getService('TextService')
+local RunService = getService('RunService')
+local Lighting = getService('Lighting')
+local Players = getService('Players')
+local CoreGui = getService('CoreGui')
+local Debris = getService('Debris')
+local ReplicatedStorage = getService('ReplicatedStorage')
 
 -- === OMNI-SYNC V7 MASTER ENGINE ===
 local V7 = {
@@ -75,10 +127,23 @@ _G.V7_Engine = V7
 getgenv().V7_Engine = V7
 
 function V7:GetPing()
+    local finalPing = 50 -- Default fallback
+    
     local success, ping = pcall(function()
-        return game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue()
+        local stats = game:GetService('Stats')
+        if stats and stats.Network then
+            local serverStats = stats.Network:FindFirstChild("ServerStatsItem")
+            if serverStats then
+                local dataPing = serverStats:FindFirstChild("Data Ping")
+                if dataPing then
+                    return dataPing:GetValue()
+                end
+            end
+        end
+        return 50
     end)
-    local finalPing = success and ping or 50
+    
+    finalPing = success and ping or 50
     table.insert(self.PingHistory, 1, finalPing)
     if #self.PingHistory > 30 then table.remove(self.PingHistory) end
     
@@ -128,8 +193,8 @@ if old_Silly then
     Debris:AddItem(old_Silly, 0)
 end
 
-if not isfolder("Silly") then
-    makefolder("Silly")
+if not safe_isfolder("Silly") then
+    safe_makefolder("Silly")
 end
 
 
@@ -358,7 +423,7 @@ local Config = setmetatable({
     save = function(self: any, file_name: any, config: any)
         local success_save, result = pcall(function()
             local flags = HttpService:JSONEncode(config)
-            writefile('Silly/'..file_name..'.json', flags)
+            return safe_writefile('Silly/'..file_name..'.json', flags)
         end)
     
         if not success_save then
@@ -367,18 +432,18 @@ local Config = setmetatable({
     end,
     load = function(self: any, file_name: any, config: any)
         local success_load, result = pcall(function()
-            if not isfile('Silly/'..file_name..'.json') then
+            if not safe_isfile('Silly/'..file_name..'.json') then
                 self:save(file_name, config)
         
-                return
+                return nil
             end
         
-            local flags = readfile('Silly/'..file_name..'.json')
+            local flags = safe_readfile('Silly/'..file_name..'.json')
         
             if not flags then
                 self:save(file_name, config)
         
-                return
+                return nil
             end
 
             return HttpService:JSONDecode(flags)
